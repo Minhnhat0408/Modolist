@@ -1,0 +1,8 @@
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+apps/*/build
+node_modules
+.turbo
+.env
+.env.local

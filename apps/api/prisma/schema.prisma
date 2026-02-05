@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  avatar        String?
+  bio           String?   @db.Text
+  timezone      String?   @default("UTC")
+  
+  totalFocusTime     Int      @default(0)
+  currentStreak      Int      @default(0)
+  longestStreak      Int      @default(0)
+
+  accounts       Account[]
+  sessions       Session[]
+  tasks          Task[]
+  posts          Post[]
+  focusSessions  FocusSession[]
+  aiInteractions AIInteraction[]
+  userBadges     UserBadge[]
+  dailyStats     DailyStats[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODAY
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  
+  status            TaskStatus   @default(BACKLOG)
+  priority          TaskPriority @default(MEDIUM)
+  
+  estimatedPomodoros Int @default(1)
+  completedPomodoros Int @default(0)
+
+  tags        String[]
+  dueDate     DateTime?
+  completedAt DateTime?
+  embedding   Unsupported("VECTOR(768)")?
+  
+  isArchived  Boolean @default(false)
+  
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts          Post[]
+  focusSessions  FocusSession[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, isArchived])
+  @@index([status])
+  @@map("tasks")
+}
+
+
+model Post {
+  id          String @id @default(cuid())
+  content     String @db.Text
+  
+  isPublic    Boolean @default(true)
+  
+  viewCount   Int @default(0)
+  likeCount   Int @default(0)
+  
+  taskId      String?
+  task        Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  images      PostImage[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isPublic, createdAt])
+  @@map("posts")
+}
+
+model PostImage {
+  id       String @id @default(cuid())
+  url      String
+  width    Int?
+  height   Int?
+  size     Int?
+  format   String?
+  
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@map("post_images")
+}
+
+enum FocusSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  INTERRUPTED
+}
+
+model FocusSession {
+  id          String             @id @default(cuid())
+  
+  startedAt   DateTime
+  endedAt     DateTime?
+  duration    Int?
+  plannedDuration Int @default(1500)
+
+  status      FocusSessionStatus @default(IN_PROGRESS)
+  
+  taskId      String?
+  task        Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  breakDuration Int?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId, startedAt])
+  @@index([userId, status])
+  @@index([startedAt])
+  @@map("focus_sessions")
+}
+
+
+model DailyStats {
+  id     String   @id @default(cuid())
+  date   DateTime @db.Date
+  
+  totalFocusTime     Int @default(0)
+  completedPomodoros Int @default(0)
+  completedTasks     Int @default(0)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([date])
+  @@index([date, totalFocusTime])
+  @@map("daily_stats")
+}
+
+enum AIInteractionType {
+  TASK_SUGGESTION
+  TASK_BREAKDOWN
+  MOTIVATION
+  PRODUCTIVITY_TIP
+}
+
+model AIInteraction {
+  id        String             @id @default(cuid())
+  type      AIInteractionType
+
+  userPrompt String? @db.Text
+  context    Json?
+  aiResponse String  @db.Text
+  wasHelpful Boolean?
+  model      String  @default("gemini-2.5-flash")
+  tokensUsed Int?
+  
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("ai_interactions")
+}
+
+enum BadgeCategory {
+  FOCUS
+  CONSISTENCY
+  PRODUCTIVITY
+  SOCIAL
+  MILESTONE
+}
+
+model Badge {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String
+  icon        String
+  category    BadgeCategory
+  criteria    Json
+  rarity      String @default("common")
+  points      Int    @default(10)
+  
+  userBadges  UserBadge[]
+  
+  createdAt   DateTime @default(now())
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String @id @default(cuid())
+  
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  badgeId  String
+  badge    Badge  @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@map("user_badges")
+}
