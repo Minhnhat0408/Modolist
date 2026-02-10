@@ -1,8 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "./prisma.service";
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  constructor(private prisma: PrismaService) {}
+
+  async getHello(): Promise<string> {
+    // Test database connection by counting users
+    const userCount = await this.prisma.client.user.count();
+    return `Hello World! Database connected. Users: ${userCount}`;
   }
 }

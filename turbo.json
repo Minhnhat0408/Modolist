@@ -5,7 +5,20 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_WS_URL",
+        "NEXTAUTH_URL",
+        "NEXTAUTH_SECRET",
+        "AUTH_SECRET",
+        "AUTH_GOOGLE_ID",
+        "AUTH_GOOGLE_SECRET",
+        "DATABASE_URL",
+        "NEXT_PUBLIC_UPLOADTHING_APP_ID",
+        "UPLOADTHING_SECRET"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
