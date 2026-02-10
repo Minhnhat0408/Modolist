@@ -1,8 +1,14 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { CheckCircle, Target, Users, Zap } from "lucide-react"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { CheckCircle, Target, Users, Zap } from "lucide-react";
 
 export default function Home() {
   return (
@@ -11,7 +17,9 @@ export default function Home() {
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Target className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">Co-Focus Space</span>
+            <span className="text-2xl font-bold text-foreground">
+              Co-Focus Space
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -29,10 +37,13 @@ export default function Home() {
         <section className="py-20 text-center">
           <div className="mx-auto max-w-3xl space-y-6">
             <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
-              Quản lý công việc và <span className="text-primary">tập trung hiệu quả</span>
+              Quản lý công việc và{" "}
+              <span className="text-primary">tập trung hiệu quả</span>
             </h1>
             <p className="text-xl text-muted-foreground">
-              Co-Focus Space giúp bạn tổ chức công việc, theo dõi tiến độ và cộng tác cùng đội nhóm một cách dễ dàng với giao diện trực quan và tính năng mạnh mẽ.
+              Co-Focus Space giúp bạn tổ chức công việc, theo dõi tiến độ và
+              cộng tác cùng đội nhóm một cách dễ dàng với giao diện trực quan và
+              tính năng mạnh mẽ.
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
               <Link href="/auth/signup">
@@ -58,7 +69,8 @@ export default function Home() {
                 </div>
                 <CardTitle>Nhanh chóng & Hiệu quả</CardTitle>
                 <CardDescription>
-                  Tạo và quản lý task chỉ trong vài giây với giao diện kéo thả trực quan
+                  Tạo và quản lý task chỉ trong vài giây với giao diện kéo thả
+                  trực quan
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -70,7 +82,8 @@ export default function Home() {
                 </div>
                 <CardTitle>Cộng tác nhóm</CardTitle>
                 <CardDescription>
-                  Làm việc cùng đội nhóm với tính năng chia sẻ và phân công công việc
+                  Làm việc cùng đội nhóm với tính năng chia sẻ và phân công công
+                  việc
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -82,7 +95,8 @@ export default function Home() {
                 </div>
                 <CardTitle>Theo dõi tiến độ</CardTitle>
                 <CardDescription>
-                  Nắm bắt tiến độ dự án một cách trực quan qua bảng Kanban và biểu đồ
+                  Nắm bắt tiến độ dự án một cách trực quan qua bảng Kanban và
+                  biểu đồ
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -100,7 +114,7 @@ export default function Home() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="flex gap-3">
-                  <CheckCircle className="h-6 w-6 flex-shrink-0 text-primary" />
+                  <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
                     <h3 className="font-semibold">Bảng Kanban trực quan</h3>
                     <p className="text-sm text-muted-foreground">
@@ -109,7 +123,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <CheckCircle className="h-6 w-6 flex-shrink-0 text-primary" />
+                  <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
                     <h3 className="font-semibold">Thông báo thời gian thực</h3>
                     <p className="text-sm text-muted-foreground">
@@ -118,7 +132,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <CheckCircle className="h-6 w-6 flex-shrink-0 text-primary" />
+                  <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
                     <h3 className="font-semibold">Giao diện tối/sáng</h3>
                     <p className="text-sm text-muted-foreground">
@@ -127,7 +141,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <CheckCircle className="h-6 w-6 flex-shrink-0 text-primary" />
+                  <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
                     <h3 className="font-semibold">Bảo mật cao</h3>
                     <p className="text-sm text-muted-foreground">
@@ -146,7 +160,8 @@ export default function Home() {
               Sẵn sàng bắt đầu?
             </h2>
             <p className="text-xl text-muted-foreground">
-              Tham gia cùng hàng nghìn người dùng đang sử dụng Co-Focus Space để quản lý công việc hiệu quả hơn
+              Tham gia cùng hàng nghìn người dùng đang sử dụng Co-Focus Space để
+              quản lý công việc hiệu quả hơn
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
               <Link href="/auth/signup">
@@ -164,7 +179,9 @@ export default function Home() {
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center space-x-2">
               <Target className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-foreground">Co-Focus Space</span>
+              <span className="font-semibold text-foreground">
+                Co-Focus Space
+              </span>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2026 Co-Focus Space. Tất cả quyền được bảo lưu.

@@ -5,97 +5,161 @@
 ## 🛠️ Công nghệ sử dụng
 
 **Frontend:**
-- Next.js 16 (App Router), TypeScript, TailwindCSS, Shadcn UI
-- React Query (quản lý state server), Zustand (quản lý state client)
-- @dnd-kit (drag & drop), Socket.io-client (real-time)
+- Next.js 16 (App Router), TypeScript, TailwindCSS, Shadcn UI  
+- React Hook Form + Zod (form validation)
+- @dnd-kit (drag & drop Kanban board)
+- NextAuth.js (authentication với Google OAuth)
+- Socket.io-client (real-time - coming soon)
 
 **Backend:**
-- NestJS 11, Prisma ORM, NeonDB (PostgreSQL)
-- Socket.io (WebSocket), Redis (adapter + cache)
-- gRPC client (kết nối AI service)
+- NestJS 11 với SWC compiler
+- Prisma ORM + NeonDB (PostgreSQL)
+- JWT Authentication với Passport
+- Cache Manager (in-memory caching)
+- Socket.io (WebSocket - coming soon)
 
 **AI Service:**
 - Python 3.12+, gRPC server
 - Google Gemini API (AI model)
 - NumPy (vector similarity)
 
-## ⏱️ Kế hoạch Thực hiện
+---
 
-**Tổng thời gian:** 14 giờ (2h/ngày × 7 ngày)
+## 🎯 Feature-First Development Progress
 
-| Giai đoạn | Công việc | Thời gian | Trạng thái |
-|-----------|-----------|-----------|------------|
-| **Phase 1: Setup** | Cài đặt hạ tầng & Dependencies | 2h | 🔲 |
-| **Phase 2: Backend Core** | Code API + Database + WebSocket | 4h | 🔲 |
-| **Phase 3: AI Service** | Code AI service với Gemini + gRPC | 2h | 🔲 |
-| **Phase 4: Frontend** | Hoàn thiện giao diện chính | 4h | 🔲 |
-| **Phase 5: Polish** | Testing và tài liệu | 2h | 🔲 |
+**Current Status:** 📊 **Kanban Board - 100% Complete**
+
+### ✅ **Phase 1: Authentication & Security** (100%)
+- [x] NextAuth.js integration
+- [x] Google OAuth provider
+- [x] Credentials provider (email/password)
+- [x] Session management
+- [x] Protected routes
+- [x] JWT token generation for API
+
+### ✅ **Phase 2: Kanban Board with Drag & Drop** (100%)
+- [x] **Backend API:**
+  - [x] JWT Authentication Guard
+  - [x] Task CRUD endpoints (8 routes)
+  - [x] User-scoped data access
+  - [x] Cache layer implementation
+  - [x] Input validation with DTOs
+  - [x] TaskStatus enum with IN_PROGRESS state
+
+- [x] **Frontend UI:**
+  - [x] Kanban board layout (4 columns)
+  - [x] Drag & drop functionality (@dnd-kit)
+  - [x] Task cards with metadata
+  - [x] Create/Edit/Delete modals
+  - [x] Form validation (React Hook Form + Zod)
+  - [x] Optimistic UI updates
+  - [x] Loading states & error handling
+
+### 🔄 **Next Up: Real-time Features**
+- [ ] WebSocket connection
+- [ ] Live focus session tracking
+- [ ] Multi-user co-focus rooms
+- [ ] Real-time task updates
+
+### 📅 **Future Phases**
+- [ ] **Phase 3:** Pomodoro Timer Integration
+- [ ] **Phase 4:** AI Coach with Gemini
+- [ ] **Phase 5:** Social Features (Posts, Badges)
+- [ ] **Phase 6:** Analytics Dashboard
+
+---
+
+## 📊 Tech Stack Details
+
+**Architecture Pattern:** Feature-First Monorepo
+
+```
+todolist/
+├── apps/
+│   ├── web/          # Next.js 16 (Frontend)
+│   ├── api/          # NestJS 11 (Backend)
+│   └── ai-service/   # Python gRPC (AI)
+├── packages/
+│   ├── database/     # Prisma schema & types
+│   ├── ui/           # Shared React components
+│   └── typescript-config/
+```
+
+**Key Technologies:**
+- **Turborepo:** Monorepo build system
+- **pnpm workspaces:** Package management
+- **SWC:** Fast TypeScript compilation
+- **Prisma:** Type-safe database ORM
+- **Zod:** Runtime type validation
 
 ---
 
 ## 📋 Yêu cầu Hệ thống
 
 - **Node.js** 18+ & **pnpm** 9.0.0
-- **Python** 3.12+
-- **Docker** (khuyên dùng OrbStack)
+- **Python** 3.12+ (for AI service)
+- **Docker** (optional, recommended OrbStack)
 - **NeonDB** account (free tier)
 
-## 🚀 Hướng dẫn Cài đặt
+## 🚀 Quick Start
 
-### Cách 1: Chạy bằng Docker (Đơn giản nhất)
+### 1. Clone & Install
 
 ```bash
 git clone https://github.com/Sun-EP8/vn25_fs_check_minhnn-3609.git
 cd vn25_fs_check_minhnn-3609
-
 pnpm install
-
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-cp apps/ai-service/.env.example apps/ai-service/.env
-
-docker-compose up -d
 ```
 
-**URLs Services:**
-- Web Frontend: http://localhost:3000
-- API Backend: http://localhost:3001
-- Redis Commander: http://localhost:8081
-
-### Cách 2: Chạy Development (Local)
+### 2. Environment Setup
 
 ```bash
-pnpm install
+# Copy environment files
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 
-cd apps/ai-service
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cd ../..
+# Update with your credentials:
+# - DATABASE_URL (Neon PostgreSQL)
+# - AUTH_SECRET (generate with: openssl rand -base64 32)
+# - AUTH_GOOGLE_ID & AUTH_GOOGLE_SECRET (Google Console)
+```
 
+### 3. Database Setup
+
+```bash
+cd packages/database
+pnpm prisma migrate dev
+pnpm prisma generate
+```
+
+### 4. Run Development
+
+```bash
+# Terminal 1: API Server (http://localhost:3001)
 cd apps/api
-npx prisma generate
-npx prisma migrate dev
-cd ../..
+pnpm dev
 
-docker-compose up -d redis
-
+# Terminal 2: Web App (http://localhost:3000)
+cd apps/web
 pnpm dev
 ```
 
+**Access:** Open http://localhost:3000 and sign in with Google
+
 ---
 
-## 🐳 Cài đặt Docker (OrbStack)
-
-### Cài đặt
+## 🐳 Docker Deployment (Optional)
 
 ```bash
-brew install orbstack
-open -a OrbStack
-
-docker --version
-docker-compose --version
+docker-compose up -d
 ```
+
+**Services:**
+- Web: http://localhost:3000
+- API: http://localhost:3001
+- Redis: localhost:6379
+
+---
 
 ### Quản lý Services
 
@@ -146,18 +210,56 @@ npx prisma db push
 
 ---
 
-### Phase 2: Backend Core (4h) ⏱️
+### Phase 2: Task Management API (2h) ✅
 
-#### Ngày 2 - Phần 1: Task API (2h)
-- [ ] Tạo TasksModule với Prisma integration
-- [ ] Implement CRUD endpoints (GET, POST, PATCH, DELETE)
-- [ ] Thêm task status transitions (BACKLOG → TODAY → DONE)
-- [ ] Viết unit tests cho TasksService
-- [ ] Test với Thunder Client/Postman
+#### ✅ Hoàn thành - Task CRUD API
 
-**Kết quả:** Task management API hoạt động
+**Endpoints:**
+- `GET /tasks?userId=xxx` - Lấy tất cả tasks
+- `GET /tasks/stats?userId=xxx` - Thống kê tasks
+- `GET /tasks/status/:status?userId=xxx` - Lấy tasks theo status (BACKLOG/TODAY/DONE)
+- `GET /tasks/:id?userId=xxx` - Lấy 1 task
+- `POST /tasks?userId=xxx` - Tạo task mới
+- `PATCH /tasks/:id?userId=xxx` - Cập nhật task
+- `PATCH /tasks/:id/archive?userId=xxx` - Archive task
+- `DELETE /tasks/:id?userId=xxx` - Xóa task
 
-#### Ngày 3 - Phần 2: Real-time WebSocket (2h)
+**Ví dụ sử dụng:**
+
+```bash
+# Tạo task mới
+curl -X POST http://localhost:3001/tasks?userId=user123 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Hoàn thành Project X",
+    "description": "Làm backend API",
+    "status": "TODAY",
+    "priority": "HIGH",
+    "estimatedPomodoros": 4,
+    "tags": ["work", "urgent"],
+    "dueDate": "2026-02-15T10:00:00Z"
+  }'
+
+# Lấy tất cả tasks
+curl http://localhost:3001/tasks?userId=user123
+
+# Cập nhật status task
+curl -X PATCH http://localhost:3001/tasks/task_id?userId=user123 \
+  -H "Content-Type: application/json" \
+  -d '{"status": "DONE"}'
+
+# Lấy thống kê
+curl http://localhost:3001/tasks/stats?userId=user123
+# Response: {"total": 10, "backlog": 3, "today": 5, "done": 2, "archived": 0}
+```
+
+**Kết quả:** Task management API hoạt động ✅
+
+---
+
+### Phase 3: Real-time WebSocket (2h) 🔲
+
+#### Ngày 3 - WebSocket & Focus Tracking (2h)
 - [ ] Setup Socket.io Gateway trong NestJS
 - [ ] Implement "Start Focus" event handling
 - [ ] Thêm Redis adapter cho Socket.io
