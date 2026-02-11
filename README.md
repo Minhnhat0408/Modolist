@@ -25,47 +25,78 @@
 
 ---
 
-## 🎯 Feature-First Development Progress
+## 🎯 Lộ trình Phát triển
 
-**Current Status:** 📊 **Kanban Board - 100% Complete**
+**Trạng thái hiện tại:** 📊 **Phase 2 hoàn thành - Chuẩn bị Phase 3**
 
-### ✅ **Phase 1: Authentication & Security** (100%)
-- [x] NextAuth.js integration
+### ✅ **Phase 1: Xác thực & Bảo mật** (100%)
+- [x] Tích hợp NextAuth.js
 - [x] Google OAuth provider
 - [x] Credentials provider (email/password)
-- [x] Session management
-- [x] Protected routes
-- [x] JWT token generation for API
+- [x] Quản lý session
+- [x] Bảo vệ routes
+- [x] Tạo JWT token cho API
 
-### ✅ **Phase 2: Kanban Board with Drag & Drop** (100%)
+### ✅ **Phase 2: Kanban Board với Drag & Drop** (100%)
 - [x] **Backend API:**
   - [x] JWT Authentication Guard
   - [x] Task CRUD endpoints (8 routes)
-  - [x] User-scoped data access
-  - [x] Cache layer implementation
-  - [x] Input validation with DTOs
-  - [x] TaskStatus enum with IN_PROGRESS state
+  - [x] Phân quyền dữ liệu theo user
+  - [x] Caching layer
+  - [x] Validation với DTOs
+  - [x] TaskStatus enum với IN_PROGRESS state
 
 - [x] **Frontend UI:**
-  - [x] Kanban board layout (4 columns)
-  - [x] Drag & drop functionality (@dnd-kit)
-  - [x] Task cards with metadata
-  - [x] Create/Edit/Delete modals
+  - [x] Giao diện Kanban board (4 cột)
+  - [x] Tính năng drag & drop (@dnd-kit)
+  - [x] Task cards với metadata
+  - [x] Modal tạo/sửa/xóa task
   - [x] Form validation (React Hook Form + Zod)
   - [x] Optimistic UI updates
-  - [x] Loading states & error handling
+  - [x] Xử lý loading & error states
 
-### 🔄 **Next Up: Real-time Features**
-- [ ] WebSocket connection
-- [ ] Live focus session tracking
-- [ ] Multi-user co-focus rooms
-- [ ] Real-time task updates
+### 🚧 **Phase 3: Pomodoro Timer & Real-time Service** (0%)
+- [ ] **Pomodoro Timer:**
+  - [ ] Component đếm ngược Pomodoro
+  - [ ] Cài đặt thời gian work/break
+  - [ ] Theo dõi session history
+  - [ ] Thống kê phiên làm việc
+  - [ ] Tích hợp với tasks
 
-### 📅 **Future Phases**
-- [ ] **Phase 3:** Pomodoro Timer Integration
-- [ ] **Phase 4:** AI Coach with Gemini
-- [ ] **Phase 5:** Social Features (Posts, Badges)
-- [ ] **Phase 6:** Analytics Dashboard
+- [ ] **Real-time WebSocket:**
+  - [ ] Setup Socket.io Gateway (NestJS)
+  - [ ] Kết nối WebSocket
+  - [ ] Live focus session tracking
+  - [ ] Multi-user co-focus rooms
+  - [ ] Real-time task updates
+  - [ ] Online/offline presence
+  - [ ] Redis adapter cho Socket.io
+
+### 📅 **Phase 4: AI Service** (0%)
+- [ ] Setup gRPC server (Python)
+  - [ ] Tạo proto file definition
+  - [ ] Tích hợp Google Gemini API
+  - [ ] Implement embedding endpoint
+  - [ ] Implement suggestion endpoint (RAG)
+  - [ ] gRPC client trong NestJS
+- [ ] AI-powered task suggestions
+- [ ] Smart task prioritization
+- [ ] Natural language task creation
+- [ ] Productivity insights
+- [ ] Intelligent scheduling
+
+### 📚 **Phase 5: Testing & Tài liệu** (0%)
+- [ ] **Testing:**
+  - [ ] Unit tests (Jest)
+  - [ ] Integration tests
+  - [ ] E2E tests
+  - [ ] Test coverage report
+- [ ] **Tài liệu:**
+  - [ ] API documentation (Swagger)
+  - [ ] User guide
+  - [ ] Developer documentation
+  - [ ] Deployment guide
+  - [ ] Demo video/screenshots
 
 ---
 
@@ -196,129 +227,120 @@ npx prisma db push
 
 ---
 
-## ✅ Checklist Phát triển
+## ✅ Checklist Chi tiết Phát triển
 
-### Phase 1: Hạ tầng (2h) ⏱️
+### ✅ Phase 1: Xác thực & Bảo mật (Hoàn thành)
 
-- [ ] Cài đặt tất cả dependencies (Prisma, Socket.io, React Query, etc.)
-- [ ] Setup Prisma schema (User, Task, FocusSession models)
-- [ ] Kết nối NeonDB và test connection
-- [ ] Cập nhật docker-compose.yml với Redis
-- [ ] Cấu hình environment variables cho tất cả apps
-
-**Kết quả:** `docker-compose up` hoạt động, Prisma kết nối NeonDB thành công
-
----
-
-### Phase 2: Task Management API (2h) ✅
-
-#### ✅ Hoàn thành - Task CRUD API
-
-**Endpoints:**
-- `GET /tasks?userId=xxx` - Lấy tất cả tasks
-- `GET /tasks/stats?userId=xxx` - Thống kê tasks
-- `GET /tasks/status/:status?userId=xxx` - Lấy tasks theo status (BACKLOG/TODAY/DONE)
-- `GET /tasks/:id?userId=xxx` - Lấy 1 task
-- `POST /tasks?userId=xxx` - Tạo task mới
-- `PATCH /tasks/:id?userId=xxx` - Cập nhật task
-- `PATCH /tasks/:id/archive?userId=xxx` - Archive task
-- `DELETE /tasks/:id?userId=xxx` - Xóa task
-
-**Ví dụ sử dụng:**
-
-```bash
-# Tạo task mới
-curl -X POST http://localhost:3001/tasks?userId=user123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Hoàn thành Project X",
-    "description": "Làm backend API",
-    "status": "TODAY",
-    "priority": "HIGH",
-    "estimatedPomodoros": 4,
-    "tags": ["work", "urgent"],
-    "dueDate": "2026-02-15T10:00:00Z"
-  }'
-
-# Lấy tất cả tasks
-curl http://localhost:3001/tasks?userId=user123
-
-# Cập nhật status task
-curl -X PATCH http://localhost:3001/tasks/task_id?userId=user123 \
-  -H "Content-Type: application/json" \
-  -d '{"status": "DONE"}'
-
-# Lấy thống kê
-curl http://localhost:3001/tasks/stats?userId=user123
-# Response: {"total": 10, "backlog": 3, "today": 5, "done": 2, "archived": 0}
-```
-
-**Kết quả:** Task management API hoạt động ✅
+- [x] Cài đặt tất cả dependencies
+- [x] Setup Prisma schema (User, Task models)
+- [x] Kết nối NeonDB
+- [x] Tích hợp NextAuth.js
+- [x] Google OAuth provider
+- [x] Credentials authentication
+- [x] JWT token generation
+- [x] Cấu hình environment variables
 
 ---
 
-### Phase 3: Real-time WebSocket (2h) 🔲
+### ✅ Phase 2: Kanban Board (Hoàn thành)
 
-#### Ngày 3 - WebSocket & Focus Tracking (2h)
-- [ ] Setup Socket.io Gateway trong NestJS
-- [ ] Implement "Start Focus" event handling
-- [ ] Thêm Redis adapter cho Socket.io
-- [ ] Test real-time sync giữa 2 browser tabs
-- [ ] Xử lý user online/offline states
+**Backend API:**
+- [x] JWT Authentication Guard
+- [x] Task CRUD endpoints (8 routes):
+  - `GET /tasks?userId=xxx` - Lấy tất cả tasks
+  - `GET /tasks/stats?userId=xxx` - Thống kê tasks
+  - `GET /tasks/status/:status?userId=xxx` - Lấy tasks theo status
+  - `GET /tasks/:id?userId=xxx` - Lấy 1 task
+  - `POST /tasks?userId=xxx` - Tạo task mới
+  - `PATCH /tasks/:id?userId=xxx` - Cập nhật task
+  - `PATCH /tasks/:id/archive?userId=xxx` - Archive task
+  - `DELETE /tasks/:id?userId=xxx` - Xóa task
+- [x] User-scoped data access
+- [x] Cache layer implementation
+- [x] Input validation với DTOs
 
-**Kết quả:** Real-time focus tracking hoạt động
+**Frontend UI:**
+- [x] Setup TailwindCSS + Shadcn UI
+- [x] Cài đặt @dnd-kit cho drag & drop
+- [x] Kanban board layout (4 columns)
+- [x] Task cards với drag & drop
+- [x] Create/Edit/Delete modals
+- [x] Form validation (React Hook Form + Zod)
+- [x] Kết nối API với React Query
+- [x] Optimistic UI updates
+- [x] Loading & error handling
 
 ---
 
-### Phase 3: AI Service (2h) ⏱️
+### 🚧 Phase 3: Pomodoro Timer & Real-time Service
 
-#### Ngày 4: gRPC AI Coach (2h)
-- [ ] Setup gRPC server (Python)
-- [ ] Tạo proto file definition
-- [ ] Implement embedding endpoint (Gemini)
-- [ ] Implement suggestion endpoint (RAG)
-- [ ] Thêm gRPC client trong NestJS
-- [ ] Test end-to-end AI suggestion flow
-
-**Kết quả:** AI suggestions hoạt động qua gRPC
-
----
-
-### Phase 4: Frontend (4h) ⏱️
-
-#### Ngày 5 - Phần 1: Kanban Board (2h)
-- [ ] Setup TailwindCSS + Shadcn UI components
-- [ ] Cài đặt @dnd-kit cho drag & drop
-- [ ] Tạo Kanban columns (Backlog, Today, Done)
-- [ ] Implement task cards với drag & drop
-- [ ] Kết nối Task API với React Query
-- [ ] Thêm optimistic updates
-
-**Kết quả:** Kanban board hoạt động
-
-#### Ngày 6 - Phần 2: Tính năng Real-time (2h)
+**Pomodoro Timer (Frontend):**
 - [ ] Tạo Pomodoro Timer component
-- [ ] Setup Socket.io client
-- [ ] Hiển thị trạng thái focus của users khác
-- [ ] Thêm "Start Focus" button integration
-- [ ] Tạo AI suggestion UI panel
-- [ ] Test real-time sync
+- [ ] Cài đặt thời gian work/break tùy chỉnh
+- [ ] Timer controls (start/pause/stop/reset)
+- [ ] Audio notifications
+- [ ] Tích hợp với tasks
+- [ ] Lưu session history
+- [ ] Thống kê phiên làm việc
 
-**Kết quả:** Các tính năng chính hoàn thành
+**Real-time WebSocket (Backend + Frontend):**
+- [ ] Setup Socket.io Gateway trong NestJS
+- [ ] Cấu hình Redis adapter cho Socket.io
+- [ ] Implement focus session events
+- [ ] Thêm FocusSession model vào Prisma
+- [ ] Setup Socket.io client (Frontend)
+- [ ] Live focus session tracking
+- [ ] Multi-user co-focus rooms
+- [ ] Real-time task updates
+- [ ] User presence (online/offline)
+- [ ] Test real-time sync giữa nhiều tabs/users
 
 ---
 
-### Phase 5: Hoàn thiện & Deploy (2h) ⏱️
+### 📅 Phase 4: AI Service
 
-#### Ngày 7: Testing & Tài liệu (2h)
-- [ ] Viết integration tests cho các flows quan trọng
-- [ ] Cập nhật GitHub Issues với tiến độ
-- [ ] Thêm tài liệu API (Swagger tùy chọn)
-- [ ] Tạo hướng dẫn deployment
-- [ ] Ghi hình demo/screenshots
+**gRPC AI Service (Python):**
+- [ ] Setup Python project structure
+- [ ] Tạo proto file definition
+- [ ] Setup gRPC server
+- [ ] Tích hợp Google Gemini API
+- [ ] Implement embedding endpoint
+- [ ] Implement suggestion endpoint (RAG)
+- [ ] Vector similarity với NumPy
+
+**Kết nối Backend:**
+- [ ] Thêm gRPC client trong NestJS
+- [ ] API endpoint cho AI suggestions
+- [ ] Error handling & fallback
+
+**Frontend Integration:**
+- [ ] Tạo AI suggestion UI panel
+- [ ] Smart task creation với NLP
+- [ ] Productivity insights dashboard
+- [ ] Intelligent scheduling suggestions
+- [ ] Test end-to-end AI flow
+
+---
+
+### 📚 Phase 5: Testing & Tài liệu
+
+**Testing:**
+- [ ] Unit tests cho backend (Jest)
+- [ ] Unit tests cho frontend (Jest + React Testing Library)
+- [ ] Integration tests cho API flows
+- [ ] E2E tests (Playwright/Cypress)
+- [ ] Test coverage report (>80%)
+- [ ] Performance testing
+
+**Tài liệu:**
+- [ ] API documentation (Swagger/OpenAPI)
+- [ ] README cập nhật đầy đủ
+- [ ] User guide (Tiếng Việt)
+- [ ] Developer documentation
+- [ ] Architecture diagram
+- [ ] Deployment guide
+- [ ] Demo video hoặc screenshots
 - [ ] Code review & cleanup cuối cùng
-
-**Kết quả:** MVP sẵn sàng production
 
 ---
 
@@ -354,18 +376,6 @@ GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 - 🚀 Deploy (cấu hình riêng)
 
 ---
-
-## 🌐 Hướng dẫn Deploy
-
-### Nền tảng đề xuất
-
-| Service | Platform | Ghi chú |
-|---------|----------|---------|
-| **Database** | NeonDB | Serverless PostgreSQL (đã setup) |
-| **Redis** | Upstash | Serverless Redis (free tier) |
-| **API** | Railway/Render | NestJS backend |
-| **Web** | Vercel | Next.js frontend |
-| **AI Service** | Railway/Render | Python gRPC service |
 
 ### Biến môi trường
 
@@ -436,23 +446,6 @@ npx prisma migrate reset
 npx prisma format
 ```
 
-### Lỗi Redis Connection
-
-```bash
-docker exec -it todolist-redis-1 redis-cli
-> PING
-PONG
-> exit
-```
-
-### Port đã được sử dụng
-
-```bash
-lsof -ti:3000 | xargs kill -9
-
-PORT=3002 pnpm dev --filter=api
-```
-
 ---
 
 ## 📚 Tài liệu Tham khảo
@@ -474,12 +467,6 @@ PORT=3002 pnpm dev --filter=api
 **Timeline:** 2 tuần (14 giờ total)
 **Ngày bắt đầu:** 5/2/2026
 **Dự kiến hoàn thành:** 19/2/2026
-
----
-
-## 📄 License
-
-Dự án riêng tư cho mục đích đánh giá.
 
 ---
 
