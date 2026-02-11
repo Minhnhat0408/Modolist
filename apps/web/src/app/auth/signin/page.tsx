@@ -1,31 +1,32 @@
-"use client"
+"use client";
 
-import { useFormStatus } from "react-dom"
-import Link from "next/link"
-import { Mail, Lock, ChromeIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { authenticate, authenticateWithGoogle } from "./actions"
-import { useActionState } from "react"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { useFormStatus } from "react-dom";
+import Link from "next/link";
+import { Mail, Lock, ChromeIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { authenticate, authenticateWithGoogle } from "./actions";
+import { useActionState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function SubmitButton() {
-  const { pending } = useFormStatus()
+  const { pending } = useFormStatus();
 
   return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="w-full"
-      size="lg"
-    >
+    <Button type="submit" disabled={pending} className="w-full" size="lg">
       {pending ? "Đang đăng nhập..." : "Đăng nhập"}
     </Button>
-  )
+  );
 }
 
 export default function SignInPage() {
-  const [errorMessage, dispatch] = useActionState(authenticate, undefined)
+  const [errorMessage, dispatch] = useActionState(authenticate, undefined);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -43,7 +44,10 @@ export default function SignInPage() {
           {/* Email/Password Form */}
           <form action={dispatch} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="email"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <Mail className="h-4 w-4" />
                 Email
               </label>
@@ -58,7 +62,10 @@ export default function SignInPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <Lock className="h-4 w-4" />
                 Mật khẩu
               </label>
@@ -94,11 +101,7 @@ export default function SignInPage() {
 
           {/* Google Sign In */}
           <form action={authenticateWithGoogle}>
-            <Button
-              type="submit"
-              variant="outline"
-              className="w-full"
-            >
+            <Button type="submit" variant="outline" className="w-full">
               <ChromeIcon className="mr-2 h-4 w-4" />
               Đăng nhập với Google
             </Button>
@@ -106,7 +109,10 @@ export default function SignInPage() {
 
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Chưa có tài khoản? </span>
-            <Link href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+            <Link
+              href="/auth/signup"
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
               Đăng ký ngay
             </Link>
           </div>
@@ -124,5 +130,5 @@ export default function SignInPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

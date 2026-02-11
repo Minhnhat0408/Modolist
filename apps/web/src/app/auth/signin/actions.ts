@@ -1,27 +1,24 @@
-"use server"
+"use server";
 
-import { signIn } from "@/lib/auth"
-import { AuthError } from "next-auth"
+import { signIn } from "@/lib/auth";
+import { AuthError } from "next-auth";
 
-export async function authenticate(
-  _currentState: unknown,
-  formData: FormData,
-) {
+export async function authenticate(_currentState: unknown, formData: FormData) {
   try {
-    await signIn("credentials", formData)
+    await signIn("credentials", formData);
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return "Email hoặc mật khẩu không đúng."
+          return "Email hoặc mật khẩu không đúng.";
         default:
-          return "Đã có lỗi xảy ra. Vui lòng thử lại."
+          return "Đã có lỗi xảy ra. Vui lòng thử lại.";
       }
     }
-    throw error
+    throw error;
   }
 }
 
 export async function authenticateWithGoogle() {
-  await signIn("google", { redirectTo: "/dashboard" })
+  await signIn("google", { redirectTo: "/dashboard" });
 }

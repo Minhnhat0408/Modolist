@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@repo/database';
-import bcrypt from 'bcryptjs';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@repo/database";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,15 +9,15 @@ export async function POST(req: NextRequest) {
     // Validation
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Vui lòng cung câp email và mật khẩu' },
-        { status: 400 }
+        { error: "Vui lòng cung câp email và mật khẩu" },
+        { status: 400 },
       );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Mật khẩu phải có ít nhất 8 kí tự' },
-        { status: 400 }
+        { error: "Mật khẩu phải có ít nhất 8 kí tự" },
+        { status: 400 },
       );
     }
     const existingUser = await prisma.user.findUnique({
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Tài khoản người dùng đã tồn tại' },
-        { status: 400 }
+        { error: "Tài khoản người dùng đã tồn tại" },
+        { status: 400 },
       );
     }
 
@@ -38,13 +38,13 @@ export async function POST(req: NextRequest) {
         email,
         password: hashedPassword,
         name: name || null,
-        emailVerified: new Date(),       
+        emailVerified: new Date(),
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Tài khoản đã được tạo thành công',
+      message: "Tài khoản đã được tạo thành công",
       user: {
         id: user.id,
         email: user.email,
@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error("Signup error:", error);
     return NextResponse.json(
-      { error: 'Tạo tài khoản thất bại' },
-      { status: 500 }
+      { error: "Tạo tài khoản thất bại" },
+      { status: 500 },
     );
   }
 }

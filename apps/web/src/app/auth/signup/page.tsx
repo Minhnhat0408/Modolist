@@ -1,47 +1,53 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Mail, Lock, User, CheckCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Mail, Lock, User, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function SignUpPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-  })
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu không khớp")
-      setIsLoading(false)
-      return
+      setError("Mật khẩu không khớp");
+      setIsLoading(false);
+      return;
     }
 
     if (formData.password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự")
-      setIsLoading(false)
-      return
+      setError("Mật khẩu phải có ít nhất 8 ký tự");
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -55,24 +61,24 @@ export default function SignUpPage() {
           password: formData.password,
           name: formData.name,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Đã có lỗi xảy ra")
+        setError(data.error || "Đã có lỗi xảy ra");
       } else {
-        setSuccess(true)
+        setSuccess(true);
         setTimeout(() => {
-          router.push("/auth/signin")
-        }, 3000)
+          router.push("/auth/signin");
+        }, 3000);
       }
     } catch {
-      setError("Đã có lỗi xảy ra. Vui lòng thử lại.")
+      setError("Đã có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (success) {
     return (
@@ -92,7 +98,8 @@ export default function SignUpPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Bạn có thể đăng nhập ngay bây giờ với email <strong>{formData.email}</strong>
+              Bạn có thể đăng nhập ngay bây giờ với email{" "}
+              <strong>{formData.email}</strong>
             </p>
             <p className="text-sm text-muted-foreground">
               Đang chuyển hướng đến trang đăng nhập...
@@ -100,7 +107,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -110,7 +117,9 @@ export default function SignUpPage() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold">Đăng ký tài khoản</CardTitle>
+          <CardTitle className="text-3xl font-bold">
+            Đăng ký tài khoản
+          </CardTitle>
           <CardDescription>
             Tạo tài khoản mới để bắt đầu sử dụng Co-Focus Space
           </CardDescription>
@@ -118,7 +127,10 @@ export default function SignUpPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="name"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <User className="h-4 w-4" />
                 Tên của bạn
               </label>
@@ -134,7 +146,10 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="email"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <Mail className="h-4 w-4" />
                 Email *
               </label>
@@ -151,7 +166,10 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <Lock className="h-4 w-4" />
                 Mật khẩu *
               </label>
@@ -168,7 +186,10 @@ export default function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium flex items-center gap-2">
+              <label
+                htmlFor="confirmPassword"
+                className="text-sm font-medium flex items-center gap-2"
+              >
                 <Lock className="h-4 w-4" />
                 Xác nhận mật khẩu *
               </label>
@@ -202,7 +223,10 @@ export default function SignUpPage() {
 
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">Đã có tài khoản? </span>
-            <Link href="/auth/signin" className="font-medium text-primary hover:text-primary/80">
+            <Link
+              href="/auth/signin"
+              className="font-medium text-primary hover:text-primary/80"
+            >
               Đăng nhập
             </Link>
           </div>
@@ -220,5 +244,5 @@ export default function SignUpPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
