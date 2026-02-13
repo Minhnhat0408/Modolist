@@ -5,13 +5,15 @@
 ## 🛠️ Công nghệ sử dụng
 
 **Frontend:**
-- Next.js 16 (App Router), TypeScript, TailwindCSS, Shadcn UI  
+
+- Next.js 16 (App Router), TypeScript, TailwindCSS, Shadcn UI
 - React Hook Form + Zod (form validation)
 - @dnd-kit (drag & drop Kanban board)
 - NextAuth.js (authentication với Google OAuth)
 - Socket.io-client (real-time - coming soon)
 
 **Backend:**
+
 - NestJS 11 với SWC compiler
 - Prisma ORM + NeonDB (PostgreSQL)
 - JWT Authentication với Passport
@@ -19,6 +21,7 @@
 - Socket.io (WebSocket - coming soon)
 
 **AI Service:**
+
 - Python 3.12+, gRPC server
 - Google Gemini API (AI model)
 - NumPy (vector similarity)
@@ -30,6 +33,7 @@
 **Trạng thái hiện tại:** 📊 **Phase 2 hoàn thành - Chuẩn bị Phase 3**
 
 ### ✅ **Phase 1: Xác thực & Bảo mật** (100%)
+
 - [x] Tích hợp NextAuth.js
 - [x] Google OAuth provider
 - [x] Credentials provider (email/password)
@@ -38,6 +42,7 @@
 - [x] Tạo JWT token cho API
 
 ### ✅ **Phase 2: Kanban Board với Drag & Drop** (100%)
+
 - [x] **Backend API:**
   - [x] JWT Authentication Guard
   - [x] Task CRUD endpoints (8 routes)
@@ -56,6 +61,7 @@
   - [x] Xử lý loading & error states
 
 ### 🚧 **Phase 3: Pomodoro Timer & Real-time Service** (0%)
+
 - [ ] **Pomodoro Timer:**
   - [ ] Component đếm ngược Pomodoro
   - [ ] Cài đặt thời gian work/break
@@ -73,6 +79,7 @@
   - [ ] Redis adapter cho Socket.io
 
 ### 📅 **Phase 4: AI Service** (0%)
+
 - [ ] Setup gRPC server (Python)
   - [ ] Tạo proto file definition
   - [ ] Tích hợp Google Gemini API
@@ -86,6 +93,7 @@
 - [ ] Intelligent scheduling
 
 ### 📚 **Phase 5: Testing & Tài liệu** (0%)
+
 - [ ] **Testing:**
   - [ ] Unit tests (Jest)
   - [ ] Integration tests
@@ -117,6 +125,7 @@ todolist/
 ```
 
 **Key Technologies:**
+
 - **Turborepo:** Monorepo build system
 - **pnpm workspaces:** Package management
 - **SWC:** Fast TypeScript compilation
@@ -186,6 +195,7 @@ docker-compose up -d
 ```
 
 **Services:**
+
 - Web: http://localhost:3000
 - API: http://localhost:3001
 - Redis: localhost:6379
@@ -245,6 +255,7 @@ npx prisma db push
 ### ✅ Phase 2: Kanban Board (Hoàn thành)
 
 **Backend API:**
+
 - [x] JWT Authentication Guard
 - [x] Task CRUD endpoints (8 routes):
   - `GET /tasks?userId=xxx` - Lấy tất cả tasks
@@ -260,6 +271,7 @@ npx prisma db push
 - [x] Input validation với DTOs
 
 **Frontend UI:**
+
 - [x] Setup TailwindCSS + Shadcn UI
 - [x] Cài đặt @dnd-kit cho drag & drop
 - [x] Kanban board layout (4 columns)
@@ -275,6 +287,7 @@ npx prisma db push
 ### 🚧 Phase 3: Pomodoro Timer & Real-time Service
 
 **Pomodoro Timer (Frontend):**
+
 - [ ] Tạo Pomodoro Timer component
 - [ ] Cài đặt thời gian work/break tùy chỉnh
 - [ ] Timer controls (start/pause/stop/reset)
@@ -284,6 +297,7 @@ npx prisma db push
 - [ ] Thống kê phiên làm việc
 
 **Real-time WebSocket (Backend + Frontend):**
+
 - [ ] Setup Socket.io Gateway trong NestJS
 - [ ] Cấu hình Redis adapter cho Socket.io
 - [ ] Implement focus session events
@@ -300,6 +314,7 @@ npx prisma db push
 ### 📅 Phase 4: AI Service
 
 **gRPC AI Service (Python):**
+
 - [ ] Setup Python project structure
 - [ ] Tạo proto file definition
 - [ ] Setup gRPC server
@@ -309,11 +324,13 @@ npx prisma db push
 - [ ] Vector similarity với NumPy
 
 **Kết nối Backend:**
+
 - [ ] Thêm gRPC client trong NestJS
 - [ ] API endpoint cho AI suggestions
 - [ ] Error handling & fallback
 
 **Frontend Integration:**
+
 - [ ] Tạo AI suggestion UI panel
 - [ ] Smart task creation với NLP
 - [ ] Productivity insights dashboard
@@ -325,6 +342,7 @@ npx prisma db push
 ### 📚 Phase 5: Testing & Tài liệu
 
 **Testing:**
+
 - [ ] Unit tests cho backend (Jest)
 - [ ] Unit tests cho frontend (Jest + React Testing Library)
 - [ ] Integration tests cho API flows
@@ -333,6 +351,7 @@ npx prisma db push
 - [ ] Performance testing
 
 **Tài liệu:**
+
 - [ ] API documentation (Swagger/OpenAPI)
 - [ ] README cập nhật đầy đủ
 - [ ] User guide (Tiếng Việt)
@@ -357,6 +376,7 @@ pnpm test
 ```
 
 **Tests bắt buộc:**
+
 - ✅ Task CRUD operations
 - ✅ WebSocket connection & events
 - ✅ AI service health check
@@ -368,6 +388,7 @@ pnpm test
 GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 **Tự động chạy mỗi khi push/PR:**
+
 - ✅ Cài đặt Node.js & Python dependencies
 - ✅ Lint tất cả code (ESLint, Prettier)
 - ✅ Type checking (TypeScript)
@@ -380,6 +401,7 @@ GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 ### Biến môi trường
 
 **apps/api/.env:**
+
 ```env
 DATABASE_URL="postgresql://..."
 REDIS_URL="redis://..."
@@ -388,6 +410,7 @@ JWT_SECRET="..."
 ```
 
 **apps/web/.env.local:**
+
 ```env
 NEXT_PUBLIC_API_URL="https://api.yourapp.com"
 NEXT_PUBLIC_WS_URL="wss://api.yourapp.com"
@@ -400,12 +423,14 @@ NEXT_PUBLIC_WS_URL="wss://api.yourapp.com"
 ### Quy tắc GitHub Issues
 
 Mỗi issue PHẢI:
+
 - ✅ Hoàn thành trong ≤6 giờ
 - ✅ Có acceptance criteria rõ ràng
 - ✅ Link đến PR tương ứng (khi implement)
 - ✅ Ghi chép tất cả quyết định trong comments
 
 **Mẫu Issue:**
+
 ```markdown
 ## Task: Setup Prisma Schema
 
@@ -414,15 +439,18 @@ Mỗi issue PHẢI:
 **Ưu tiên:** P0
 
 ### Acceptance Criteria
+
 - [ ] Tạo User, Task, FocusSession models
 - [ ] Generate Prisma Client
 - [ ] Kết nối NeonDB thành công
 - [ ] Push schema lên database
 
 ### Ghi chú Implementation
+
 (Thêm chi tiết khi làm)
 
 ### PR liên quan
+
 #XX (thêm khi tạo PR)
 ```
 

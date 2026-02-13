@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { UserNav } from "@/components/user-nav";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskFormDialog } from "@/components/kanban/TaskFormDialog";
+import { FocusTimer } from "@/components/focus/FocusTimer";
 import { KanbanTask } from "@/types/kanban";
 import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
@@ -29,7 +30,7 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const data = await api.get<KanbanTask[]>("/tasks");
       setTasks(data);
@@ -37,7 +38,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Error fetching tasks:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     async function loadTasks() {
@@ -50,12 +51,29 @@ export default function DashboardPage() {
     }
 
     loadTasks();
-  }, [status]);
+
+    const handleTaskCompleted = () => {
+      fetchTasks();
+    };
+
+    const handleSessionCompleted = () => {
+      console.log("Handle session");
+      fetchTasks();
+    };
+
+    window.addEventListener("taskCompleted", handleTaskCompleted);
+    window.addEventListener("sessionCompleted", handleSessionCompleted);
+
+    return () => {
+      window.removeEventListener("taskCompleted", handleTaskCompleted);
+      window.removeEventListener("sessionCompleted", handleSessionCompleted);
+    };
+  }, [status, fetchTasks]);
 
   const handleTaskMove = async (taskId: string, newStatus: TaskStatus) => {
-    console.log('🚀 handleTaskMove called:', { taskId, newStatus });
+    console.log("🚀 handleTaskMove called:", { taskId, newStatus });
     const previousTasks = [...tasks];
-    
+
     setTasks((prev) =>
       prev.map((task) =>
         task.id === taskId ? { ...task, status: newStatus } : task,
@@ -63,9 +81,11 @@ export default function DashboardPage() {
     );
 
     try {
-      console.log('📡 Calling API PATCH /tasks/' + taskId, { status: newStatus });
+      console.log("📡 Calling API PATCH /tasks/" + taskId, {
+        status: newStatus,
+      });
       await api.patch(`/tasks/${taskId}`, { status: newStatus });
-      console.log('✅ Task moved successfully');
+      console.log("✅ Task moved successfully");
     } catch (error) {
       console.error("❌ Error updating task:", error);
       setTasks(previousTasks);
@@ -143,7 +163,13 @@ export default function DashboardPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center bg-background justify-center min-h-screen">
-          <Image src="/background.webp" alt="Dashboard Background" className="fixed w-full h-full object-cover opacity-75 dark:opacity-20 pointer-events-none" width={1920} height={1080} />
+        <Image
+          src="/background.webp"
+          alt="Dashboard Background"
+          className="fixed w-full h-full object-cover opacity-75 dark:opacity-20 pointer-events-none"
+          width={1920}
+          height={1080}
+        />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Đang tải...</p>
@@ -158,7 +184,13 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Image src="/background.webp" alt="Dashboard Background" className="fixed w-full h-full object-cover opacity-90 dark:opacity-20 pointer-events-none" width={1920} height={1080} />
+      <Image
+        src="/background.webp"
+        alt="Dashboard Background"
+        className="fixed blur-lg w-full h-full object-cover opacity-50  dark:opacity-20 pointer-events-none"
+        width={1920}
+        height={1080}
+      />
       <div className="container relative  mx-auto p-6">
         <div className="flex items-center  justify-between mb-8">
           <div>
@@ -187,6 +219,9 @@ export default function DashboardPage() {
           task={editingTask}
           defaultStatus={defaultStatus}
         />
+
+        {/* Focus Timer (Modal + Floating Widget) */}
+        <FocusTimer />
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 generator client {
-    provider        = "prisma-client-js"
-    previewFeatures = ["driverAdapters"]
+    provider = "prisma-client-js"
 }
 
 datasource db {
@@ -76,25 +75,26 @@ model VerificationToken {
 }
 
 model Task {
-    id                 String                 @id @default(cuid())
-    title              String
-    description        String?
-    status             TaskStatus             @default(BACKLOG)
-    priority           TaskPriority           @default(MEDIUM)
-    estimatedPomodoros Int                    @default(1)
-    completedPomodoros Int                    @default(0)
-    order              Int                    @default(0)
-    tags               String[]
-    dueDate            DateTime?
-    completedAt        DateTime?
-    embedding          Unsupported("vector")?
-    isArchived         Boolean                @default(false)
-    userId             String
-    createdAt          DateTime               @default(now())
-    updatedAt          DateTime               @updatedAt
-    focusSessions      FocusSession[]
-    posts              Post[]
-    user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id                     String                 @id @default(cuid())
+    title                  String
+    description            String?
+    status                 TaskStatus             @default(BACKLOG)
+    priority               TaskPriority           @default(MEDIUM)
+    completedPomodoros     Int                    @default(0)
+    focusTotalSessions     Int? // Total sessions planned for current focus cycle
+    focusCompletedSessions Int                    @default(0) // Sessions completed in current focus cycle
+    order                  Int                    @default(0)
+    tags                   String[]
+    dueDate                DateTime?
+    completedAt            DateTime?
+    embedding              Unsupported("vector")?
+    isArchived             Boolean                @default(false)
+    userId                 String
+    createdAt              DateTime               @default(now())
+    updatedAt              DateTime               @updatedAt
+    focusSessions          FocusSession[]
+    posts                  Post[]
+    user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([userId, status])
     @@index([userId, isArchived])

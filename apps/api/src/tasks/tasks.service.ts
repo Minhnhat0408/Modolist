@@ -1,10 +1,16 @@
 import { Injectable, NotFoundException, Inject } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import { PrismaService } from "../prisma.service";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TaskStatus } from "@repo/database";
+import {
+    FOCUS_SESSION_EVENTS,
+    FocusSessionPausedEvent,
+    FocusSessionCompletedEvent,
+} from "../focus-sessions/events/focus-session.events";
 
 @Injectable()
 export class TasksService {
@@ -13,13 +19,25 @@ export class TasksService {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
     ) {}
 
-    // Helper để invalidate cache
-    private async invalidateUserCache(userId: string) {
-        // Xóa tất cả cache keys có thể có
-        await this.cacheManager.del(`tasks:${userId}:false`); // includeArchived = false
-        await this.cacheManager.del(`tasks:${userId}:true`); // includeArchived = true
+    public async invalidateUserCache(userId: string) {
+        await this.cacheManager.del(`tasks:${userId}:false`);
+        await this.cacheManager.del(`tasks:${userId}:true`);
         await this.cacheManager.del(`tasks:${userId}`);
         await this.cacheManager.del(`tasks:stats:${userId}`);
+    }
+
+    @OnEvent(FOCUS_SESSION_EVENTS.PAUSED)
+    async handleFocusSessionPaused(payload: FocusSessionPausedEvent) {
+        if (payload.taskId) {
+            await this.invalidateUserCache(payload.userId);
+        }
+    }
+
+    @OnEvent(FOCUS_SESSION_EVENTS.COMPLETED)
+    async handleFocusSessionCompleted(payload: FocusSessionCompletedEvent) {
+        if (payload.taskId) {
+            await this.invalidateUserCache(payload.userId);
+        }
     }
 
     // Lấy tất cả tasks của user

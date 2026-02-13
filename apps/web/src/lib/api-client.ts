@@ -9,7 +9,7 @@ let cachedToken: string | null = null;
 
 async function getToken(): Promise<string> {
   if (cachedToken) return cachedToken;
-  
+
   const response = await fetch("/api/auth/token");
   if (!response.ok) {
     throw new Error("Failed to get authentication token");
@@ -23,7 +23,7 @@ export function clearTokenCache() {
   cachedToken = null;
 }
 
-interface ApiOptions extends Omit<RequestInit, 'method' | 'headers' | 'body'> {
+interface ApiOptions extends Omit<RequestInit, "method" | "headers" | "body"> {
   token?: string;
 }
 
@@ -32,12 +32,12 @@ async function request<T = unknown>(
   method: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   body?: any,
-  options: ApiOptions = {}
+  options: ApiOptions = {},
 ): Promise<T> {
-  const token = options.token || await getToken();
-  
+  const token = options.token || (await getToken());
+
   const headers: HeadersInit = {
-    "Authorization": `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   };
 
   if (body && method !== "GET") {
@@ -63,18 +63,18 @@ async function request<T = unknown>(
 }
 
 export const api = {
-  get: <T = unknown>(endpoint: string, options?: ApiOptions) => 
+  get: <T = unknown>(endpoint: string, options?: ApiOptions) =>
     request<T>(endpoint, "GET", undefined, options),
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  post: <T = unknown>(endpoint: string, body?: any, options?: ApiOptions) => 
+  post: <T = unknown>(endpoint: string, body?: any, options?: ApiOptions) =>
     request<T>(endpoint, "POST", body, options),
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  patch: <T = unknown>(endpoint: string, body?: any, options?: ApiOptions) => 
+  patch: <T = unknown>(endpoint: string, body?: any, options?: ApiOptions) =>
     request<T>(endpoint, "PATCH", body, options),
-  
-  delete: <T = unknown>(endpoint: string, options?: ApiOptions) => 
+
+  delete: <T = unknown>(endpoint: string, options?: ApiOptions) =>
     request<T>(endpoint, "DELETE", undefined, options),
 };
 

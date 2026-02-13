@@ -10,8 +10,9 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  estimatedPomodoros: number;
   completedPomodoros: number;
+  focusTotalSessions?: number | null; // Total sessions planned for current focus cycle
+  focusCompletedSessions: number; // Sessions completed in current focus cycle
   order: number;
   tags: string[];
   dueDate: Date | null;
