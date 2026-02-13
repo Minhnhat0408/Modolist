@@ -21,6 +21,7 @@
 ## 🔗 Issue liên quan
 
 <!-- Liên kết đến issue (nếu có) -->
+
 Closes #
 
 ## 📋 Checklist
@@ -40,9 +41,9 @@ Closes #
 
 <!-- Mô tả các bước để test thay đổi của bạn -->
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## 📸 Screenshots (nếu có)
 

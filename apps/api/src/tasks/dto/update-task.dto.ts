@@ -35,7 +35,12 @@ export class UpdateTaskDto {
     @IsOptional()
     @IsInt()
     @Min(1)
-    estimatedPomodoros?: number;
+    focusTotalSessions?: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    focusCompletedSessions?: number;
 
     @IsOptional()
     @IsArray()

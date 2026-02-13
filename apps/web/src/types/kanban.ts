@@ -13,17 +13,19 @@ export const KANBAN_COLUMNS = {
   [TaskStatus.BACKLOG]: {
     id: TaskStatus.BACKLOG,
     title: "📋 Danh sách chờ",
-    color: "bg-gray-100 dark:bg-gray-800",
+    color: "bg-white/10 border border-white/10",
   },
   [TaskStatus.TODAY]: {
     id: TaskStatus.TODAY,
     title: "🎯 Hôm nay",
-    color: "bg-blue-50 dark:bg-blue-900/20",
+    color:
+      "bg-linear-to-br from-secondary/20 via-secondary/10 to-transparent border-2 border-secondary/20",
   },
   [TaskStatus.DONE]: {
     id: TaskStatus.DONE,
     title: "✅ Hoàn thành",
-    color: "bg-green-50 dark:bg-green-900/20",
+    color:
+      "bg-linear-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/20",
   },
 } as const;
 

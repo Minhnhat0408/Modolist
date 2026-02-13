@@ -19,4 +19,22 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     get task(): PrismaClient["task"] {
         return prisma.task;
     }
+
+    get focusSession(): PrismaClient["focusSession"] {
+        return prisma.focusSession;
+    }
+
+    get user(): PrismaClient["user"] {
+        return prisma.user;
+    }
+
+    get dailyStats(): PrismaClient["dailyStats"] {
+        return prisma.dailyStats;
+    }
+
+    // Expose $transaction for atomic operations
+
+    get $transaction(): any {
+        return prisma.$transaction.bind(prisma);
+    }
 }

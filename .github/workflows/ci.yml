@@ -81,6 +81,8 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+         NEXT_PUBLIC_API_URL: "http://localhost:3001"
 
       - name: Test
         run: pnpm test || echo "Tests will be added in Phase 5"

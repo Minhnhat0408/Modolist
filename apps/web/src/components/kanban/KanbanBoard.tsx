@@ -23,6 +23,7 @@ import { TaskCard } from "./TaskCard";
 import { DeleteZone } from "./DeleteZone";
 import { KanbanTask, KANBAN_COLUMNS, COLUMN_ORDER } from "@/types/kanban";
 import { TaskStatus } from "@/types/database";
+import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -31,7 +32,7 @@ interface KanbanBoardProps {
   onTaskReorder?: (
     taskId: string,
     newOrder: number,
-    status: TaskStatus
+    status: TaskStatus,
   ) => void;
   onAddTask?: (status: TaskStatus) => void;
   onEditTask?: (task: KanbanTask) => void;
@@ -57,13 +58,18 @@ export function KanbanBoard({
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
   const [showDeleteZone, setShowDeleteZone] = useState(false);
 
+  // Focus dialog state
+  const [focusDialogOpen, setFocusDialogOpen] = useState(false);
+  const [selectedTaskForFocus, setSelectedTaskForFocus] =
+    useState<KanbanTask | null>(null);
+
   // ✅ Cấu hình cảm biến (Sensor)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 5, // Di chuyển 5px mới tính là drag (tránh click nhầm)
       },
-    })
+    }),
   );
 
   // ✅ Group tasks theo status
@@ -91,7 +97,7 @@ export function KanbanBoard({
   // ✅ Thuật toán phát hiện va chạm tùy chỉnh (Custom Collision Detection)
   const customCollisionDetection: CollisionDetection = (args) => {
     const pointerCollisions = pointerWithin(args);
-    
+
     // 1. Nếu không có va chạm nào -> return
     if (pointerCollisions.length === 0) return [];
 
@@ -100,19 +106,21 @@ export function KanbanBoard({
     if (deleteZone) return [deleteZone];
 
     // 3. Ưu tiên task trước (để sort trong cùng column)
-    const taskCollisions = pointerCollisions.filter((c) =>
-      !Object.keys(KANBAN_COLUMNS).includes(c.id as string) && c.id !== "delete-zone"
+    const taskCollisions = pointerCollisions.filter(
+      (c) =>
+        !Object.keys(KANBAN_COLUMNS).includes(c.id as string) &&
+        c.id !== "delete-zone",
     );
-    
+
     if (taskCollisions.length > 0) {
       return taskCollisions;
     }
 
     // 4. Nếu không có task, mới return column (để move sang column khác)
     const columnCollisions = pointerCollisions.filter((c) =>
-      Object.keys(KANBAN_COLUMNS).includes(c.id as string)
+      Object.keys(KANBAN_COLUMNS).includes(c.id as string),
     );
-    
+
     if (columnCollisions.length > 0) {
       return columnCollisions;
     }
@@ -132,7 +140,7 @@ export function KanbanBoard({
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
     if (!over) return;
-    
+
     // Hiển thị delete zone khi hover
     if (over.id === "delete-zone") {
       setShowDeleteZone(true);
@@ -141,7 +149,7 @@ export function KanbanBoard({
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     setActiveTask(null);
     setShowDeleteZone(false);
 
@@ -152,7 +160,7 @@ export function KanbanBoard({
     const originalTask = initialTasks.find((t) => t.id === taskId);
     if (!originalTask) return;
 
-    console.log('🔍 Drag End:', {
+    console.log("🔍 Drag End:", {
       taskId,
       originalStatus: originalTask.status,
       overId: over.id,
@@ -160,7 +168,7 @@ export function KanbanBoard({
 
     // 1. Handle delete
     if (over.id === "delete-zone") {
-      console.log('🗑️ Deleting task:', taskId);
+      console.log("🗑️ Deleting task:", taskId);
       await onTaskDelete(taskId);
       return;
     }
@@ -171,13 +179,16 @@ export function KanbanBoard({
     // 2. Moving to different column
     if (isOverColumn) {
       const newStatus = overId as TaskStatus;
-      console.log('📦 Column drop:', { originalStatus: originalTask.status, newStatus });
-      
+      console.log("📦 Column drop:", {
+        originalStatus: originalTask.status,
+        newStatus,
+      });
+
       if (originalTask.status !== newStatus) {
-        console.log('✅ Moving task to new column:', newStatus);
+        console.log("✅ Moving task to new column:", newStatus);
         await onTaskMove(taskId, newStatus);
       } else {
-        console.log('⏭️ Same column, no move needed');
+        console.log("⏭️ Same column, no move needed");
       }
       return;
     }
@@ -185,25 +196,28 @@ export function KanbanBoard({
     // 3. Reordering within same column (dropping on another task)
     const overTask = initialTasks.find((t) => t.id === overId);
     if (!overTask) {
-      console.log('⚠️ Over task not found:', overId);
+      console.log("⚠️ Over task not found:", overId);
       return;
     }
 
-    console.log('🎯 Task drop:', {
+    console.log("🎯 Task drop:", {
       originalStatus: originalTask.status,
       overTaskStatus: overTask.status,
     });
 
     // If dropping on task in different column, move to that column
     if (originalTask.status !== overTask.status) {
-      console.log('✅ Moving task to different column via task:', overTask.status);
+      console.log(
+        "✅ Moving task to different column via task:",
+        overTask.status,
+      );
       await onTaskMove(taskId, overTask.status);
       return;
     }
 
     // If same column and different position, reorder
     if (active.id !== over.id) {
-      console.log('🔄 Reordering within same column');
+      console.log("🔄 Reordering within same column");
       const columnTasks = tasksByStatus[originalTask.status] || [];
       const oldIndex = columnTasks.findIndex((t) => t.id === active.id);
       const newIndex = columnTasks.findIndex((t) => t.id === over.id);
@@ -211,18 +225,22 @@ export function KanbanBoard({
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         // Optimistic update using arrayMove
         const reorderedColumnTasks = arrayMove(columnTasks, oldIndex, newIndex);
-        
+
         // Update local state
         setTasks((prev) => {
-          const otherTasks = prev.filter((t) => t.status !== originalTask.status);
+          const otherTasks = prev.filter(
+            (t) => t.status !== originalTask.status,
+          );
           const updatedColumn = reorderedColumnTasks.map((task, index) => ({
             ...task,
             order: index,
           }));
           return [...otherTasks, ...updatedColumn].sort((a, b) => {
             const statusOrder = { BACKLOG: 0, TODAY: 1, DONE: 2 };
-            const aOrder = statusOrder[a.status as keyof typeof statusOrder] || 0;
-            const bOrder = statusOrder[b.status as keyof typeof statusOrder] || 0;
+            const aOrder =
+              statusOrder[a.status as keyof typeof statusOrder] || 0;
+            const bOrder =
+              statusOrder[b.status as keyof typeof statusOrder] || 0;
             if (aOrder !== bOrder) return aOrder - bOrder;
             return (a.order || 0) - (b.order || 0);
           });
@@ -230,7 +248,7 @@ export function KanbanBoard({
 
         // Call API in background
         if (onTaskReorder) {
-          console.log('📡 Calling onTaskReorder API');
+          console.log("📡 Calling onTaskReorder API");
           onTaskReorder(taskId, newIndex, originalTask.status);
         }
       }
@@ -243,11 +261,16 @@ export function KanbanBoard({
     setShowDeleteZone(false);
   };
 
+  const handleStartFocus = (task: KanbanTask) => {
+    setSelectedTaskForFocus(task);
+    setFocusDialogOpen(true);
+  };
+
   return (
     <DndContext
       sensors={sensors}
       // ✅ Dùng thuật toán va chạm tùy chỉnh
-      collisionDetection={customCollisionDetection} 
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver} // ✅ Thêm hàm này
       onDragEnd={handleDragEnd}
@@ -269,6 +292,7 @@ export function KanbanBoard({
                 color={KANBAN_COLUMNS[status].color}
                 onAddTask={onAddTask}
                 onEditTask={onEditTask}
+                onStartFocus={handleStartFocus}
               />
             </SortableContext>
           );
@@ -290,6 +314,18 @@ export function KanbanBoard({
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Focus Start Dialog */}
+      {selectedTaskForFocus && (
+        <FocusStartDialog
+          task={selectedTaskForFocus}
+          open={focusDialogOpen}
+          onClose={() => {
+            setFocusDialogOpen(false);
+            setSelectedTaskForFocus(null);
+          }}
+        />
+      )}
     </DndContext>
   );
 }

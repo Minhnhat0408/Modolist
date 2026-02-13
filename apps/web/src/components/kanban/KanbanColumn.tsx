@@ -8,6 +8,7 @@ import { TaskCard } from "./TaskCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, Play } from "lucide-react";
+import clsx from "clsx";
 
 interface KanbanColumnProps {
   status: TaskStatus;
@@ -16,14 +17,17 @@ interface KanbanColumnProps {
   color: string;
   onAddTask?: (status: TaskStatus) => void;
   onEditTask?: (task: KanbanTask) => void;
+  onStartFocus?: (task: KanbanTask) => void;
 }
 
 export function KanbanColumn({
   status,
   title,
   tasks,
+  color,
   onAddTask,
   onEditTask,
+  onStartFocus,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -44,16 +48,15 @@ export function KanbanColumn({
       `}
     >
       <div
-        className={`
+        className={clsx(
+          `
           h-full rounded-2xl
           backdrop-blur-xl
-          ${
-            isToday
-              ? "bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/20"
-              : "bg-white/10 border border-white/10"
-          }
+
           shadow-xl
-        `}
+        `,
+          color,
+        )}
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
@@ -84,6 +87,14 @@ export function KanbanColumn({
             >
               <Button
                 className="w-full mb-4 bg-primary/20 hover:bg-primary/30 border border-primary/30 backdrop-blur-sm group relative overflow-hidden"
+                onClick={() => {
+                  // Auto-select first task in Today column
+                  const firstTask = tasks[0];
+                  if (firstTask && onStartFocus) {
+                    onStartFocus(firstTask);
+                  }
+                }}
+                disabled={tasks.length === 0}
                 size="lg"
               >
                 <motion.div
@@ -118,6 +129,7 @@ export function KanbanColumn({
               <TaskCard
                 task={task}
                 onEdit={onEditTask}
+                onStartFocus={onStartFocus}
                 showCreatedDate={status === TaskStatus.BACKLOG}
               />
             </motion.div>

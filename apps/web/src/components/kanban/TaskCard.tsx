@@ -4,17 +4,25 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import { KanbanTask } from "@/types/kanban";
-import { TaskPriority } from "@/types/database";
+import { TaskPriority, TaskStatus } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Play } from "lucide-react";
+import { useFocusStore } from "@/stores/useFocusStore";
+import { Button } from "@/components/ui/button";
 
 interface TaskCardProps {
   task: KanbanTask;
   onEdit?: (task: KanbanTask) => void;
+  onStartFocus?: (task: KanbanTask) => void;
   showCreatedDate?: boolean;
 }
 
-export function TaskCard({ task, onEdit, showCreatedDate }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onEdit,
+  onStartFocus,
+  showCreatedDate,
+}: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -25,6 +33,21 @@ export function TaskCard({ task, onEdit, showCreatedDate }: TaskCardProps) {
   } = useSortable({
     id: task.id,
   });
+
+  const {
+    activeTask,
+    status: focusStatus,
+    focusType,
+    currentSession,
+    totalSessions,
+    completedSessions,
+  } = useFocusStore();
+
+  const isFocusing =
+    activeTask?.id === task.id &&
+    (focusStatus === "focusing" ||
+      focusStatus === "break" ||
+      focusStatus === "paused");
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,16 +80,37 @@ export function TaskCard({ task, onEdit, showCreatedDate }: TaskCardProps) {
     },
   };
 
+  const hasSessionData = task.focusTotalSessions && task.focusTotalSessions > 0;
+  const shouldShowProgress =
+    (isFocusing && focusType === "STANDARD") || hasSessionData;
+
+  const displayTotalSessions =
+    isFocusing && focusType === "STANDARD"
+      ? totalSessions
+      : task.focusTotalSessions || 0;
+  const displayCompletedSessions =
+    isFocusing && focusType === "STANDARD"
+      ? completedSessions
+      : task.focusCompletedSessions || 0;
+  const sessionProgress =
+    displayTotalSessions > 0
+      ? (displayCompletedSessions / displayTotalSessions) * 100
+      : 0;
+
+  const handleStartFocus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onStartFocus) {
+      onStartFocus(task);
+    }
+  };
+
   const handleClick = () => {
-    if (onEdit) {
+    if (onEdit && !isDragging) {
       onEdit(task);
     }
   };
 
-  const progress =
-    task.estimatedPomodoros && task.estimatedPomodoros > 0
-      ? ((task.completedPomodoros || 0) / task.estimatedPomodoros) * 100
-      : 0;
+  const isToday = task.status === TaskStatus.TODAY;
 
   return (
     <motion.div
@@ -76,71 +120,128 @@ export function TaskCard({ task, onEdit, showCreatedDate }: TaskCardProps) {
       {...listeners}
       whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className={`${isDragging ? "opacity-40" : "opacity-100"}`}
+      className={`
+        ${isDragging ? "opacity-40" : "opacity-100"}
+        ${isFocusing ? "relative" : ""}
+      `}
     >
+      {isFocusing && (
+        <motion.div
+          className="absolute inset-0 rounded-xl"
+          animate={{
+            boxShadow: [
+              "0 0 0 0px rgba(59, 130, 246, 0)",
+              "0 0 0 4px rgba(59, 130, 246, 0.5)",
+              "0 0 0 0px rgba(59, 130, 246, 0)",
+            ],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      )}
+
       <div
-        className="
+        className={`
           rounded-xl p-4
           bg-white/5 backdrop-blur-sm
-          border border-white/10
+          ${
+            isFocusing
+              ? "border-2 border-primary ring-2 ring-primary/50 bg-primary/10"
+              : "border border-white/10"
+          }
           hover:bg-white/10 hover:border-white/20
           hover:shadow-lg hover:shadow-primary/5
           cursor-grab active:cursor-grabbing
           transition-all duration-200
           group
-        "
+          relative
+        `}
         onClick={handleClick}
       >
         <div className="space-y-3">
-          {/* Header */}
           <div className="flex items-start justify-between gap-2">
-            <h4 className="text-sm  font-bold line-clamp-2 flex-1">
+            <h4 className="text-sm font-bold line-clamp-2 flex-1">
               {task.title}
             </h4>
-            {task.priority && (
-              <Badge
-                className={`
-                  ${priorityConfig[task.priority].bg}
-                  ${priorityConfig[task.priority].text}
-                  border-0 text-xs font-medium px-2 py-0.5
-                `}
-              >
-                {priorityConfig[task.priority].label}
-              </Badge>
-            )}
+            <div className="flex items-center gap-1">
+              {isToday && !isFocusing && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20"
+                  onClick={handleStartFocus}
+                  title="Bắt đầu Focus"
+                >
+                  <Play className="h-3 w-3" fill="currentColor" />
+                </Button>
+              )}
+
+              {isFocusing && (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="flex items-center gap-1 text-primary text-xs font-medium px-2 py-0.5 bg-primary/20 rounded-full"
+                >
+                  {focusType === "STANDARD"
+                    ? `Phiên ${currentSession}/${totalSessions}`
+                    : focusStatus === "focusing"
+                      ? "Đang Focus"
+                      : focusStatus === "break"
+                        ? "Nghỉ"
+                        : "Tạm Dừng"}
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                </motion.div>
+              )}
+
+              {task.priority && (
+                <Badge
+                  className={`
+                    ${priorityConfig[task.priority].bg}
+                    ${priorityConfig[task.priority].text}
+                    border-0 text-xs font-medium px-2 py-0.5
+                  `}
+                >
+                  {priorityConfig[task.priority].label}
+                </Badge>
+              )}
+            </div>
           </div>
 
-          {/* Description */}
           {task.description && (
             <p className="text-xs text-muted-foreground line-clamp-2">
               {task.description}
             </p>
           )}
 
-          {/* Pomodoro Progress Bar */}
-          {task.estimatedPomodoros && task.estimatedPomodoros > 0 && (
+          {shouldShowProgress && (
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  {task.completedPomodoros || 0}/{task.estimatedPomodoros}{" "}
-                  Pomodoros
+                  {isFocusing && focusType === "STANDARD"
+                    ? `🎯 Đang Focus: ${displayCompletedSessions} / ${displayTotalSessions}`
+                    : `📊 Tiến Độ: ${displayCompletedSessions} / ${displayTotalSessions}`}
                 </span>
-                <span>{Math.round(progress)}%</span>
+                <span>{Math.round(sessionProgress)}%</span>
               </div>
               <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
+                  animate={{ width: `${sessionProgress}%` }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="h-full bg-linear-to-r from-primary to-secondary rounded-full"
+                  className={`h-full rounded-full ${
+                    isFocusing && focusType === "STANDARD"
+                      ? "bg-linear-to-r from-blue-500 to-blue-600"
+                      : "bg-linear-to-r from-green-500 to-emerald-600"
+                  }`}
                 />
               </div>
             </div>
           )}
 
-          {/* Footer */}
           <div className="flex items-center justify-between">
-            {/* Dates */}
             <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
               {task.dueDate && (
                 <div className="flex items-center gap-1">
@@ -161,7 +262,6 @@ export function TaskCard({ task, onEdit, showCreatedDate }: TaskCardProps) {
               )}
             </div>
 
-            {/* Tags */}
             {task.tags && task.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {task.tags.slice(0, 2).map((tag) => (
