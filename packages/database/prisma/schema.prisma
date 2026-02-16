@@ -144,11 +144,13 @@ model FocusSession {
     endedAt         DateTime?
     duration        Int?
     plannedDuration Int                @default(1500)
+    elapsedTime     Int                @default(0) // seconds elapsed when paused
     status          FocusSessionStatus @default(IN_PROGRESS)
     taskId          String?
     userId          String
     breakDuration   Int?
     createdAt       DateTime           @default(now())
+    updatedAt       DateTime           @updatedAt
     task            Task?              @relation(fields: [taskId], references: [id])
     user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -236,6 +238,7 @@ enum TaskPriority {
 
 enum FocusSessionStatus {
     IN_PROGRESS
+    PAUSED
     COMPLETED
     INTERRUPTED
 }

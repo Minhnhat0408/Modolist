@@ -2,7 +2,10 @@
 const nextConfig = {
   transpilePackages: ["@repo/database"],
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'bcryptjs'],
-  
+ 
+  images: {
+    remotePatterns: [new URL('https://lh3.googleusercontent.com/**')],
+  },
   async rewrites() {
     // eslint-disable-next-line no-undef
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;

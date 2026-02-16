@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
-import { Maximize2, X, Play, Pause } from "lucide-react";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { Maximize2, X, Play, Pause, Users } from "lucide-react";
 
 export function FloatingTimer() {
   const {
@@ -19,6 +20,8 @@ export function FloatingTimer() {
     stopFocus,
     toggleMinimize,
   } = useFocusStore();
+
+  const { openWorld } = useFocusWorldStore();
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -120,6 +123,17 @@ export function FloatingTimer() {
 
           {/* Control Buttons */}
           <div className="flex items-center gap-2">
+            {/* Focus World */}
+            {mode === "WORK" && (
+              <button
+                onClick={openWorld}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
+                aria-label="Focus World"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Pause/Resume */}
             <button
               onClick={() =>

@@ -1,14 +1,18 @@
 FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
+COPY packages/database/package.json ./packages/database/
+COPY packages/database/prisma ./packages/database/prisma
+COPY packages/database/tsconfig.json ./packages/database/
+COPY packages/database/src ./packages/database/src
 COPY packages/ui/package.json ./packages/ui/
-COPY packages/typescript-config/package.json ./packages/typescript-config/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config ./packages/typescript-config
+COPY packages/eslint-config ./packages/eslint-config
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
