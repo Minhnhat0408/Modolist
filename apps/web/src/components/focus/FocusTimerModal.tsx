@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import {
   Play,
   Pause,
@@ -11,6 +12,7 @@ import {
   SkipForward,
   CheckCircle2,
   XCircle,
+  Users,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 
@@ -35,32 +37,31 @@ export function FocusTimerModal() {
     markWorkDone,
   } = useFocusStore();
 
-  const timerRef = useRef<number | null>(null);
+  const { openWorld } = useFocusWorldStore();
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Timer logic with requestAnimationFrame for accuracy
+  // Timer logic: setInterval + visibilitychange for tab-switch resilience.
+  // tick() uses Date-based targetEndTime so the countdown auto-corrects
+  // even if the interval was paused/throttled by the browser.
   useEffect(() => {
     if (status === "focusing" || status === "break") {
-      let lastTime = Date.now();
+      // Tick immediately on entry
+      tick();
 
-      const animate = () => {
-        const now = Date.now();
-        const delta = now - lastTime;
+      const interval = setInterval(tick, 1000);
 
-        if (delta >= 1000) {
+      // When user returns to this tab, tick immediately to catch up
+      const handleVisibility = () => {
+        if (document.visibilityState === "visible") {
           tick();
-          lastTime = now;
         }
-
-        timerRef.current = requestAnimationFrame(animate);
       };
-
-      timerRef.current = requestAnimationFrame(animate);
+      document.addEventListener("visibilitychange", handleVisibility);
 
       return () => {
-        if (timerRef.current) {
-          cancelAnimationFrame(timerRef.current);
-        }
+        clearInterval(interval);
+        document.removeEventListener("visibilitychange", handleVisibility);
       };
     }
   }, [status, tick]);
@@ -202,7 +203,7 @@ export function FocusTimerModal() {
                 {/* Session Progress Bar */}
                 <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+                    className="h-full bg-linear-to-r from-green-500 to-emerald-500"
                     initial={{ width: 0 }}
                     animate={{ width: `${sessionProgress}%` }}
                     transition={{ duration: 0.5 }}
@@ -274,6 +275,21 @@ export function FocusTimerModal() {
             transition={{ delay: 0.3 }}
             className="flex items-center gap-4"
           >
+            {/* Focus World Button (only during work) */}
+            {mode === "WORK" && (
+              <button
+                onClick={() => {
+                    openWorld()
+                    toggleMinimize()
+                }}
+                className="w-16 h-16 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors flex items-center justify-center group"
+                aria-label="Mở Focus World"
+                title="Xem ai đang focus cùng bạn"
+              >
+                <Users className="w-8 h-8 text-primary group-hover:text-primary/80" />
+              </button>
+            )}
+
             {/* Pause/Resume */}
             <button
               onClick={() =>

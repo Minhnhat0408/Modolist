@@ -44,8 +44,22 @@ export class FocusSessionsController {
     }
 
     @Patch(":id/pause")
-    pauseSession(@Param("id") id: string, @CurrentUser() user: CurrentUserData) {
-        return this.focusSessionsService.pauseSession(id, user.id);
+    pauseSession(
+        @Param("id") id: string,
+        @CurrentUser() user: CurrentUserData,
+        @Body() body: { elapsedTime?: number },
+    ) {
+        return this.focusSessionsService.pauseSession(id, user.id, body.elapsedTime);
+    }
+
+    @Patch(":id/resume")
+    resumeSession(@Param("id") id: string, @CurrentUser() user: CurrentUserData) {
+        return this.focusSessionsService.resumeSession(id, user.id);
+    }
+
+    @Get("current")
+    getCurrentSession(@CurrentUser() user: CurrentUserData) {
+        return this.focusSessionsService.getCurrentSession(user.id);
     }
 
     @Post()

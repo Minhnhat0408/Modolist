@@ -19,7 +19,7 @@ export const FOCUS_DURATIONS = {
   SHORT_BREAK: 5 * 60, // 5 minutes
   LONG_BREAK: 15 * 60, // 15 minutes
   QUICK_5: 5 * 60, // 5 minutes quick focus
-  QUICK_25: 25 + 60, // 25 minutes quick focus
+  QUICK_25: 25 * 60, // 25 minutes quick focus
 } as const;
 
 interface FocusStore {
@@ -31,6 +31,9 @@ interface FocusStore {
   mode: FocusMode;
   sessionId: string | null;
   focusType: FocusType;
+
+  // Date-based timer: stores the wall-clock timestamp when timer should reach 0
+  targetEndTime: number | null; // Date.now() + timeLeft*1000
 
   // For STANDARD type (Type B - Pomodoro loop)
   totalSessions: number; // Total sessions planned
@@ -56,6 +59,7 @@ interface FocusStore {
   addOneSession: () => void;
   completeAndExit: () => void;
   takeLongBreak: () => void;
+  restoreSession: () => Promise<void>;
 }
 
 export const useFocusStore = create<FocusStore>((set, get) => ({
@@ -67,6 +71,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   mode: "WORK",
   sessionId: null,
   focusType: "SHORT",
+  targetEndTime: null,
   totalSessions: 1,
   currentSession: 1,
   completedSessions: 0,
@@ -97,6 +102,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       completedSessions: 0,
       sessionId: null,
       showCompletionModal: false,
+      targetEndTime: Date.now() + duration * 1000,
     });
 
     // Update task's focusTotalSessions if adding more
@@ -113,7 +119,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
     api
       .post("/focus-sessions/start", {
         taskId: task.id,
-        plannedDuration: duration * 60,
+        plannedDuration: duration,
       })
       .then((data) => {
         set({ sessionId: (data as SessionResponse).id });
@@ -155,6 +161,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       completedSessions: currentCompleted,
       sessionId: null,
       showCompletionModal: false,
+      targetEndTime: Date.now() + FOCUS_DURATIONS.WORK * 1000,
     });
 
     if (!isResuming || isAddingMore) {
@@ -179,7 +186,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         } else {
           return api.post("/focus-sessions/start", {
             taskId: task.id,
-            plannedDuration: FOCUS_DURATIONS.WORK * 60,
+            plannedDuration: FOCUS_DURATIONS.WORK,
           });
         }
       })
@@ -196,7 +203,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         api
           .post("/focus-sessions/start", {
             taskId: task.id,
-            plannedDuration: FOCUS_DURATIONS.WORK * 60,
+            plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
             set({ sessionId: (data as SessionResponse).id });
@@ -210,26 +217,57 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   },
 
   pauseFocus: () => {
-    const currentStatus = get().status;
-    if (currentStatus === "focusing" || currentStatus === "break") {
-      set({ status: "paused" });
+    const { status, sessionId, timeLeft, mode } = get();
+    if (status === "focusing" || status === "break") {
+      // Calculate how much time has been used
+      const maxDuration =
+        mode === "WORK"
+          ? FOCUS_DURATIONS.WORK
+          : mode === "SHORT_BREAK"
+            ? FOCUS_DURATIONS.SHORT_BREAK
+            : FOCUS_DURATIONS.LONG_BREAK;
+      const elapsedTime = maxDuration - timeLeft;
+
+      set({ status: "paused", targetEndTime: null });
+
+      // Notify backend to set session PAUSED with elapsedTime
+      if (sessionId && mode === "WORK") {
+        api
+          .patch(`/focus-sessions/${sessionId}/pause`, { elapsedTime })
+          .catch((error) => {
+            console.error("Failed to pause session:", error);
+          });
+      }
     }
   },
 
   resumeFocus: () => {
-    const currentStatus = get().status;
-    const mode = get().mode;
-    if (currentStatus === "paused") {
-      set({ status: mode === "WORK" ? "focusing" : "break" });
+    const { status, mode, timeLeft, sessionId } = get();
+    if (status === "paused") {
+      const newStatus = mode === "WORK" ? "focusing" : "break";
+      set({
+        status: newStatus,
+        targetEndTime: Date.now() + timeLeft * 1000,
+      });
+
+      // Notify backend to set session IN_PROGRESS
+      if (sessionId && mode === "WORK") {
+        api
+          .patch(`/focus-sessions/${sessionId}/resume`)
+          .catch((error) => {
+            console.error("Failed to resume session:", error);
+          });
+      }
     }
   },
 
   stopFocus: () => {
-    const { sessionId, mode, activeTask } = get();
+    const { sessionId, mode, activeTask, timeLeft } = get();
 
     if (sessionId && mode === "WORK") {
+      const elapsedTime = FOCUS_DURATIONS.WORK - timeLeft;
       api
-        .patch(`/focus-sessions/${sessionId}/pause`)
+        .patch(`/focus-sessions/${sessionId}/pause`, { elapsedTime })
         .then(() => {
           if (activeTask) {
             window.dispatchEvent(
@@ -252,6 +290,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       mode: "WORK",
       sessionId: null,
       focusType: "SHORT",
+      targetEndTime: null,
       totalSessions: 1,
       currentSession: 1,
       completedSessions: 0,
@@ -306,13 +345,14 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           timeLeft: FOCUS_DURATIONS.SHORT_BREAK,
           completedSessions: newCompletedSessions,
           sessionId: null,
+          targetEndTime: Date.now() + FOCUS_DURATIONS.SHORT_BREAK * 1000,
         });
       }
 
       if (sessionId) {
         api
           .patch(`/focus-sessions/${sessionId}/complete`, {
-            actualDuration: FOCUS_DURATIONS.WORK * 60,
+            actualDuration: FOCUS_DURATIONS.WORK,
           })
           .then(() => {
             const task = get().activeTask;
@@ -338,13 +378,14 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         timeLeft: FOCUS_DURATIONS.WORK,
         currentSession: nextSession,
         sessionId: null,
+        targetEndTime: Date.now() + FOCUS_DURATIONS.WORK * 1000,
       });
 
       if (activeTask) {
         api
           .post("/focus-sessions/start", {
             taskId: activeTask.id,
-            plannedDuration: FOCUS_DURATIONS.WORK * 60,
+            plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
             set({ sessionId: (data as SessionResponse).id });
@@ -361,14 +402,28 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   },
 
   tick: () => {
-    const { timeLeft, status } = get();
+    const { status, targetEndTime } = get();
 
     if (status === "focusing" || status === "break") {
-      if (timeLeft > 0) {
-        set({ timeLeft: timeLeft - 1 });
+      if (targetEndTime) {
+        const newTimeLeft = Math.max(
+          0,
+          Math.ceil((targetEndTime - Date.now()) / 1000),
+        );
+        if (newTimeLeft > 0) {
+          set({ timeLeft: newTimeLeft });
+        } else {
+          set({ timeLeft: 0, targetEndTime: null });
+          get().completeFocus();
+        }
       } else {
-        // Timer reached 0
-        get().completeFocus();
+        // Fallback: no targetEndTime (e.g. restored paused session)
+        const { timeLeft } = get();
+        if (timeLeft > 0) {
+          set({ timeLeft: timeLeft - 1 });
+        } else {
+          get().completeFocus();
+        }
       }
     }
   },
@@ -382,6 +437,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       mode: "WORK",
       sessionId: null,
       focusType: "SHORT",
+      targetEndTime: null,
       totalSessions: 1,
       currentSession: 1,
       completedSessions: 0,
@@ -404,13 +460,14 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         timeLeft: FOCUS_DURATIONS.WORK,
         currentSession: nextSession,
         sessionId: null,
+        targetEndTime: Date.now() + FOCUS_DURATIONS.WORK * 1000,
       });
 
       if (activeTask) {
         api
           .post("/focus-sessions/start", {
             taskId: activeTask.id,
-            plannedDuration: FOCUS_DURATIONS.WORK * 60,
+            plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
             set({ sessionId: (data as SessionResponse).id });
@@ -439,6 +496,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         timeLeft: 0,
         sessionId: null,
         showCompletionModal: true,
+        targetEndTime: null,
       });
     } else {
       set({
@@ -446,6 +504,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         mode: "SHORT_BREAK",
         timeLeft: FOCUS_DURATIONS.SHORT_BREAK,
         sessionId: null,
+        targetEndTime: Date.now() + FOCUS_DURATIONS.SHORT_BREAK * 1000,
       });
     }
   },
@@ -504,6 +563,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         completedSessions: newCompletedSessions,
         sessionId: null,
         showCompletionModal: true,
+        targetEndTime: null,
       });
     } else {
       set({
@@ -512,6 +572,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         timeLeft: FOCUS_DURATIONS.SHORT_BREAK,
         completedSessions: newCompletedSessions,
         sessionId: null,
+        targetEndTime: Date.now() + FOCUS_DURATIONS.SHORT_BREAK * 1000,
       });
     }
   },
@@ -529,6 +590,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       currentSession: state.completedSessions + 1,
       sessionId: null,
       showCompletionModal: false,
+      targetEndTime: Date.now() + FOCUS_DURATIONS.WORK * 1000,
     }));
 
     if (activeTask) {
@@ -543,7 +605,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       api
         .post("/focus-sessions/start", {
           taskId: activeTask.id,
-          plannedDuration: FOCUS_DURATIONS.WORK * 60,
+          plannedDuration: FOCUS_DURATIONS.WORK,
         })
         .then((data) => {
           set({ sessionId: (data as SessionResponse).id });
@@ -584,6 +646,74 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       mode: "LONG_BREAK",
       timeLeft: FOCUS_DURATIONS.LONG_BREAK,
       showCompletionModal: false,
+      targetEndTime: Date.now() + FOCUS_DURATIONS.LONG_BREAK * 1000,
     });
+  },
+
+  // Restore session from backend (e.g. on page reload)
+  restoreSession: async () => {
+    try {
+      const response = (await api.get("/focus-sessions/current")) as {
+        session?: {
+          id: string;
+          plannedDuration: number;
+          elapsedTime: number;
+          status: string;
+          task?: {
+            id: string;
+            title: string;
+            status: string;
+            focusTotalSessions?: number | null;
+            focusCompletedSessions?: number;
+          };
+        };
+        canResume?: boolean;
+      };
+
+      if (!response?.session || !response.canResume) return;
+
+      const { session } = response;
+      const timeLeft = Math.max(
+        0,
+        session.plannedDuration - session.elapsedTime,
+      );
+
+      if (timeLeft <= 0) return;
+
+      const task = session.task;
+      if (!task) return;
+
+      // Map task status to columnId for KanbanTask compatibility
+      const statusToColumnId: Record<string, string> = {
+        BACKLOG: 'backlog',
+        TODO: 'todo',
+        IN_PROGRESS: 'in-progress',
+        DONE: 'done',
+      };
+
+      set({
+        activeTask: {
+          id: task.id,
+          title: task.title,
+          status: task.status as "TODO" | "IN_PROGRESS" | "DONE",
+          columnId: statusToColumnId[task.status] || 'in-progress',
+          focusTotalSessions: task.focusTotalSessions ?? 1,
+          focusCompletedSessions: task.focusCompletedSessions ?? 0,
+        } as unknown as KanbanTask,
+        status: "paused",
+        timeLeft,
+        mode: "WORK",
+        isMinimized: false,
+        sessionId: session.id,
+        focusType: session.plannedDuration <= FOCUS_DURATIONS.QUICK_25 ? "SHORT" : "STANDARD",
+        targetEndTime: null, // paused, so no target
+        totalSessions: task.focusTotalSessions ?? 1,
+        currentSession: (task.focusCompletedSessions ?? 0) + 1,
+        completedSessions: task.focusCompletedSessions ?? 0,
+        showCompletionModal: false,
+      });
+    } catch (error) {
+      console.error("Failed to restore session:", error);
+    }
   },
 }));

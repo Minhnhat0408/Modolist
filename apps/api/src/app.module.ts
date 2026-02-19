@@ -8,6 +8,7 @@ import { PrismaService } from "./prisma.service";
 import { TasksModule } from "./tasks/tasks.module";
 import { AuthModule } from "./auth/auth.module";
 import { FocusSessionsModule } from "./focus-sessions/focus-sessions.module";
+import { FocusWorldModule } from "./focus-world/focus-world.module";
 
 @Module({
     imports: [
@@ -29,6 +30,7 @@ import { FocusSessionsModule } from "./focus-sessions/focus-sessions.module";
         AuthModule,
         TasksModule,
         FocusSessionsModule,
+        FocusWorldModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

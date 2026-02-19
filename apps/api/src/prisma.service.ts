@@ -34,7 +34,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
     // Expose $transaction for atomic operations
 
-    get $transaction(): any {
-        return prisma.$transaction.bind(prisma);
+    get $transaction(): PrismaClient["$transaction"] {
+        return prisma.$transaction.bind(prisma) as PrismaClient["$transaction"];
     }
 }

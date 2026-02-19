@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { FocusSessionStatus } from "@repo/database";
 import { PrismaService } from "../prisma.service";
 import { CreateFocusSessionDto } from "./dto/create-focus-session.dto";
 import { UpdateFocusSessionDto } from "./dto/update-focus-session.dto";
@@ -299,7 +300,7 @@ export class FocusSessionsService {
         }
     }
 
-    async pauseSession(sessionId: string, userId: string) {
+    async pauseSession(sessionId: string, userId: string, elapsedTimeFromClient?: number) {
         const session = await this.prisma.focusSession.findFirst({
             where: { id: sessionId, userId },
         });
@@ -308,10 +309,17 @@ export class FocusSessionsService {
             throw new NotFoundException(`Focus session với ID ${sessionId} không tồn tại`);
         }
 
+        // Use client-provided elapsed time if available, otherwise calculate from startedAt
+        const elapsedTime =
+            elapsedTimeFromClient !== undefined
+                ? elapsedTimeFromClient
+                : Math.floor((Date.now() - session.startedAt.getTime()) / 1000);
+
         const result = await this.prisma.focusSession.update({
             where: { id: sessionId },
             data: {
-                status: "INTERRUPTED",
+                status: FocusSessionStatus.PAUSED,
+                elapsedTime,
             },
         });
 
@@ -324,6 +332,118 @@ export class FocusSessionsService {
         return result;
     }
 
+    /**
+     * Resume a PAUSED session - set status back to IN_PROGRESS
+     * and adjust startedAt so timer math works correctly.
+     */
+    async resumeSession(sessionId: string, userId: string) {
+        const session = await this.prisma.focusSession.findFirst({
+            where: { id: sessionId, userId, status: FocusSessionStatus.PAUSED },
+            select: { id: true, elapsedTime: true },
+        });
+
+        if (!session) {
+            throw new NotFoundException(`No paused session found`);
+        }
+
+        // Set new startedAt = now - elapsedTime so that
+        // now - startedAt = elapsedTime (time already spent)
+        const newStartedAt = new Date(Date.now() - session.elapsedTime * 1000);
+
+        const result = await this.prisma.focusSession.update({
+            where: { id: sessionId },
+            data: {
+                status: "IN_PROGRESS",
+                startedAt: newStartedAt,
+            },
+            include: { task: true },
+        });
+
+        return result;
+    }
+
+    /**
+     * Get the current active/paused session for a user (grace period: 5 minutes)
+     * - IN_PROGRESS → return immediately
+     * - PAUSED within 5 min → return (user can Resume)
+     * - PAUSED > 5 min → mark INTERRUPTED, return null
+     */
+    async getCurrentSession(userId: string) {
+        // First check for IN_PROGRESS session
+        const activeSession = await this.prisma.focusSession.findFirst({
+            where: {
+                userId,
+                status: FocusSessionStatus.IN_PROGRESS,
+            },
+            include: {
+                task: {
+                    select: {
+                        id: true,
+                        title: true,
+                        status: true,
+                        focusTotalSessions: true,
+                        focusCompletedSessions: true,
+                    },
+                },
+            },
+            orderBy: { startedAt: "desc" },
+        });
+
+        if (activeSession) {
+            return { session: activeSession, canResume: true };
+        }
+
+        // Check for PAUSED session with grace period
+        const pausedSession = await this.prisma.focusSession.findFirst({
+            where: {
+                userId,
+                status: FocusSessionStatus.PAUSED,
+            },
+            select: {
+                id: true,
+                plannedDuration: true,
+                elapsedTime: true,
+                updatedAt: true,
+                status: true,
+                task: {
+                    select: {
+                        id: true,
+                        title: true,
+                        status: true,
+                        focusTotalSessions: true,
+                        focusCompletedSessions: true,
+                    },
+                },
+            },
+            orderBy: { updatedAt: "desc" },
+        });
+
+        if (!pausedSession) {
+            return { session: null, canResume: false };
+        }
+
+        const now = new Date();
+        const diffSeconds = Math.floor((now.getTime() - pausedSession.updatedAt.getTime()) / 1000);
+        const GRACE_PERIOD_SECONDS = 5 * 60; // 5 minutes
+
+        if (diffSeconds <= GRACE_PERIOD_SECONDS) {
+            // Within grace period → user can resume
+            return { session: pausedSession, canResume: true };
+        } else {
+            // Grace period expired → mark as INTERRUPTED
+            await this.prisma.focusSession.update({
+                where: { id: pausedSession.id },
+                data: {
+                    status: "INTERRUPTED",
+                    endedAt: pausedSession.updatedAt,
+                    duration: pausedSession.elapsedTime,
+                },
+            });
+
+            return { session: null, canResume: false };
+        }
+    }
+
     async getIncompleteSession(userId: string, taskId: string) {
         if (!taskId) {
             return { session: null };
@@ -334,7 +454,7 @@ export class FocusSessionsService {
                 userId,
                 taskId,
                 status: {
-                    in: ["IN_PROGRESS", "INTERRUPTED"],
+                    in: [FocusSessionStatus.IN_PROGRESS, FocusSessionStatus.PAUSED],
                 },
             },
             orderBy: {

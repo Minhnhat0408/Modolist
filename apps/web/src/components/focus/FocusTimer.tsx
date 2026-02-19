@@ -3,6 +3,7 @@
 import { FocusTimerModal } from "./FocusTimerModal";
 import { FloatingTimer } from "./FloatingTimer";
 import { CompletionModal } from "./CompletionModal";
+import { FocusWorld } from "./FocusWorld";
 
 /**
  * FocusTimer wrapper component that renders modal, floating widget, and completion modal
@@ -14,6 +15,7 @@ export function FocusTimer() {
       <FocusTimerModal />
       <FloatingTimer />
       <CompletionModal />
+      <FocusWorld />
     </>
   );
 }

@@ -7,6 +7,7 @@ import { UserNav } from "@/components/user-nav";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskFormDialog } from "@/components/kanban/TaskFormDialog";
 import { FocusTimer } from "@/components/focus/FocusTimer";
+import { useFocusStore } from "@/stores/useFocusStore";
 import { KanbanTask } from "@/types/kanban";
 import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
@@ -39,6 +40,14 @@ export default function DashboardPage() {
       console.error("Error fetching tasks:", error);
     }
   }, []);
+
+  // Restore any interrupted/paused focus session on mount
+  const restoreSession = useFocusStore((s) => s.restoreSession);
+  useEffect(() => {
+    if (status === "authenticated") {
+      restoreSession();
+    }
+  }, [status, restoreSession]);
 
   useEffect(() => {
     async function loadTasks() {
@@ -166,7 +175,7 @@ export default function DashboardPage() {
         <Image
           src="/background.webp"
           alt="Dashboard Background"
-          className="fixed w-full h-full object-cover opacity-75 dark:opacity-20 pointer-events-none"
+          className="fixed w-full h-full object-cover opacity-90 dark:opacity-20 pointer-events-none"
           width={1920}
           height={1080}
         />
@@ -185,9 +194,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <Image
-        src="/background.webp"
+        src={"/background.webp"}
         alt="Dashboard Background"
-        className="fixed blur-lg w-full h-full object-cover opacity-50  dark:opacity-20 pointer-events-none"
+        className="fixed blur-sm w-full h-full object-cover opacity-0  dark:opacity-20 pointer-events-none"
         width={1920}
         height={1080}
       />
