@@ -23,6 +23,11 @@ export function clearTokenCache() {
   cachedToken = null;
 }
 
+/** Returns the cached JWT token synchronously (null if not yet fetched). */
+export function getCachedToken(): string | null {
+  return cachedToken;
+}
+
 interface ApiOptions extends Omit<RequestInit, "method" | "headers" | "body"> {
   token?: string;
 }
