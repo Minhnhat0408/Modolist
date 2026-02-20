@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useFocusWorldStore } from '@/stores/useFocusWorldStore';
-import { useFocusStore } from '@/stores/useFocusStore';
-import { useFocusWorld, FocusUser } from '@/hooks/useFocusWorld';
-import { useSession } from 'next-auth/react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Users, Wifi, WifiOff, Minimize2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { useFocusStore } from "@/stores/useFocusStore";
+import { useFocusWorld, FocusUser } from "@/hooks/useFocusWorld";
+import { useSession } from "next-auth/react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Users, Wifi, WifiOff, Minimize2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 function ProgressRing({
   startTime,
@@ -22,7 +22,7 @@ function ProgressRing({
   isPaused?: boolean;
 }) {
   const [progress, setProgress] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState("");
 
   useEffect(() => {
     const updateProgress = () => {
@@ -36,7 +36,7 @@ function ProgressRing({
       const remaining = Math.max(duration - elapsed, 0);
       const minutes = Math.floor(remaining / 60);
       const seconds = Math.floor(remaining % 60);
-      setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, "0")}`);
     };
 
     updateProgress();
@@ -71,23 +71,26 @@ function ProgressRing({
           fill="transparent"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          className={`transition-all duration-1000 ${isPaused ? 'text-muted-foreground' : 'text-primary'}`}
+          className={`transition-all duration-1000 ${isPaused ? "text-muted-foreground" : "text-primary"}`}
           strokeLinecap="round"
         />
       </svg>
-      <div className={`absolute text-sm font-mono font-bold ${isPaused ? 'text-muted-foreground' : ''}`}>
-        {isPaused ? 'Paused' : timeRemaining}
+      <div
+        className={`absolute text-sm font-mono font-bold ${isPaused ? "text-muted-foreground" : ""}`}
+      >
+        {isPaused ? "Paused" : timeRemaining}
       </div>
     </div>
   );
 }
 
 function FocusUserCard({ user }: { user: FocusUser }) {
-  const initials = user.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() || '?';
+  const initials =
+    user.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "?";
 
   return (
     <motion.div
@@ -95,22 +98,24 @@ function FocusUserCard({ user }: { user: FocusUser }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       className={`flex items-center gap-4 p-4 rounded-xl border bg-card transition-colors ${
-        user.isPaused ? 'opacity-50 grayscale' : 'hover:bg-accent/50'
+        user.isPaused ? "opacity-50 grayscale" : "hover:bg-accent/50"
       }`}
     >
-      <Avatar className={`h-16 w-16 border-2 ${
-        user.isPaused ? 'border-muted-foreground/30' : 'border-primary/20'
-      }`}>
-        <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
+      <Avatar
+        className={`h-16 w-16 border-2 ${
+          user.isPaused ? "border-muted-foreground/30" : "border-primary/20"
+        }`}
+      >
+        <AvatarImage src={user.image || undefined} alt={user.name || "User"} />
         <AvatarFallback className="text-lg">{initials}</AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-base truncate">
-          {user.name || 'Anonymous'}
+          {user.name || "Anonymous"}
         </p>
         <p className="text-sm text-muted-foreground truncate">
-          {user.isPaused ? '⏸ Đang tạm dừng' : user.currentTask}
+          {user.isPaused ? "⏸ Đang tạm dừng" : user.currentTask}
         </p>
       </div>
 
@@ -134,7 +139,8 @@ export function FocusWorldModal() {
   const userId = session?.user?.id || null;
   const taskId = activeTask?.id || null;
 
-  const canConnect = (status === 'focusing' || status === 'paused') && !!sessionId && !!userId;
+  const canConnect =
+    (status === "focusing" || status === "paused") && !!sessionId && !!userId;
   const enabled = canConnect && isOpen && !isMinimized;
 
   const { isConnected, focusUsers } = useFocusWorld({
@@ -175,7 +181,7 @@ export function FocusWorldModal() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
           className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
@@ -192,7 +198,10 @@ export function FocusWorldModal() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant={isConnected ? 'default' : 'secondary'} className="gap-1">
+              <Badge
+                variant={isConnected ? "default" : "secondary"}
+                className="gap-1"
+              >
                 {isConnected ? (
                   <>
                     <Wifi className="h-3 w-3" />
@@ -249,9 +258,7 @@ export function FocusWorldModal() {
             {enabled && !isInitializing && otherUsers.length === 0 && (
               <div className="text-center py-12">
                 <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">
-                  Chưa có ai ở đây
-                </p>
+                <p className="text-lg font-medium mb-2">Chưa có ai ở đây</p>
                 <p className="text-sm text-muted-foreground">
                   Hãy là người tiên phong! Các bạn khác sẽ sớm tham gia 🚀
                 </p>

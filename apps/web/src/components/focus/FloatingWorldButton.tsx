@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { useFocusWorldStore } from '@/stores/useFocusWorldStore';
-import { useFocusStore } from '@/stores/useFocusStore';
-import { useFocusWorld } from '@/hooks/useFocusWorld';
-import { useSession } from 'next-auth/react';
-import { Users, Wifi, WifiOff, Maximize2, X } from 'lucide-react';
-import Image from 'next/image';
+import { motion } from "framer-motion";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { useFocusStore } from "@/stores/useFocusStore";
+import { useFocusWorld } from "@/hooks/useFocusWorld";
+import { useSession } from "next-auth/react";
+import { Users, Wifi, WifiOff, Maximize2, X } from "lucide-react";
+import Image from "next/image";
 
 export function FloatingWorldButton() {
   const { data: session } = useSession();
@@ -17,7 +17,8 @@ export function FloatingWorldButton() {
   const taskId = activeTask?.id || null;
 
   // Only enable when user is focusing/paused and has opened the world
-  const canConnect = (status === 'focusing' || status === 'paused') && !!sessionId && !!userId;
+  const canConnect =
+    (status === "focusing" || status === "paused") && !!sessionId && !!userId;
   const enabled = canConnect && isMinimized;
 
   const { isConnected, focusUsers } = useFocusWorld({
@@ -50,7 +51,7 @@ export function FloatingWorldButton() {
       }}
       dragElastic={0.1}
       whileHover={{ scale: 1.02 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="bg-linear-to-br from-primary/90 to-primary rounded-2xl shadow-2xl border border-primary-foreground/20 overflow-hidden backdrop-blur-lg">
         {/* Content */}
@@ -87,7 +88,7 @@ export function FloatingWorldButton() {
             </div>
             <div className="text-sm font-semibold">
               {otherUsers.length === 0
-                ? 'Chưa có ai'
+                ? "Chưa có ai"
                 : `${otherUsers.length} người đang focus`}
             </div>
           </div>
@@ -121,21 +122,21 @@ export function FloatingWorldButton() {
               <div
                 key={user.userId}
                 className={`w-8 h-8 rounded-full border-2 border-primary bg-background overflow-hidden relative ${
-                  user.isPaused ? 'opacity-40 grayscale' : ''
+                  user.isPaused ? "opacity-40 grayscale" : ""
                 }`}
-                title={`${user.name || 'User'}${user.isPaused ? ' (Paused)' : ''}`}
+                title={`${user.name || "User"}${user.isPaused ? " (Paused)" : ""}`}
               >
                 {user.image ? (
                   <Image
                     src={user.image}
-                    alt={user.name || 'User'}
+                    alt={user.name || "User"}
                     fill
                     className="object-cover"
                     sizes="32px"
                   />
                 ) : (
                   <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-medium">
-                    {user.name?.[0]?.toUpperCase() || '?'}
+                    {user.name?.[0]?.toUpperCase() || "?"}
                   </div>
                 )}
               </div>

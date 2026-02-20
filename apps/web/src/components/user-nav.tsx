@@ -23,9 +23,10 @@ interface UserNavProps {
     email?: string | null;
     image?: string | null;
   };
+  onStatsClick?: () => void;
 }
 
-export function UserNav({ user }: UserNavProps) {
+export function UserNav({ user, onStatsClick }: UserNavProps) {
   const { theme, setTheme } = useTheme();
 
   if (!user) return null;
@@ -86,7 +87,7 @@ export function UserNav({ user }: UserNavProps) {
           <Settings className="mr-2 h-4 w-4" />
           Cài đặt
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer">
+        <DropdownMenuItem className="cursor-pointer" onClick={onStatsClick}>
           <BarChart3 className="mr-2 h-4 w-4" />
           Thống kê
         </DropdownMenuItem>

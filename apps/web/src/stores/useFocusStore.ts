@@ -252,11 +252,9 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
       // Notify backend to set session IN_PROGRESS
       if (sessionId && mode === "WORK") {
-        api
-          .patch(`/focus-sessions/${sessionId}/resume`)
-          .catch((error) => {
-            console.error("Failed to resume session:", error);
-          });
+        api.patch(`/focus-sessions/${sessionId}/resume`).catch((error) => {
+          console.error("Failed to resume session:", error);
+        });
       }
     }
   },

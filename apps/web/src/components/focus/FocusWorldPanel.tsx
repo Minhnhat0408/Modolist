@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useFocusWorld, FocusUser } from '@/hooks/useFocusWorld';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Users, Wifi, WifiOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useFocusWorld, FocusUser } from "@/hooks/useFocusWorld";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Users, Wifi, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface FocusWorldPanelProps {
   userId: string | null;
@@ -24,7 +24,7 @@ function ProgressRing({
   size?: number;
 }) {
   const [progress, setProgress] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState("");
 
   useEffect(() => {
     const updateProgress = () => {
@@ -32,14 +32,14 @@ function ProgressRing({
       const now = Date.now();
       const elapsed = (now - start) / 1000; // seconds
       const percentage = Math.min((elapsed / duration) * 100, 100);
-      
+
       setProgress(percentage);
 
       // Calculate time remaining
       const remaining = Math.max(duration - elapsed, 0);
       const minutes = Math.floor(remaining / 60);
       const seconds = Math.floor(remaining % 60);
-      setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, "0")}`);
     };
 
     updateProgress();
@@ -77,30 +77,29 @@ function ProgressRing({
           strokeLinecap="round"
         />
       </svg>
-      <div className="absolute text-xs font-medium">
-        {timeRemaining}
-      </div>
+      <div className="absolute text-xs font-medium">{timeRemaining}</div>
     </div>
   );
 }
 
 function FocusUserCard({ user }: { user: FocusUser }) {
-  const initials = user.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() || '?';
+  const initials =
+    user.name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "?";
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
       <Avatar className="h-12 w-12 border-2 border-primary/20">
-        <AvatarImage src={user.image || undefined} alt={user.name || 'User'} />
+        <AvatarImage src={user.image || undefined} alt={user.name || "User"} />
         <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
-      
+
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">
-          {user.name || 'Anonymous'}
+          {user.name || "Anonymous"}
         </p>
         <p className="text-xs text-muted-foreground truncate">
           {user.currentTask}
@@ -141,7 +140,10 @@ export function FocusWorldPanel({
             <CardTitle className="text-lg">Co-Focus World</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={isConnected ? 'default' : 'secondary'} className="gap-1">
+            <Badge
+              variant={isConnected ? "default" : "secondary"}
+              className="gap-1"
+            >
               {isConnected ? (
                 <>
                   <Wifi className="h-3 w-3" />

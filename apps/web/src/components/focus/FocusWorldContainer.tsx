@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { FocusWorldPanel } from './FocusWorldPanel';
-import { useFocusStore } from '@/stores/useFocusStore';
-import { useSession } from 'next-auth/react';
+import { FocusWorldPanel } from "./FocusWorldPanel";
+import { useFocusStore } from "@/stores/useFocusStore";
+import { useSession } from "next-auth/react";
 
 export function FocusWorldContainer() {
   const { data: session } = useSession();
@@ -12,7 +12,7 @@ export function FocusWorldContainer() {
   const taskId = activeTask?.id || null;
 
   // Only enable when user is actively focusing
-  const enabled = status === 'focusing' && !!sessionId;
+  const enabled = status === "focusing" && !!sessionId;
 
   return (
     <FocusWorldPanel
