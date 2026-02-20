@@ -658,7 +658,8 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           id: string;
           plannedDuration: number;
           elapsedTime: number;
-          status: string;
+          startedAt: string; // ISO string – present for IN_PROGRESS sessions
+          status: string; // "IN_PROGRESS" | "PAUSED"
           task?: {
             id: string;
             title: string;
@@ -673,40 +674,46 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       if (!response?.session || !response.canResume) return;
 
       const { session } = response;
-      const timeLeft = Math.max(
-        0,
-        session.plannedDuration - session.elapsedTime,
-      );
-
-      if (timeLeft <= 0) return;
-
       const task = session.task;
       if (!task) return;
 
-      // Map task status to columnId for KanbanTask compatibility
-      const statusToColumnId: Record<string, string> = {
-        BACKLOG: 'backlog',
-        TODO: 'todo',
-        IN_PROGRESS: 'in-progress',
-        DONE: 'done',
-      };
+      const isInProgress = session.status === "IN_PROGRESS";
+
+      // For IN_PROGRESS: time left = planned - (now - startedAt)
+      // For PAUSED:      time left = planned - elapsedTime (saved when paused)
+      const timeLeft = isInProgress
+        ? Math.max(
+            0,
+            session.plannedDuration -
+              Math.floor(
+                (Date.now() - new Date(session.startedAt).getTime()) / 1000,
+              ),
+          )
+        : Math.max(0, session.plannedDuration - session.elapsedTime);
+
+      if (timeLeft <= 0) return;
+
+      const focusStatus: FocusStatus = isInProgress ? "focusing" : "paused";
+      const targetEndTime = isInProgress ? Date.now() + timeLeft * 1000 : null;
 
       set({
         activeTask: {
           id: task.id,
           title: task.title,
           status: task.status as "TODO" | "IN_PROGRESS" | "DONE",
-          columnId: statusToColumnId[task.status] || 'in-progress',
           focusTotalSessions: task.focusTotalSessions ?? 1,
           focusCompletedSessions: task.focusCompletedSessions ?? 0,
         } as unknown as KanbanTask,
-        status: "paused",
+        status: focusStatus,
         timeLeft,
         mode: "WORK",
         isMinimized: false,
         sessionId: session.id,
-        focusType: session.plannedDuration <= FOCUS_DURATIONS.QUICK_25 ? "SHORT" : "STANDARD",
-        targetEndTime: null, // paused, so no target
+        focusType:
+          session.plannedDuration <= FOCUS_DURATIONS.QUICK_25
+            ? "SHORT"
+            : "STANDARD",
+        targetEndTime,
         totalSessions: task.focusTotalSessions ?? 1,
         currentSession: (task.focusCompletedSessions ?? 0) + 1,
         completedSessions: task.focusCompletedSessions ?? 0,

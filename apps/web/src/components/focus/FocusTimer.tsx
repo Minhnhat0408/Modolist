@@ -4,12 +4,10 @@ import { FocusTimerModal } from "./FocusTimerModal";
 import { FloatingTimer } from "./FloatingTimer";
 import { CompletionModal } from "./CompletionModal";
 import { FocusWorld } from "./FocusWorld";
+import { useSessionLifecycle } from "@/hooks/useSessionLifecycle";
 
-/**
- * FocusTimer wrapper component that renders modal, floating widget, and completion modal
- * This should be placed at the root of your app (e.g., in the dashboard layout)
- */
 export function FocusTimer() {
+  useSessionLifecycle();
   return (
     <>
       <FocusTimerModal />
