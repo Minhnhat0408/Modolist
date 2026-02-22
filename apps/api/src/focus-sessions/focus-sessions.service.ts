@@ -256,6 +256,96 @@ export class FocusSessionsService {
         };
     }
 
+    /**
+     * Dashboard stats: last 7 days of daily data, streaks, totals.
+     */
+    async getDashboardStats(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                totalFocusTime: true,
+                currentStreak: true,
+                longestStreak: true,
+            },
+        });
+
+        // Last 7 days
+        const days: { date: Date; label: string }[] = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+            days.push({ date: d, label: dayNames[d.getDay()] });
+        }
+
+        const weekStart = days[0].date;
+        const weekEnd = new Date();
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const dailyStats = await this.prisma.dailyStats.findMany({
+            where: {
+                userId,
+                date: { gte: weekStart, lte: weekEnd },
+            },
+            orderBy: { date: "asc" },
+        });
+
+        const statsMap = new Map(dailyStats.map((s) => [s.date.toISOString().split("T")[0], s]));
+
+        const weeklyData = days.map((d) => {
+            const key = d.date.toISOString().split("T")[0];
+            const stat = statsMap.get(key);
+            return {
+                label: d.label,
+                date: key,
+                focusTime: stat?.totalFocusTime || 0,
+                pomodoros: stat?.completedPomodoros || 0,
+                tasks: stat?.completedTasks || 0,
+            };
+        });
+
+        // Today's data
+        const todayKey = days[6].date.toISOString().split("T")[0];
+        const todayStat = statsMap.get(todayKey);
+
+        // Total completed sessions
+        const totalSessions = await this.prisma.focusSession.count({
+            where: { userId, status: "COMPLETED" },
+        });
+
+        // Total tasks completed
+        const totalTasksCompleted = await this.prisma.task.count({
+            where: { userId, status: "DONE" },
+        });
+
+        // Week totals
+        const weekFocusTime = weeklyData.reduce((acc, d) => acc + d.focusTime, 0);
+        const weekPomodoros = weeklyData.reduce((acc, d) => acc + d.pomodoros, 0);
+
+        return {
+            user: {
+                totalFocusTime: user?.totalFocusTime || 0,
+                currentStreak: user?.currentStreak || 0,
+                longestStreak: user?.longestStreak || 0,
+            },
+            today: {
+                focusTime: todayStat?.totalFocusTime || 0,
+                pomodoros: todayStat?.completedPomodoros || 0,
+                tasks: todayStat?.completedTasks || 0,
+            },
+            week: {
+                focusTime: weekFocusTime,
+                pomodoros: weekPomodoros,
+                data: weeklyData,
+            },
+            totals: {
+                sessions: totalSessions,
+                tasks: totalTasksCompleted,
+            },
+        };
+    }
+
     private async updateUserStats(userId: string, duration: number) {
         await this.prisma.user.update({
             where: { id: userId },

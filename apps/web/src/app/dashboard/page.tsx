@@ -13,6 +13,7 @@ import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
 import { api } from "@/lib/api-client";
 import Image from "next/image";
+import { StatsModal } from "@/components/stats/StatsModal";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>(
     TaskStatus.BACKLOG,
   );
+  const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -208,7 +210,9 @@ export default function DashboardPage() {
               Xin chào, <strong>{session?.user?.name}</strong>
             </p>
           </div>
-          <UserNav user={session?.user} />
+          <div className="flex items-center gap-3">
+            <UserNav user={session?.user} onStatsClick={() => setStatsOpen(true)} />
+          </div>
         </div>
 
         <KanbanBoard
@@ -231,6 +235,9 @@ export default function DashboardPage() {
 
         {/* Focus Timer (Modal + Floating Widget) */}
         <FocusTimer />
+
+        {/* Stats Modal */}
+        <StatsModal open={statsOpen} onOpenChange={setStatsOpen} />
       </div>
     </div>
   );

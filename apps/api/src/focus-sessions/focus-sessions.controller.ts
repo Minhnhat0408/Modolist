@@ -77,6 +77,11 @@ export class FocusSessionsController {
         return this.focusSessionsService.getStats(user.id);
     }
 
+    @Get("stats/dashboard")
+    getDashboardStats(@CurrentUser() user: CurrentUserData) {
+        return this.focusSessionsService.getDashboardStats(user.id);
+    }
+
     @Get("incomplete")
     getIncompleteSession(@CurrentUser() user: CurrentUserData, @Query("taskId") taskId: string) {
         return this.focusSessionsService.getIncompleteSession(user.id, taskId);

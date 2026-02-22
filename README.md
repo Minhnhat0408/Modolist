@@ -288,26 +288,26 @@ npx prisma db push
 
 **Pomodoro Timer (Frontend):**
 
-- [ ] Tạo Pomodoro Timer component
-- [ ] Cài đặt thời gian work/break tùy chỉnh
-- [ ] Timer controls (start/pause/stop/reset)
+- [x] Tạo Pomodoro Timer component
+- [x] Cài đặt thời gian work/break tùy chỉnh
+- [x] Timer controls (start/pause/stop/reset)
 - [ ] Audio notifications
-- [ ] Tích hợp với tasks
-- [ ] Lưu session history
-- [ ] Thống kê phiên làm việc
+- [x] Tích hợp với tasks
+- [x] Lưu session history
+- [x] Thống kê phiên làm việc
 
 **Real-time WebSocket (Backend + Frontend):**
 
-- [ ] Setup Socket.io Gateway trong NestJS
-- [ ] Cấu hình Redis adapter cho Socket.io
-- [ ] Implement focus session events
-- [ ] Thêm FocusSession model vào Prisma
-- [ ] Setup Socket.io client (Frontend)
-- [ ] Live focus session tracking
-- [ ] Multi-user co-focus rooms
-- [ ] Real-time task updates
-- [ ] User presence (online/offline)
-- [ ] Test real-time sync giữa nhiều tabs/users
+- [x] Setup Socket.io Gateway trong NestJS
+- [x] Cấu hình Redis adapter cho Socket.io
+- [x] Implement focus session events
+- [x] Thêm FocusSession model vào Prisma
+- [x] Setup Socket.io client (Frontend)
+- [x] Live focus session tracking
+- [x] Multi-user co-focus rooms
+- [x] Real-time task updates
+- [x] User presence (online/offline)
+- [x] Test real-time sync giữa nhiều tabs/users
 
 ---
 

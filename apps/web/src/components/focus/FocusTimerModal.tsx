@@ -279,8 +279,8 @@ export function FocusTimerModal() {
             {mode === "WORK" && (
               <button
                 onClick={() => {
-                    openWorld()
-                    toggleMinimize()
+                  openWorld();
+                  toggleMinimize();
                 }}
                 className="w-16 h-16 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors flex items-center justify-center group"
                 aria-label="Mở Focus World"

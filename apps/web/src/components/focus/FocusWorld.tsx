@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { FocusWorldModal } from './FocusWorldModal';
-import { FloatingWorldButton } from './FloatingWorldButton';
+import { FocusWorldModal } from "./FocusWorldModal";
+import { FloatingWorldButton } from "./FloatingWorldButton";
 
 /**
  * FocusWorld wrapper component that renders modal and floating button
