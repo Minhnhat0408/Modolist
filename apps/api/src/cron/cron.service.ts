@@ -15,9 +15,10 @@ export class CronService implements OnModuleInit {
 
     private async registerRepeatableJobs() {
         // Remove stale repeatable jobs from a previous deployment
-        const existing = await this.scheduledQueue.getRepeatableJobs();
+        const existing = await this.scheduledQueue.getJobSchedulers();
         for (const job of existing) {
-            await this.scheduledQueue.removeRepeatableByKey(job.key);
+            await this.scheduledQueue.removeJobScheduler(job.key);
+            console.log("Delete old job");
         }
 
         await this.scheduledQueue.add(

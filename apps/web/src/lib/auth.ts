@@ -16,7 +16,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" }, // Bắt buộc dùng JWT khi có Credentials Provider
   secret: process.env.AUTH_SECRET, // Nhớ thêm biến này vào .env
-
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -85,7 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
 
   pages: {
-    signIn: "/auth/signin", // Trang login custom của bạn
+    signIn: "/auth/signin",
     error: "/auth/error",
   },
 });
