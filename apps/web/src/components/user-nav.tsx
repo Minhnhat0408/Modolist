@@ -15,7 +15,15 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, BarChart3, Moon, Sun, Monitor } from "lucide-react";
+import {
+  LogOut,
+  Settings,
+  BarChart3,
+  Moon,
+  Sun,
+  Monitor,
+  Sparkles,
+} from "lucide-react";
 
 interface UserNavProps {
   user?: {
@@ -24,9 +32,10 @@ interface UserNavProps {
     image?: string | null;
   };
   onStatsClick?: () => void;
+  onAIClick?: () => void;
 }
 
-export function UserNav({ user, onStatsClick }: UserNavProps) {
+export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
   const { theme, setTheme } = useTheme();
 
   if (!user) return null;
@@ -90,6 +99,10 @@ export function UserNav({ user, onStatsClick }: UserNavProps) {
         <DropdownMenuItem className="cursor-pointer" onClick={onStatsClick}>
           <BarChart3 className="mr-2 h-4 w-4" />
           Thống kê
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer" onClick={onAIClick}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          AI Tạo tasks
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

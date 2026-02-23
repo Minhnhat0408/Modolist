@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsArray } from "class-validator";
+import { IsString, IsOptional, IsEnum, IsDateString, IsArray, IsInt, Min } from "class-validator";
 import { TaskStatus, TaskPriority } from "@repo/database";
 
 export class CreateTaskDto {
@@ -16,6 +16,11 @@ export class CreateTaskDto {
     @IsOptional()
     @IsEnum(TaskPriority)
     priority?: TaskPriority;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    estimatedPomodoros?: number;
 
     @IsOptional()
     @IsArray()

@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { KanbanTask } from "@/types/kanban";
 import { TaskPriority, TaskStatus } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Play } from "lucide-react";
+import { CalendarDays, Play, Clock, Zap } from "lucide-react";
 import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
 
@@ -243,6 +243,47 @@ export function TaskCard({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+              {task.suggestedSessionType === "QUICK_5" && (
+                <div
+                  className="flex items-center gap-1 text-yellow-400/80"
+                  title="AI gợi ý: Quick 5 phút"
+                >
+                  <Zap className="h-3 w-3" />
+                  <span>⚡ Quick 5p</span>
+                </div>
+              )}
+              {task.suggestedSessionType === "QUICK_25" && (
+                <div
+                  className="flex items-center gap-1 text-purple-400/80"
+                  title="AI gợi ý: Quick 25 phút"
+                >
+                  <Zap className="h-3 w-3" />
+                  <span>⚡ Quick 25p</span>
+                </div>
+              )}
+              {task.suggestedSessionType === "STANDARD" &&
+                task.estimatedPomodoros &&
+                task.estimatedPomodoros > 0 && (
+                  <div
+                    className="flex items-center gap-1 text-green-400/80"
+                    title={`AI gợi ý: ${task.estimatedPomodoros} phiên Pomodoro`}
+                  >
+                    <Clock className="h-3 w-3" />
+                    <span>🍅 {task.estimatedPomodoros} pomodoros</span>
+                  </div>
+                )}
+              {!task.suggestedSessionType &&
+                task.estimatedPomodoros &&
+                task.estimatedPomodoros > 0 && (
+                  <div
+                    className="flex items-center gap-1 text-primary/70"
+                    title="AI ước lượng"
+                  >
+                    <Clock className="h-3 w-3" />
+                    <span>~{task.estimatedPomodoros} 🍅</span>
+                  </div>
+                )}
+
               {task.dueDate && (
                 <div className="flex items-center gap-1">
                   <CalendarDays className="h-3 w-3" />

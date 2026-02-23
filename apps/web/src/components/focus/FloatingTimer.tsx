@@ -13,6 +13,7 @@ export function FloatingTimer() {
     isMinimized,
     mode,
     focusType,
+    shortFocusDuration,
     currentSession,
     totalSessions,
     pauseFocus,
@@ -30,6 +31,7 @@ export function FloatingTimer() {
   };
 
   const getMaxDuration = () => {
+    if (focusType === "SHORT") return shortFocusDuration;
     if (mode === "WORK") return FOCUS_DURATIONS.WORK;
     if (mode === "SHORT_BREAK") return FOCUS_DURATIONS.SHORT_BREAK;
     if (mode === "LONG_BREAK") return FOCUS_DURATIONS.LONG_BREAK;

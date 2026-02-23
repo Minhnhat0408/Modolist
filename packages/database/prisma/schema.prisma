@@ -87,6 +87,10 @@ model Task {
     tags                   String[]
     dueDate                DateTime?
     completedAt            DateTime?
+    estimatedPomodoros     Int?
+    suggestedSessionType   String? // "QUICK_5" | "QUICK_25" | "STANDARD" — AI suggested focus mode
+    suggestedSessions      Int? // Number of sessions AI suggested
+    suggestedTotalMinutes  Int? // Total estimated minutes from AI
     embedding              Unsupported("vector")?
     isArchived             Boolean                @default(false)
     userId                 String

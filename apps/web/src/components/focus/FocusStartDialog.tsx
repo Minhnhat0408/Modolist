@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Target, Plus, Minus } from "lucide-react";
+import { X, Zap, Target, Plus, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanTask } from "@/types/kanban";
 import { useFocusStore } from "@/stores/useFocusStore";
@@ -28,7 +28,23 @@ export function FocusStartDialog({
     ? Math.max(0, task.focusTotalSessions! - (task.focusCompletedSessions || 0))
     : 4;
 
-  const [sessionCount, setSessionCount] = useState(remainingSessions);
+  // If the task has an AI estimate and no existing session, pre-fill with it
+  const defaultSessions =
+    !hasExistingSession &&
+    task.estimatedPomodoros &&
+    task.estimatedPomodoros > 0
+      ? Math.min(task.estimatedPomodoros, 10)
+      : remainingSessions;
+
+  // Determine AI recommendation
+  const aiRecommendation = task.suggestedSessionType as
+    | "QUICK_5"
+    | "QUICK_25"
+    | "STANDARD"
+    | null
+    | undefined;
+
+  const [sessionCount, setSessionCount] = useState(defaultSessions);
   const { startShortFocus, startStandardFocus } = useFocusStore();
 
   const handleQuickFocus = (minutes: 5 | 25) => {
@@ -95,6 +111,32 @@ export function FocusStartDialog({
             </button>
           </div>
 
+          {/* AI Recommendation Banner */}
+          {!isSessionInProgress &&
+            aiRecommendation &&
+            (aiRecommendation === "QUICK_5" ||
+              aiRecommendation === "QUICK_25") && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  ✨ AI gợi ý{" "}
+                  <strong>
+                    {aiRecommendation === "QUICK_5"
+                      ? "Quick 5 phút"
+                      : "Quick 25 phút"}
+                  </strong>{" "}
+                  cho task này
+                  {task.suggestedTotalMinutes
+                    ? ` (~${task.suggestedTotalMinutes} phút)`
+                    : ""}
+                </span>
+              </motion.div>
+            )}
+
           {/* Type A: Quick Focus - Hide when session in progress */}
           {!isSessionInProgress && (
             <>
@@ -112,20 +154,38 @@ export function FocusStartDialog({
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={() => handleQuickFocus(5)}
-                    className="h-16 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold shadow-lg"
+                    className={`h-16 text-white font-semibold shadow-lg ${
+                      aiRecommendation === "QUICK_5"
+                        ? "bg-linear-to-br from-blue-500 to-blue-600 ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-900"
+                        : "bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600"
+                    }`}
                   >
                     <div className="flex flex-col items-center">
                       <span className="text-2xl font-bold">5</span>
                       <span className="text-xs opacity-80">Minutes</span>
+                      {aiRecommendation === "QUICK_5" && (
+                        <span className="text-[10px] text-yellow-300 mt-0.5">
+                          ✨ AI gợi ý
+                        </span>
+                      )}
                     </div>
                   </Button>
                   <Button
                     onClick={() => handleQuickFocus(25)}
-                    className="h-16 bg-linear-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold shadow-lg"
+                    className={`h-16 text-white font-semibold shadow-lg ${
+                      aiRecommendation === "QUICK_25"
+                        ? "bg-linear-to-br from-purple-500 to-purple-600 ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900"
+                        : "bg-linear-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600"
+                    }`}
                   >
                     <div className="flex flex-col items-center">
                       <span className="text-2xl font-bold">25</span>
                       <span className="text-xs opacity-80">Minutes</span>
+                      {aiRecommendation === "QUICK_25" && (
+                        <span className="text-[10px] text-yellow-300 mt-0.5">
+                          ✨ AI gợi ý
+                        </span>
+                      )}
                     </div>
                   </Button>
                 </div>
@@ -234,7 +294,40 @@ export function FocusStartDialog({
                   work.
                 </p>
 
-                {/* Session Counter */}
+                {/* AI Estimate hint */}
+                {aiRecommendation === "STANDARD" &&
+                task.estimatedPomodoros &&
+                task.estimatedPomodoros > 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      ✨ AI gợi ý{" "}
+                      <strong>
+                        Focus Chuẩn — {task.estimatedPomodoros} phiên
+                      </strong>
+                      {task.suggestedTotalMinutes
+                        ? ` (~${task.suggestedTotalMinutes} phút)`
+                        : ""}
+                    </span>
+                  </motion.div>
+                ) : task.estimatedPomodoros && task.estimatedPomodoros > 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      AI ước tính <strong>{task.estimatedPomodoros} 🍅</strong>{" "}
+                      cho task này
+                    </span>
+                  </motion.div>
+                ) : null}
+
                 <div className="bg-gray-800/50 rounded-xl p-6 mb-4 border border-gray-700">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-gray-300 font-medium">

@@ -31,6 +31,7 @@ interface FocusStore {
   mode: FocusMode;
   sessionId: string | null;
   focusType: FocusType;
+  shortFocusDuration: number; // Actual duration for SHORT type (QUICK_5 or QUICK_25)
 
   // Date-based timer: stores the wall-clock timestamp when timer should reach 0
   targetEndTime: number | null; // Date.now() + timeLeft*1000
@@ -71,6 +72,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   mode: "WORK",
   sessionId: null,
   focusType: "SHORT",
+  shortFocusDuration: FOCUS_DURATIONS.QUICK_25,
   targetEndTime: null,
   totalSessions: 1,
   currentSession: 1,
@@ -97,6 +99,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       mode: "WORK",
       isMinimized: false,
       focusType: "SHORT",
+      shortFocusDuration: duration,
       totalSessions: newTotalSessions,
       currentSession: 1,
       completedSessions: 0,
