@@ -11,6 +11,7 @@ import { AuthModule } from "./auth/auth.module";
 import { FocusSessionsModule } from "./focus-sessions/focus-sessions.module";
 import { FocusWorldModule } from "./focus-world/focus-world.module";
 import { CronModule } from "./cron/cron.module";
+import { AIModule } from "./ai/ai.module";
 
 @Module({
     imports: [
@@ -44,6 +45,7 @@ import { CronModule } from "./cron/cron.module";
         FocusSessionsModule,
         FocusWorldModule,
         CronModule,
+        AIModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

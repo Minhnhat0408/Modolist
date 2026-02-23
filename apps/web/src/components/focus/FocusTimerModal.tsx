@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 
@@ -24,6 +25,7 @@ export function FocusTimerModal() {
     isMinimized,
     mode,
     focusType,
+    shortFocusDuration,
     totalSessions,
     currentSession,
     completedSessions,
@@ -136,6 +138,7 @@ export function FocusTimerModal() {
   };
 
   const getMaxDuration = () => {
+    if (focusType === "SHORT") return shortFocusDuration;
     if (mode === "WORK") return FOCUS_DURATIONS.WORK;
     if (mode === "SHORT_BREAK") return FOCUS_DURATIONS.SHORT_BREAK;
     if (mode === "LONG_BREAK") return FOCUS_DURATIONS.LONG_BREAK;
@@ -191,6 +194,15 @@ export function FocusTimerModal() {
                   : "🌴 Nghỉ Dài"}
             </p>
             <h2 className="text-2xl font-semibold mb-2">{activeTask.title}</h2>
+
+            {/* AI Estimate badge */}
+            {activeTask.estimatedPomodoros &&
+              activeTask.estimatedPomodoros > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs mb-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI ước tính {activeTask.estimatedPomodoros} 🍅</span>
+                </div>
+              )}
 
             {/* Session Counter for STANDARD type */}
             {focusType === "STANDARD" && (

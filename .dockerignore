@@ -2,6 +2,9 @@ apps/*/node_modules
 apps/*/.next
 apps/*/dist
 apps/*/build
+apps/*/venv
+apps/ai-service/__pycache__
+apps/ai-service/*.pyc
 node_modules
 .turbo
 .env

@@ -23,6 +23,9 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_URL=ai-service:50051
+      - BULL_BOARD_USER=${BULL_BOARD_USER}
+      - BULL_BOARD_PASSWORD=${BULL_BOARD_PASSWORD}
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages/database:/app/packages/database
@@ -44,6 +47,9 @@ services:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:3001
       - NEXT_PUBLIC_WS_URL=ws://localhost:3001
+      - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
+      - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
+      - AUTH_SECRET=${AUTH_SECRET}
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages/database:/app/packages/database
@@ -56,15 +62,20 @@ services:
 
   ai-service:
     build:
-      context: ./apps/ai-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/ai-service/Dockerfile
     ports:
       - "50051:50051"
     environment:
       - PYTHONUNBUFFERED=1
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=${PORT}
+      - HOST=${HOST}
+      - GEMINI_MODEL=${GEMINI_MODEL}
     volumes:
       - ./apps/ai-service:/app
+      - ./proto:/app/proto
     restart: unless-stopped
 
 volumes:

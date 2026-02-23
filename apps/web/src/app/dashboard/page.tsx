@@ -14,6 +14,7 @@ import { TaskStatus } from "@/types/database";
 import { api } from "@/lib/api-client";
 import Image from "next/image";
 import { StatsModal } from "@/components/stats/StatsModal";
+import { AITaskGenerator } from "@/components/ai/AITaskGenerator";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     TaskStatus.BACKLOG,
   );
   const [statsOpen, setStatsOpen] = useState(false);
+  const [aiOpen, setAIOpen] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -214,6 +216,7 @@ export default function DashboardPage() {
             <UserNav
               user={session?.user}
               onStatsClick={() => setStatsOpen(true)}
+              onAIClick={() => setAIOpen(true)}
             />
           </div>
         </div>
@@ -241,6 +244,13 @@ export default function DashboardPage() {
 
         {/* Stats Modal */}
         <StatsModal open={statsOpen} onOpenChange={setStatsOpen} />
+
+        {/* AI Task Generator */}
+        <AITaskGenerator
+          open={aiOpen}
+          onOpenChange={setAIOpen}
+          onTasksCreated={fetchTasks}
+        />
       </div>
     </div>
   );
