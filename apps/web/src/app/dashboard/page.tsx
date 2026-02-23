@@ -211,7 +211,10 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <UserNav user={session?.user} onStatsClick={() => setStatsOpen(true)} />
+            <UserNav
+              user={session?.user}
+              onStatsClick={() => setStatsOpen(true)}
+            />
           </div>
         </div>
 

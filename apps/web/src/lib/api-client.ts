@@ -54,7 +54,6 @@ async function request<T = unknown>(
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
   });
 
   if (!response.ok) {

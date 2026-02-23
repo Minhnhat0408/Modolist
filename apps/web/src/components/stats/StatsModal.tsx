@@ -133,7 +133,9 @@ function StatCard({
         >
           <Icon className="h-4 w-4" />
         </motion.div>
-        <span className="text-xs text-muted-foreground font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground font-medium">
+          {label}
+        </span>
       </div>
       <div className="text-2xl font-bold tracking-tight">
         {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
@@ -179,7 +181,10 @@ function WeeklyBarChart({
               {val > 0 ? formatLabel(val) : ""}
             </motion.span>
 
-            <div className="w-full flex justify-center relative" style={{ height: "110px" }}>
+            <div
+              className="w-full flex justify-center relative"
+              style={{ height: "110px" }}
+            >
               <motion.div
                 initial={{ height: 0 }}
                 animate={{ height: `${pct}%` }}
@@ -268,10 +273,35 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
     <div className="space-y-5">
       {/* Today top cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={Timer} label="Hôm nay" value={formatTime(stats.today.focusTime)} color="bg-primary" delay={0} />
-        <StatCard icon={Target} label="Pomodoro hôm nay" value={stats.today.pomodoros} color="bg-chart-2" delay={0.08} />
-        <StatCard icon={CheckCircle2} label="Task hoàn thành" value={stats.today.tasks} color="bg-chart-4" delay={0.16} />
-        <StatCard icon={Flame} label="Streak" value={stats.user.currentStreak} suffix="ngày" color="bg-chart-5" delay={0.24} />
+        <StatCard
+          icon={Timer}
+          label="Hôm nay"
+          value={formatTime(stats.today.focusTime)}
+          color="bg-primary"
+          delay={0}
+        />
+        <StatCard
+          icon={Target}
+          label="Pomodoro hôm nay"
+          value={stats.today.pomodoros}
+          color="bg-chart-2"
+          delay={0.08}
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Task hoàn thành"
+          value={stats.today.tasks}
+          color="bg-chart-4"
+          delay={0.16}
+        />
+        <StatCard
+          icon={Flame}
+          label="Streak"
+          value={stats.user.currentStreak}
+          suffix="ngày"
+          color="bg-chart-5"
+          delay={0.24}
+        />
       </div>
 
       {/* Streak + weekly focus time */}
@@ -361,10 +391,35 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
 
       {/* All-time totals */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={Timer} label="Tổng thời gian" value={formatTime(stats.user.totalFocusTime)} color="bg-primary" delay={0.35} />
-        <StatCard icon={Trophy} label="Tổng sessions" value={stats.totals.sessions} color="bg-chart-3" delay={0.42} />
-        <StatCard icon={CheckCircle2} label="Tổng task xong" value={stats.totals.tasks} color="bg-chart-4" delay={0.49} />
-        <StatCard icon={TrendingUp} label="Kỷ lục streak" value={stats.user.longestStreak} suffix="ngày" color="bg-chart-5" delay={0.56} />
+        <StatCard
+          icon={Timer}
+          label="Tổng thời gian"
+          value={formatTime(stats.user.totalFocusTime)}
+          color="bg-primary"
+          delay={0.35}
+        />
+        <StatCard
+          icon={Trophy}
+          label="Tổng sessions"
+          value={stats.totals.sessions}
+          color="bg-chart-3"
+          delay={0.42}
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Tổng task xong"
+          value={stats.totals.tasks}
+          color="bg-chart-4"
+          delay={0.49}
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Kỷ lục streak"
+          value={stats.user.longestStreak}
+          suffix="ngày"
+          color="bg-chart-5"
+          delay={0.56}
+        />
       </div>
     </div>
   );
@@ -385,7 +440,9 @@ export function StatsModal({
     setLoading(true);
     setStats(null);
     try {
-      const data = await api.get<DashboardStats>("/focus-sessions/stats/dashboard");
+      const data = await api.get<DashboardStats>(
+        "/focus-sessions/stats/dashboard",
+      );
       setStats(data);
     } catch (error) {
       console.error("Error fetching stats:", error);
