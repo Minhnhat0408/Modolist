@@ -19,11 +19,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm install --frozen-lockfile
+RUN pnpm turbo build --filter=api
 
 FROM base AS runner
 WORKDIR /app
-ENV NODE_ENV=development
+ENV NODE_ENV=production
+# Copy entire workspace — pnpm uses symlinks that break if copied piecemeal
 COPY --from=builder /app .
-WORKDIR /app/apps/api
 EXPOSE 3001
-CMD cd /app/packages/database && npx prisma migrate deploy && cd /app && pnpm dev --filter=api
+CMD cd /app/packages/database && npx prisma migrate deploy && cd /app && node apps/api/dist/main.js

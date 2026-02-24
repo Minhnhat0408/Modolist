@@ -17,6 +17,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: builder
+    command: pnpm dev --filter=api
     ports:
       - "3001:3001"
     environment:
@@ -27,8 +29,12 @@ services:
       - BULL_BOARD_USER=${BULL_BOARD_USER}
       - BULL_BOARD_PASSWORD=${BULL_BOARD_PASSWORD}
     volumes:
+      - ./package.json:/app/package.json
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./turbo.json:/app/turbo.json
       - ./apps/api:/app/apps/api
       - ./packages/database:/app/packages/database
+      - ./proto:/app/proto
       - /app/node_modules
       - /app/apps/api/node_modules
       - /app/packages/database/node_modules
@@ -41,16 +47,21 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      target: builder
+    command: pnpm dev --filter=web
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_API_URL=http://api:3001
       - NEXT_PUBLIC_WS_URL=ws://localhost:3001
       - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
       - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
       - AUTH_SECRET=${AUTH_SECRET}
     volumes:
+      - ./package.json:/app/package.json
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./turbo.json:/app/turbo.json
       - ./apps/web:/app/apps/web
       - ./packages/database:/app/packages/database
       - /app/node_modules
