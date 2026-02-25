@@ -1,5 +1,13 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  // Required for correct standalone output path in pnpm monorepo
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   transpilePackages: ["@repo/database"],
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'bcryptjs'],
  
@@ -8,7 +16,7 @@ const nextConfig = {
   },
   async rewrites() {
     // eslint-disable-next-line no-undef
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [
       {
         // Only rewrite non-auth API routes to backend NestJS

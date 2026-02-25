@@ -15,7 +15,7 @@ import { useEffect, useRef } from "react";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { getCachedToken } from "@/lib/api-client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API_BASE_URL = "/api";
 
 export function useSessionLifecycle() {
   const sessionId = useFocusStore((s) => s.sessionId);

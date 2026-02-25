@@ -3,7 +3,7 @@
  * Sử dụng NextAuth session token làm JWT Bearer token
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = "/api";
 
 let cachedToken: string | null = null;
 

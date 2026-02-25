@@ -36,7 +36,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 PORT = int(os.getenv("PORT", "50051"))
 HOST = os.getenv("HOST", "0.0.0.0")
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 EMBEDDING_MODEL = "gemini-embedding-001"
 EMBEDDING_DIMENSION = 3072  # gemini-embedding-001 output dim
 
