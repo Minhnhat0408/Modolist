@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
     branches: [main, develop]
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -24,7 +24,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,8 +32,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.0'
-          
+          node-version: '22'
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -47,8 +47,7 @@ jobs:
       - name: Get pnpm store directory
         id: pnpm-cache
         shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
         uses: actions/cache@v4
@@ -58,7 +57,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
@@ -71,7 +70,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd apps/ai-service
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Lint
         run: pnpm lint
@@ -82,16 +81,17 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-         NEXT_PUBLIC_API_URL: "http://localhost:3001"
+          NEXT_PUBLIC_API_URL: "http://localhost:3001"
 
-      - name: Test
-        run: pnpm test || echo "Tests will be added in Phase 5"
+      # ── Tests ────────────────────────────────────────────────────────────
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Deploy
-        run: echo "Add your deployment steps here (Vercel, Railway, etc.)"
+      - name: Test — NestJS API
+        run: pnpm --filter=api test
+
+      - name: Test — Frontend
+        run: pnpm --filter=web test
+
+      - name: Test — Python AI Service
+        run: |
+          cd apps/ai-service
+          pytest test_main.py --cov=main --cov-fail-under=80 -q
