@@ -159,7 +159,7 @@ export function TaskFormDialog({
                   <Input
                     id="title"
                     {...register("title")}
-                    placeholder="Nhập tiêu đề nhiệm vụ"
+                    placeholder="Nhập tiêu đề task"
                     className="
                         bg-white/5 border-white/10
                         focus:bg-white/10 focus:border-primary/50
@@ -190,7 +190,7 @@ export function TaskFormDialog({
                   <Textarea
                     id="description"
                     {...register("description")}
-                    placeholder="Mô tả chi tiết nhiệm vụ"
+                    placeholder="Mô tả chi tiết task"
                     className="
                         bg-white/5 border-white/10
                         focus:bg-white/10 focus:border-primary/50

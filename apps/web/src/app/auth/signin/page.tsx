@@ -55,7 +55,7 @@ export default function SignInPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="johndoe@gmail.com"
+                placeholder="minhnhat@gmail.com"
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />

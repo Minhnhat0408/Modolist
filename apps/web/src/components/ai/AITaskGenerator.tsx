@@ -223,7 +223,7 @@ export function AITaskGenerator({
                     id="goal"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
-                    placeholder="VD: Xây dựng trang landing page cho sản phẩm mới"
+                    placeholder="VD: Lập tài khoản shopee và đăng bán sản phẩm"
                     className="bg-white/5 border-white/10 focus:border-primary/50 transition-all"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) handleGenerate();
@@ -240,7 +240,7 @@ export function AITaskGenerator({
                     id="context"
                     value={context}
                     onChange={(e) => setContext(e.target.value)}
-                    placeholder="VD: Dùng Next.js + Tailwind, deadline thứ 6 tuần này..."
+                    placeholder="VD: Tôi đã có tài khoản facebook nhưng chưa biết cách tạo gian hàng trên shopee. Tôi muốn tập trung vào việc học cách đăng bán sản phẩm và tối ưu hóa bài đăng để thu hút khách hàng."
                     className="bg-white/5 border-white/10 focus:border-primary/50 transition-all min-h-20"
                   />
                 </div>
