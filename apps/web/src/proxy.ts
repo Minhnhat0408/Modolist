@@ -8,12 +8,10 @@ export default auth((req) => {
   const isAuthPage = nextUrl.pathname.startsWith("/auth");
   const isDashboard = nextUrl.pathname.startsWith("/dashboard");
 
-  // Nếu đã đăng nhập và đang cố vào trang auth (signin/signup)
   if (isAuthPage && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
-  // Nếu chưa đăng nhập và đang cố vào dashboard
   if (isDashboard && !isLoggedIn) {
     return NextResponse.redirect(new URL("/auth/signin", nextUrl));
   }
