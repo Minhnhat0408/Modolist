@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@repo/database"; // Đảm bảo đường dẫn import đúng với Monorepo của bạn
+import { prisma } from "@repo/database"; 
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -58,7 +58,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    // Logic đẩy ID và Image vào Token
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
@@ -72,12 +71,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return token;
     },
-
-    // Logic đẩy ID từ Token xuống Session (Client mới đọc được)
     async session({ session, token }) {
       if (token?.id) {
         session.user.id = token.id as string;
-        session.user.image = token.picture as string; // Google trả về 'picture'
+        session.user.image = token.picture as string; 
       }
       return session;
     },

@@ -10,7 +10,7 @@
         "NODE_ENV",
         "NEXT_PUBLIC_API_URL",
         "NEXT_PUBLIC_WS_URL",
-        "AUTH_URL",
+        "AUTH_URL", 
         "NEXTAUTH_SECRET",
         "AUTH_SECRET",
         "AUTH_GOOGLE_ID",
@@ -21,7 +21,7 @@
       ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": []
     },
     "check-types": {
       "dependsOn": ["^check-types"]
