@@ -8,9 +8,7 @@ const nextConfig = {
   output: 'standalone',
   // Required for correct standalone output path in pnpm monorepo
   outputFileTracingRoot: path.join(__dirname, '../..'),
-  transpilePackages: ["@repo/database"],
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'bcryptjs'],
- 
   images: {
     remotePatterns: [new URL('https://lh3.googleusercontent.com/**')],
   },
@@ -19,8 +17,6 @@ const nextConfig = {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [
       {
-        // Only rewrite non-auth API routes to backend NestJS
-        // /api/auth/* routes are handled by Next.js (NextAuth + custom auth routes)
         source: '/api/:path((?!auth).*)',
         destination: `${apiUrl}/:path*`,
       },
