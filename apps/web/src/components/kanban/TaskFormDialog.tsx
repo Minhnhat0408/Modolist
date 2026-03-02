@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/lib/api-client";
+import { Sparkles, Loader2, Clock, Zap, Brain } from "lucide-react";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống").max(200),
@@ -34,9 +36,25 @@ const taskFormSchema = z.object({
   priority: z.nativeEnum(TaskPriority).optional(),
   dueDate: z.string().optional(),
   tags: z.string().optional(),
+  estimatedPomodoros: z.number().optional(),
+  suggestedSessionType: z.string().optional(),
+  suggestedSessions: z.number().optional(),
+  suggestedTotalMinutes: z.number().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
+
+interface AISuggestion {
+  estimatedPomodoros: number;
+  reasoning: string;
+  confidence: string;
+  focusPlan: {
+    sessionType: string;
+    sessions: number;
+    totalMinutes: number;
+    label: string;
+  };
+}
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -56,6 +74,10 @@ export function TaskFormDialog({
   defaultStatus = TaskStatus.BACKLOG,
 }: TaskFormDialogProps) {
   const isEditing = !!task;
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const {
     register,
@@ -93,12 +115,21 @@ export function TaskFormDialog({
           : "",
         tags: task?.tags?.join(", ") || "",
       });
+      setAiSuggestion(null);
+      setAiError(null);
     }
   }, [open, task, defaultStatus, reset]);
 
   const handleFormSubmit = (data: TaskFormData) => {
-    const submitData: Partial<Task> = {
-      ...data,
+    const submitData: Partial<Task> & {
+      suggestedSessionType?: string;
+      suggestedSessions?: number;
+      suggestedTotalMinutes?: number;
+    } = {
+      title: data.title,
+      description: data.description || null,
+      status: data.status,
+      priority: data.priority,
       tags: data.tags
         ? data.tags
             .split(",")
@@ -106,10 +137,51 @@ export function TaskFormDialog({
             .filter(Boolean)
         : undefined,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      estimatedPomodoros: data.estimatedPomodoros,
+      suggestedSessionType: data.suggestedSessionType,
+      suggestedSessions: data.suggestedSessions,
+      suggestedTotalMinutes: data.suggestedTotalMinutes,
     };
 
     onSubmit(submitData);
     onOpenChange(false);
+  };
+
+  const handleAiAutoComplete = async () => {
+    const title = watch("title");
+    const description = watch("description");
+
+    if (!title || title.trim().length === 0) {
+      setAiError("Vui lòng nhập tiêu đề trước khi dùng AI");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiSuggestion(null);
+
+    try {
+      const result = await api.post<AISuggestion>("/ai/estimate-time", {
+        taskTitle: title,
+        taskDescription: description || undefined,
+      });
+      setAiSuggestion(result);
+
+      // Auto-fill form fields from AI response
+      if (result.estimatedPomodoros) {
+        setValue("estimatedPomodoros", result.estimatedPomodoros);
+      }
+      if (result.focusPlan) {
+        setValue("suggestedSessionType", result.focusPlan.sessionType);
+        setValue("suggestedSessions", result.focusPlan.sessions);
+        setValue("suggestedTotalMinutes", result.focusPlan.totalMinutes);
+      }
+    } catch (error) {
+      console.error("AI estimate failed:", error);
+      setAiError("AI không khả dụng. Bạn có thể điền thủ công.");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -198,6 +270,86 @@ export function TaskFormDialog({
                         min-h-25
                       "
                   />
+                </motion.div>
+
+                {/* AI Auto-Complete */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.17 }}
+                  className="space-y-3"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAiAutoComplete}
+                    disabled={aiLoading}
+                    className="w-full bg-linear-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30 hover:border-purple-500/50 hover:from-purple-500/20 hover:to-blue-500/20 transition-all duration-300"
+                  >
+                    {aiLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        AI đang phân tích...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        ✨ AI Ước lượng thời gian
+                      </>
+                    )}
+                  </Button>
+
+                  {aiError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-sm text-yellow-400/80"
+                    >
+                      {aiError}
+                    </motion.p>
+                  )}
+
+                  {aiSuggestion && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 space-y-2"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium text-purple-300">
+                        <Brain className="h-4 w-4" />
+                        Gợi ý từ AI
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          Độ tin cậy: {aiSuggestion.confidence === "high" ? (
+                            <span className="text-green-400">Cao</span>
+                          ) : aiSuggestion.confidence === "medium" ? (
+                            <span className="text-yellow-400">Trung bình</span>
+                          ) : (
+                            <span className="text-red-400">Thấp</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Clock className="h-3 w-3 text-green-400" />
+                          <span>
+                            {aiSuggestion.estimatedPomodoros} pomodoros (~
+                            {aiSuggestion.focusPlan.totalMinutes} phút)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Zap className="h-3 w-3 text-yellow-400" />
+                          <span>{aiSuggestion.focusPlan.label}</span>
+                        </div>
+                      </div>
+
+                      {aiSuggestion.reasoning && (
+                        <p className="text-xs text-muted-foreground/70 italic">
+                          {aiSuggestion.reasoning}
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
                 </motion.div>
 
                 {/* Status & Priority */}

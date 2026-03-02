@@ -23,6 +23,20 @@ export class CreateTaskDto {
     estimatedPomodoros?: number;
 
     @IsOptional()
+    @IsString()
+    suggestedSessionType?: string;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    suggestedSessions?: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    suggestedTotalMinutes?: number;
+
+    @IsOptional()
     @IsArray()
     @IsString({ each: true })
     tags?: string[];
