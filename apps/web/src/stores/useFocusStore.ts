@@ -321,6 +321,16 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           .patch(`/focus-sessions/${sessionId}/complete`, {
             actualDuration: 25 * 60,
           })
+          .then(() => {
+            const task = get().activeTask;
+            if (task) {
+              window.dispatchEvent(
+                new CustomEvent("sessionCompleted", {
+                  detail: { taskId: task.id },
+                }),
+              );
+            }
+          })
           .catch((error) => {
             console.error("Failed to complete focus session:", error);
           });
@@ -526,6 +536,16 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         api
           .patch(`/focus-sessions/${sessionId}/complete`, {
             actualDuration,
+          })
+          .then(() => {
+            const task = get().activeTask;
+            if (task) {
+              window.dispatchEvent(
+                new CustomEvent("sessionCompleted", {
+                  detail: { taskId: task.id },
+                }),
+              );
+            }
           })
           .catch((error) => {
             console.error("Failed to complete focus session:", error);

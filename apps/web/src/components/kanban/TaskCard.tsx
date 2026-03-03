@@ -81,6 +81,8 @@ export function TaskCard({
   };
 
   const hasSessionData = task.focusTotalSessions && task.focusTotalSessions > 0;
+  const hasQuickSessions =
+    !hasSessionData && task.focusCompletedSessions > 0;
   const shouldShowProgress =
     (isFocusing && focusType === "STANDARD") || hasSessionData;
 
@@ -163,10 +165,10 @@ export function TaskCard({
       >
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
-            <h4 className="text-sm font-bold line-clamp-2 flex-1">
+            <h4 className="text-sm font-bold line-clamp-2 flex-1 min-w-0">
               {task.title}
             </h4>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {isToday && !isFocusing && (
                 <Button
                   variant="ghost"
@@ -241,8 +243,17 @@ export function TaskCard({
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+          {hasQuickSessions && (
+            <div className="flex items-center gap-1.5 text-xs text-yellow-400/80">
+              <Zap className="h-3 w-3" />
+              <span>
+                ⚡ {task.focusCompletedSessions} phiên Quick hoàn thành
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/60 min-w-0 flex-wrap">
               {task.suggestedSessionType === "QUICK_5" && (
                 <div
                   className="flex items-center gap-1 text-yellow-400/80"
@@ -304,7 +315,7 @@ export function TaskCard({
             </div>
 
             {task.tags && task.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 shrink-0">
                 {task.tags.slice(0, 2).map((tag) => (
                   <Badge
                     key={tag}

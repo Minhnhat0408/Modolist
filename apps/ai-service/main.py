@@ -134,14 +134,15 @@ async def find_similar_tasks(
 def estimate_from_similar(similar_tasks: list[dict]) -> tuple[int | None, str | None, str]:
     """
     Estimate pomodoros from similar tasks.
-    Returns (estimate, reasoning, confidence).
-    Returns (None, None, "none") when no relevant data — caller should use LLM fallback.
+    Returns (rounded_estimate, reasoning, confidence_label).
+    confidence_label is one of: "none" | "low" | "medium" | "high".
+    Returns (None, None, "none") when no relevant data.
     """
     if not similar_tasks:
         return None, None, "none"
 
-    # Filter to tasks with weighted similarity > 0.45
-    relevant = [t for t in similar_tasks if t["similarity"] > 0.45]
+    # Filter to tasks with weighted similarity >= 0.50
+    relevant = [t for t in similar_tasks if t["similarity"] >= 0.50]
 
     if not relevant:
         return None, None, "none"
@@ -164,11 +165,91 @@ def estimate_from_similar(similar_tasks: list[dict]) -> tuple[int | None, str | 
     if other_count > 0 and own_tasks:
         reasoning += f" Kết hợp thêm {other_count} task từ người dùng khác."
 
-    reasoning += f" Trung bình có trọng số: {weighted_avg:.1f} → {estimate} pomodoros."
+    # Compute numeric confidence score (0.0-1.0) based on quantity + avg similarity
+    avg_similarity = total_weight / len(relevant)
+    quantity_factor = min(1.0, len(relevant) / 5.0)      # saturates at 5 tasks
+    similarity_factor = max(0.0, (avg_similarity - 0.50) / 0.40)  # 0.50->0, 0.90->1
+    confidence_score = min(1.0, quantity_factor * 0.5 + similarity_factor * 0.5)
 
-    confidence = "high" if len(relevant) >= 3 else "medium" if len(relevant) >= 1 else "low"
+    # Very few results with marginal similarity -> cap confidence
+    if len(relevant) <= 1 and avg_similarity < 0.65:
+        confidence_score = min(confidence_score, 0.20)
 
-    return estimate, reasoning, confidence
+    # Map numeric score to label
+    if confidence_score >= 0.60:
+        confidence_label = "high"
+    elif confidence_score >= 0.30:
+        confidence_label = "medium"
+    else:
+        confidence_label = "low"
+
+    return estimate, reasoning, confidence_label
+
+
+# Numeric weight used internally by blend_estimates for each confidence label.
+# "medium" maps to 0.60 so that a confident RAG estimate is not diluted too much.
+_CONFIDENCE_NUM: dict[str, float] = {
+    "none": 0.0,
+    "low":  0.20,
+    "medium": 0.60,
+    "high": 0.80,
+}
+
+
+def blend_estimates(
+    rag_avg: int | None,
+    rag_confidence: str,
+    llm_pomodoros: int,
+    llm_plan: dict,
+    rag_reasoning: str | None,
+    llm_reasoning: str,
+) -> tuple[int, str, dict, str]:
+    """
+    Blend RAG and LLM estimates based on RAG confidence label.
+    Returns (final_pomodoros, final_reasoning, final_plan, confidence_label).
+    """
+    rag_conf_num = _CONFIDENCE_NUM.get(rag_confidence, 0.0) if isinstance(rag_confidence, str) else float(rag_confidence)
+
+    if rag_avg is None or rag_conf_num < 0.10:
+        # No useful RAG data — trust LLM entirely
+        return llm_pomodoros, llm_reasoning, llm_plan, "medium"
+
+    # Medium/high confidence: trust RAG directly (no dilution from LLM).
+    # Low confidence: blend toward LLM to avoid over-indexing on sparse data.
+    if rag_conf_num >= 0.50:
+        final_estimate = max(1, rag_avg)
+        final_plan = build_focus_plan(final_estimate)
+        confidence_label = "high" if rag_conf_num >= 0.75 else "medium"
+        reasoning_parts = []
+        if rag_reasoning:
+            reasoning_parts.append(f"📊 RAG ({int(rag_conf_num*100)}%): {rag_reasoning}")
+        reasoning_parts.append(f"→ {final_estimate} pomodoros.")
+        return final_estimate, " ".join(reasoning_parts), final_plan, confidence_label
+
+    # Low confidence — blend: final = rag_conf_num * RAG + (1 - rag_conf_num) * LLM
+    blended = rag_conf_num * rag_avg + (1 - rag_conf_num) * llm_pomodoros
+    final_estimate = max(1, round(blended))
+
+    # Use LLM plan structure but with blended estimate
+    if llm_plan["session_type"] == "STANDARD":
+        final_plan = {
+            "session_type": "STANDARD",
+            "sessions": final_estimate,
+            "total_minutes": final_estimate * 25 + max(0, final_estimate - 1) * 5,
+        }
+    else:
+        final_plan = llm_plan if final_estimate == 1 else build_focus_plan(final_estimate)
+    confidence_label = "medium"
+
+    # Build combined reasoning
+    reasoning_parts = []
+    if rag_reasoning:
+        reasoning_parts.append(f"📊 RAG ({int(rag_conf_num*100)}%): {rag_reasoning}")
+    reasoning_parts.append(f"🤖 AI: {llm_reasoning}")
+    reasoning_parts.append(f"→ Kết hợp: {final_estimate} pomodoros.")
+    final_reasoning = " ".join(reasoning_parts)
+
+    return final_estimate, final_reasoning, final_plan, confidence_label
 
 
 # ── LLM Fallback: Estimate When No RAG Data ─────────────────────────────────────
@@ -403,20 +484,18 @@ class AIServiceServicer(ai_service_pb2_grpc.AIServiceServicer):
 
                 # 2. RAG: try to refine estimate from historical data (cross-user)
                 similar = await find_similar_tasks(request.user_id, f"{title} {description}")
-                rag_estimate, rag_reasoning, confidence = estimate_from_similar(similar)
+                rag_avg, rag_reasoning, rag_confidence = estimate_from_similar(similar)
 
-                # 3. Use RAG if confident, else keep LLM plan from prompt
-                if rag_estimate is not None:
-                    estimate = rag_estimate
-                    reasoning = rag_reasoning
-                    plan = build_focus_plan(rag_estimate)
+                # 3. Blend RAG + LLM based on confidence
+                if llm_plan["session_type"].startswith("QUICK"):
+                    llm_pomo = 1
                 else:
-                    if llm_plan["session_type"].startswith("QUICK"):
-                        estimate = 1
-                    else:
-                        estimate = min(10, llm_plan["sessions"])
-                    plan = llm_plan
-                    reasoning = f"🤖 AI ước lượng: {plan['session_type']} × {plan['sessions']} (~{plan['total_minutes']} phút)."
+                    llm_pomo = min(10, llm_plan["sessions"])
+                llm_r = f"🤖 AI ước lượng: {llm_plan['session_type']} × {llm_plan['sessions']} (~{llm_plan['total_minutes']} phút)."
+
+                estimate, reasoning, plan, _ = blend_estimates(
+                    rag_avg, rag_confidence, llm_pomo, llm_plan, rag_reasoning, llm_r,
+                )
 
                 generated_tasks.append(
                     ai_service_pb2.GeneratedTask(
@@ -449,46 +528,51 @@ class AIServiceServicer(ai_service_pb2_grpc.AIServiceServicer):
             return ai_service_pb2.GenerateTasksResponse()
 
     async def EstimateTime(self, request, context):
-        """Estimate pomodoros for a single task via RAG + LLM fallback."""
+        """Estimate pomodoros for a single task via RAG + LLM blending."""
         logger.info(f"⏱️ EstimateTime: user={request.user_id}, title='{request.task_title[:50]}'")
 
         try:
             text = f"{request.task_title} {request.task_description or ''}"
-            similar = await find_similar_tasks(request.user_id, text)
-            rag_estimate, rag_reasoning, confidence = estimate_from_similar(similar)
 
-            if rag_estimate is not None:
-                # RAG has data — use it
-                plan = build_focus_plan(rag_estimate)
-                # Only show own user's tasks in response (privacy)
-                own_similar = [t for t in similar if t.get("is_own", True)]
-                similar_task_protos = [
-                    ai_service_pb2.SimilarTask(
-                        title=t["title"],
-                        actual_pomodoros=t["actual_pomodoros"],
-                        similarity=t["similarity"],
-                    )
-                    for t in own_similar[:3]
-                ]
-                return ai_service_pb2.EstimateTimeResponse(
-                    estimated_pomodoros=rag_estimate,
-                    reasoning=rag_reasoning,
-                    similar_tasks=similar_task_protos,
-                    confidence=confidence,
-                    focus_plan=make_focus_plan_proto(plan),
+            # Always run RAG + LLM in parallel for best results
+            rag_task = find_similar_tasks(request.user_id, text)
+            llm_task = estimate_with_llm(request.task_title, request.task_description or "")
+            similar, (llm_estimate, llm_reasoning, llm_plan) = await asyncio.gather(
+                rag_task, llm_task
+            )
+
+            rag_avg, rag_reasoning, rag_confidence = estimate_from_similar(similar)
+
+            logger.info(
+                f"  RAG: avg={rag_avg}, confidence={rag_confidence} | "
+                f"LLM: {llm_estimate} pomos, plan={llm_plan['session_type']}"
+            )
+
+            # Blend RAG + LLM based on confidence
+            final_estimate, final_reasoning, final_plan, confidence_label = blend_estimates(
+                rag_avg, rag_confidence, llm_estimate, llm_plan,
+                rag_reasoning, llm_reasoning,
+            )
+
+            # Only show own user's tasks in response (privacy)
+            relevant = [t for t in similar if t["similarity"] > 0.50]
+            own_similar = [t for t in relevant if t.get("is_own", True)]
+            similar_task_protos = [
+                ai_service_pb2.SimilarTask(
+                    title=t["title"],
+                    actual_pomodoros=t["actual_pomodoros"],
+                    similarity=t["similarity"],
                 )
-            else:
-                # No RAG data — call LLM for intelligent estimation
-                llm_estimate, llm_reasoning, llm_plan = await estimate_with_llm(
-                    request.task_title, request.task_description or ""
-                )
-                return ai_service_pb2.EstimateTimeResponse(
-                    estimated_pomodoros=llm_estimate,
-                    reasoning=llm_reasoning,
-                    similar_tasks=[],
-                    confidence="medium",
-                    focus_plan=make_focus_plan_proto(llm_plan),
-                )
+                for t in own_similar[:3]
+            ]
+
+            return ai_service_pb2.EstimateTimeResponse(
+                estimated_pomodoros=final_estimate,
+                reasoning=final_reasoning,
+                similar_tasks=similar_task_protos,
+                confidence=confidence_label,
+                focus_plan=make_focus_plan_proto(final_plan),
+            )
 
         except Exception as e:
             logger.error(f"❌ EstimateTime error: {e}")
