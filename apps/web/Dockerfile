@@ -10,7 +10,6 @@ COPY packages/database/package.json ./packages/database/
 COPY packages/database/prisma ./packages/database/prisma
 COPY packages/database/tsconfig.json ./packages/database/
 COPY packages/database/src ./packages/database/src
-COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/eslint-config ./packages/eslint-config
 RUN pnpm install --frozen-lockfile
