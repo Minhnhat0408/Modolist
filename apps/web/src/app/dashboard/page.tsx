@@ -135,17 +135,24 @@ export default function DashboardPage() {
   };
 
   const handleTaskSubmit = async (data: Partial<Task>) => {
-    try {
-      if (editingTask) {
-        await api.patch(`/tasks/${editingTask.id}`, data);
-      } else {
+    if (editingTask) {
+      const previousTasks = [...tasks];
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === editingTask.id ? { ...task, ...data } : task,
+        ),
+      );
+      api.patch(`/tasks/${editingTask.id}`, data).catch((error) => {
+        console.error("Error updating task:", error);
+        setTasks(previousTasks);
+      });
+    } else {
+      try {
         const newTask = await api.post<Task>("/tasks", data);
-        console.log(newTask);
         setTasks((prev) => [...prev, newTask as KanbanTask]);
+      } catch (error) {
+        console.error("Error creating task:", error);
       }
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error submitting task:", error);
     }
   };
 

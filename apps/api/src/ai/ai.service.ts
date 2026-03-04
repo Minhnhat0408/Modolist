@@ -1,44 +1,12 @@
 import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import { ClientGrpc } from "@nestjs/microservices";
-import { firstValueFrom, Observable, timeout, catchError, of } from "rxjs";
+import { firstValueFrom, timeout, catchError, of } from "rxjs";
 import { PrismaService } from "../prisma.service";
 import { AI_GRPC_PACKAGE } from "./ai.constants";
 import { TaskStatus, TaskPriority } from "@repo/database";
-import {
-    GenerateTasksResponse,
-    SimilarTask,
-    EstimateTimeResponse,
-    StoreTaskEmbeddingResponse,
-} from "./ai.types";
+import { SimilarTask } from "./ai.types";
+import { AIServiceGrpc } from "./interfaces/grpc.interface";
 
-// ── gRPC request interfaces ────────────────────────────────────────────────────
-interface GenerateTasksRequest {
-    userId: string;
-    goal: string;
-    context: string;
-    maxTasks: number;
-}
-
-interface EstimateTimeRequest {
-    userId: string;
-    taskTitle: string;
-    taskDescription: string;
-}
-
-interface StoreTaskEmbeddingRequest {
-    taskId: string;
-    userId: string;
-    title: string;
-    description: string;
-}
-
-interface AIServiceGrpc {
-    generateTasks(req: GenerateTasksRequest): Observable<GenerateTasksResponse>;
-    estimateTime(req: EstimateTimeRequest): Observable<EstimateTimeResponse>;
-    storeTaskEmbedding(req: StoreTaskEmbeddingRequest): Observable<StoreTaskEmbeddingResponse>;
-}
-
-// ── Service ─────────────────────────────────────────────────────────────────────
 @Injectable()
 export class AIService implements OnModuleInit {
     private readonly logger = new Logger(AIService.name);

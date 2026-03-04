@@ -3,7 +3,7 @@ Tests for ai-service main.py
 Coverage target: >80%
 
 Run with:
-    pytest test_main.py -v --cov=main --cov-report=term-missing
+    pytest test_main.py -v
 """
 
 import json
@@ -92,6 +92,11 @@ pb2 = _stub_module(
 
 # Now import main (all side effects are stubbed)
 import main  # noqa: E402
+import estimation
+import database
+import rag
+import servicer
+import task_generator
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -100,20 +105,20 @@ import main  # noqa: E402
 class TestEstimateFromSimilar:
 
     def test_returns_none_when_empty(self):
-        est, reason, conf = main.estimate_from_similar([])
+        est, reason, conf = rag.estimate_from_similar([])
         assert est is None
         assert reason is None
         assert conf == "none"
 
     def test_returns_none_when_no_task_above_threshold(self):
         tasks = [{"similarity": 0.3, "actual_pomodoros": 3, "title": "T", "is_own": True}]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est is None
         assert conf == "none"
 
     def test_single_relevant_own_task(self):
         tasks = [{"similarity": 0.8, "actual_pomodoros": 4, "title": "Write tests", "is_own": True}]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est == 4
         assert "Write tests" in reason
         assert conf == "medium"  # only 1 task → medium
@@ -124,7 +129,7 @@ class TestEstimateFromSimilar:
             {"similarity": 0.8, "actual_pomodoros": 5, "title": "B", "is_own": True},
             {"similarity": 0.7, "actual_pomodoros": 4, "title": "C", "is_own": True},
         ]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est >= 1
         assert conf == "high"
 
@@ -134,7 +139,7 @@ class TestEstimateFromSimilar:
             {"similarity": 0.5, "actual_pomodoros": 2, "title": "X", "is_own": True},
             {"similarity": 0.5, "actual_pomodoros": 2, "title": "Y", "is_own": True},
         ]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est == 2
 
     def test_other_user_tasks_mentioned_in_reason(self):
@@ -142,7 +147,7 @@ class TestEstimateFromSimilar:
             {"similarity": 0.9, "actual_pomodoros": 3, "title": "Own task", "is_own": True},
             {"similarity": 0.8, "actual_pomodoros": 4, "title": "Other task", "is_own": False},
         ]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est is not None
         assert "người dùng khác" in reason or "cộng đồng" in reason or "kết hợp" in reason.lower()
 
@@ -150,13 +155,13 @@ class TestEstimateFromSimilar:
         tasks = [
             {"similarity": 0.9, "actual_pomodoros": 3, "title": "Community", "is_own": False},
         ]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est is not None
         assert "cộng đồng" in reason
 
     def test_minimum_estimate_is_1(self):
         tasks = [{"similarity": 0.9, "actual_pomodoros": 0, "title": "Z", "is_own": True}]
-        est, reason, conf = main.estimate_from_similar(tasks)
+        est, reason, conf = rag.estimate_from_similar(tasks)
         assert est >= 1
 
 
@@ -166,27 +171,27 @@ class TestEstimateFromSimilar:
 class TestBuildFocusPlan:
 
     def test_single_pomodoro_returns_quick25(self):
-        plan = main.build_focus_plan(1)
+        plan = estimation.build_focus_plan(1)
         assert plan["session_type"] == "QUICK_25"
         assert plan["sessions"] == 1
 
     def test_multiple_pomodoros_returns_standard(self):
-        plan = main.build_focus_plan(3)
+        plan = estimation.build_focus_plan(3)
         assert plan["session_type"] == "STANDARD"
         assert plan["sessions"] == 3
 
     def test_total_minutes_includes_breaks(self):
         # 3 sessions × 25 min + 2 breaks × 5 min = 85 min
-        plan = main.build_focus_plan(3)
+        plan = estimation.build_focus_plan(3)
         assert plan["total_minutes"] == 3 * 25 + (3 - 1) * 5
 
     def test_zero_returns_quick25(self):
         # Edge case: 0 → clamped to 1 → QUICK_25
-        plan = main.build_focus_plan(0)
+        plan = estimation.build_focus_plan(0)
         assert plan["session_type"] == "QUICK_25"
 
     def test_large_pomodoros(self):
-        plan = main.build_focus_plan(8)
+        plan = estimation.build_focus_plan(8)
         assert plan["session_type"] == "STANDARD"
         assert plan["sessions"] == 8
 
@@ -198,36 +203,36 @@ class TestMakeFocusPlanProto:
 
     def test_quick5_label(self):
         plan = {"session_type": "QUICK_5", "sessions": 1, "total_minutes": 5}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert proto.label == "⚡ Quick 5 phút"
         assert proto.session_type == "QUICK_5"
 
     def test_quick25_label(self):
         plan = {"session_type": "QUICK_25", "sessions": 1, "total_minutes": 25}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert proto.label == "⚡ Quick 25 phút"
 
     def test_standard_single_pomodoro_label(self):
         plan = {"session_type": "STANDARD", "sessions": 1, "total_minutes": 25}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert "🍅" in proto.label
         assert "Pomodoro" in proto.label
 
     def test_standard_multi_pomodoro_label(self):
         plan = {"session_type": "STANDARD", "sessions": 3, "total_minutes": 85}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert "🍅" in proto.label
         assert "Pomodoros" in proto.label
         assert "1h" in proto.label  # 85 min = 1h25
 
     def test_standard_exact_hours_label(self):
         plan = {"session_type": "STANDARD", "sessions": 4, "total_minutes": 120}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert "2h00" in proto.label
 
     def test_total_minutes_preserved(self):
         plan = {"session_type": "STANDARD", "sessions": 2, "total_minutes": 55}
-        proto = main.make_focus_plan_proto(plan)
+        proto = estimation.make_focus_plan_proto(plan)
         assert proto.total_minutes == 55
         assert proto.sessions == 2
 
@@ -248,8 +253,8 @@ class TestGetEmbedding:
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch("main.httpx.AsyncClient", return_value=mock_client):
-            result = await main.get_embedding("test text")
+        with patch("database.httpx.AsyncClient", return_value=mock_client):
+            result = await database.get_embedding("test text")
         assert result == [0.1, 0.2, 0.3]
 
     @pytest.mark.asyncio
@@ -259,8 +264,8 @@ class TestGetEmbedding:
         mock_client.__aexit__ = AsyncMock(return_value=None)
         mock_client.post = AsyncMock(side_effect=Exception("Connection error"))
 
-        with patch("main.httpx.AsyncClient", return_value=mock_client):
-            result = await main.get_embedding("test text")
+        with patch("database.httpx.AsyncClient", return_value=mock_client):
+            result = await database.get_embedding("test text")
         assert result is None
 
 
@@ -271,8 +276,8 @@ class TestFindSimilarTasks:
 
     @pytest.mark.asyncio
     async def test_returns_empty_when_embedding_fails(self):
-        with patch("main.get_embedding", return_value=None):
-            result = await main.find_similar_tasks("u1", "some text")
+        with patch("rag.get_embedding", return_value=None):
+            result = await rag.find_similar_tasks("u1", "some text")
         assert result == []
 
     @pytest.mark.asyncio
@@ -285,9 +290,9 @@ class TestFindSimilarTasks:
             {"id": "t2", "title": "Task B", "completedPomodoros": 2, "userId": "u2", "similarity": 0.8},
         ])
 
-        with patch("main.get_embedding", return_value=embedding), \
-             patch("main.get_db_pool", return_value=mock_pool):
-            result = await main.find_similar_tasks("u1", "some text")
+        with patch("rag.get_embedding", return_value=embedding), \
+             patch("rag.get_db_pool", return_value=mock_pool):
+            result = await rag.find_similar_tasks("u1", "some text")
 
         assert len(result) == 2
         # Own user gets 1.0 weight, other user gets 0.7
@@ -307,9 +312,9 @@ class TestFindSimilarTasks:
             {"id": "t2", "title": "High other", "completedPomodoros": 4, "userId": "u2", "similarity": 0.9},
         ])
 
-        with patch("main.get_embedding", return_value=embedding), \
-             patch("main.get_db_pool", return_value=mock_pool):
-            result = await main.find_similar_tasks("u1", "text")
+        with patch("rag.get_embedding", return_value=embedding), \
+             patch("rag.get_db_pool", return_value=mock_pool):
+            result = await rag.find_similar_tasks("u1", "text")
 
         # 0.5 * 1.0 = 0.5 (own)  vs  0.9 * 0.7 = 0.63 (other) → other goes first
         assert result[0]["title"] == "High other"
@@ -333,9 +338,9 @@ class TestEstimateWithLlm:
             "total_minutes": 75,
             "reasoning": "Task medium complexity",
         })
-        main.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
 
-        est, reason, plan = await main.estimate_with_llm("Write unit tests", "for a service")
+        est, reason, plan = await estimation.estimate_with_llm("Write unit tests", "for a service")
         assert est == 3
         assert "Task medium complexity" in reason
         assert plan["session_type"] == "STANDARD"
@@ -348,9 +353,9 @@ class TestEstimateWithLlm:
             "total_minutes": 5,
             "reasoning": "Quick fix",
         })
-        main.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
 
-        est, reason, plan = await main.estimate_with_llm("Fix typo")
+        est, reason, plan = await estimation.estimate_with_llm("Fix typo")
         assert plan["sessions"] == 1
         assert est == 1
 
@@ -362,24 +367,24 @@ class TestEstimateWithLlm:
             "total_minutes": 55,
             "reasoning": "Medium task",
         }) + "\n```"
-        main.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
 
-        est, reason, plan = await main.estimate_with_llm("Task with fence")
+        est, reason, plan = await estimation.estimate_with_llm("Task with fence")
         assert plan["sessions"] == 2
 
     @pytest.mark.asyncio
     async def test_returns_default_on_llm_error(self):
-        main.client.models.generate_content = MagicMock(side_effect=Exception("API down"))
+        estimation.client.models.generate_content = MagicMock(side_effect=Exception("API down"))
 
-        est, reason, plan = await main.estimate_with_llm("Any task")
+        est, reason, plan = await estimation.estimate_with_llm("Any task")
         assert est == 3
         assert plan["session_type"] == "STANDARD"
 
     @pytest.mark.asyncio
     async def test_returns_default_on_invalid_json(self):
-        main.client.models.generate_content = MagicMock(return_value=self._make_response("not valid json {{"))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response("not valid json {{"))
 
-        est, reason, plan = await main.estimate_with_llm("Task")
+        est, reason, plan = await estimation.estimate_with_llm("Task")
         assert est == 3
 
     @pytest.mark.asyncio
@@ -390,9 +395,9 @@ class TestEstimateWithLlm:
             "total_minutes": 2500,
             "reasoning": "Huge task",
         })
-        main.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
 
-        est, reason, plan = await main.estimate_with_llm("Huge project")
+        est, reason, plan = await estimation.estimate_with_llm("Huge project")
         assert est <= 10
         assert plan["sessions"] <= 10
 
@@ -404,9 +409,9 @@ class TestEstimateWithLlm:
             "total_minutes": 50,
             "reasoning": "Unknown type",
         })
-        main.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
+        estimation.client.models.generate_content = MagicMock(return_value=self._make_response(payload))
 
-        est, reason, plan = await main.estimate_with_llm("Task")
+        est, reason, plan = await estimation.estimate_with_llm("Task")
         assert plan["session_type"] == "STANDARD"
 
 
@@ -417,21 +422,21 @@ class TestGetDbPool:
 
     @pytest.mark.asyncio
     async def test_creates_pool_on_first_call(self):
-        main._db_pool = None
+        database._db_pool = None
         mock_pool = AsyncMock()
-        with patch("main.asyncpg.create_pool", return_value=mock_pool):
-            pool = await main.get_db_pool()
+        with patch("database.asyncpg.create_pool", return_value=mock_pool):
+            pool = await database.get_db_pool()
         assert pool is mock_pool
 
     @pytest.mark.asyncio
     async def test_returns_cached_pool_on_second_call(self):
         mock_pool = AsyncMock()
-        main._db_pool = mock_pool
-        with patch("main.asyncpg.create_pool") as mock_create:
-            pool = await main.get_db_pool()
+        database._db_pool = mock_pool
+        with patch("database.asyncpg.create_pool") as mock_create:
+            pool = await database.get_db_pool()
             mock_create.assert_not_called()
         assert pool is mock_pool
-        main._db_pool = None  # cleanup
+        database._db_pool = None  # cleanup
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -439,7 +444,7 @@ class TestGetDbPool:
 # ─────────────────────────────────────────────────────────────────────────────
 class TestEstimateTime:
     def _make_servicer(self):
-        return main.AIServiceServicer()
+        return servicer.AIServiceServicer()
 
     def _make_request(self, user_id="u1", task_title="Do something", task_description=""):
         req = MagicMock()
@@ -456,22 +461,23 @@ class TestEstimateTime:
 
     @pytest.mark.asyncio
     async def test_rag_path_returns_estimate(self):
-        servicer = self._make_servicer()
+        s = self._make_servicer()
         similar_tasks = [
             {"similarity": 0.9, "actual_pomodoros": 4, "title": "T", "is_own": True},
         ]
-        with patch("main.find_similar_tasks", return_value=similar_tasks), \
-             patch("main.estimate_from_similar", return_value=(4, "Based on T", "medium")), \
-             patch("main.build_focus_plan", return_value={"session_type": "STANDARD", "sessions": 4, "total_minutes": 110}):
-            resp = await servicer.EstimateTime(self._make_request(), self._make_context())
+        with patch("servicer.find_similar_tasks", return_value=similar_tasks), \
+             patch("servicer.estimate_from_similar", return_value=(4, "Based on T", "medium")), \
+             patch("servicer.estimate_with_llm", return_value=(3, "LLM", {"session_type": "STANDARD", "sessions": 3, "total_minutes": 75})), \
+             patch("servicer.blend_estimates", return_value=(4, "Based on T", {"session_type": "STANDARD", "sessions": 4, "total_minutes": 110}, "medium")):
+            resp = await s.EstimateTime(self._make_request(), self._make_context())
         assert resp.estimated_pomodoros == 4
 
     @pytest.mark.asyncio
     async def test_llm_fallback_when_no_rag_data(self):
         servicer = self._make_servicer()
-        with patch("main.find_similar_tasks", return_value=[]), \
-             patch("main.estimate_from_similar", return_value=(None, None, "none")), \
-             patch("main.estimate_with_llm", return_value=(3, "🤖 AI estimate", {"session_type": "STANDARD", "sessions": 3, "total_minutes": 75})):
+        with patch("servicer.find_similar_tasks", return_value=[]), \
+             patch("servicer.estimate_from_similar", return_value=(None, None, "none")), \
+             patch("servicer.estimate_with_llm", return_value=(3, "🤖 AI estimate", {"session_type": "STANDARD", "sessions": 3, "total_minutes": 75})):
             resp = await servicer.EstimateTime(self._make_request(), self._make_context())
         assert resp.estimated_pomodoros == 3
         assert resp.confidence == "medium"
@@ -480,7 +486,7 @@ class TestEstimateTime:
     async def test_returns_default_on_exception(self):
         servicer = self._make_servicer()
         ctx = self._make_context()
-        with patch("main.find_similar_tasks", side_effect=Exception("DB error")):
+        with patch("servicer.find_similar_tasks", side_effect=Exception("DB error")):
             resp = await servicer.EstimateTime(self._make_request(), ctx)
         assert resp.estimated_pomodoros == 3
         ctx.set_code.assert_called_once()
@@ -491,7 +497,7 @@ class TestEstimateTime:
 # ─────────────────────────────────────────────────────────────────────────────
 class TestStoreTaskEmbedding:
     def _make_servicer(self):
-        return main.AIServiceServicer()
+        return servicer.AIServiceServicer()
 
     def _make_request(self):
         req = MagicMock()
@@ -513,8 +519,8 @@ class TestStoreTaskEmbedding:
         mock_pool = AsyncMock()
         mock_pool.execute = AsyncMock()
 
-        with patch("main.get_embedding", return_value=[0.1, 0.2]), \
-             patch("main.get_db_pool", return_value=mock_pool):
+        with patch("servicer.get_embedding", return_value=[0.1, 0.2]), \
+             patch("servicer.get_db_pool", return_value=mock_pool):
             resp = await servicer.StoreTaskEmbedding(self._make_request(), self._make_context())
         assert resp.success is True
         mock_pool.execute.assert_called_once()
@@ -522,7 +528,7 @@ class TestStoreTaskEmbedding:
     @pytest.mark.asyncio
     async def test_returns_false_when_embedding_unavailable(self):
         servicer = self._make_servicer()
-        with patch("main.get_embedding", return_value=None):
+        with patch("servicer.get_embedding", return_value=None):
             resp = await servicer.StoreTaskEmbedding(self._make_request(), self._make_context())
         assert resp.success is False
 
@@ -530,8 +536,8 @@ class TestStoreTaskEmbedding:
     async def test_returns_false_on_db_error(self):
         servicer = self._make_servicer()
         ctx = self._make_context()
-        with patch("main.get_embedding", return_value=[0.1]), \
-             patch("main.get_db_pool", side_effect=Exception("DB down")):
+        with patch("servicer.get_embedding", return_value=[0.1]), \
+             patch("servicer.get_db_pool", side_effect=Exception("DB down")):
             resp = await servicer.StoreTaskEmbedding(self._make_request(), ctx)
         assert resp.success is False
         ctx.set_code.assert_called_once()
@@ -542,7 +548,7 @@ class TestStoreTaskEmbedding:
 # ─────────────────────────────────────────────────────────────────────────────
 class TestGenerateTasks:
     def _make_servicer(self):
-        return main.AIServiceServicer()
+        return servicer.AIServiceServicer()
 
     def _make_request(self, goal="Build an app", context="", max_tasks=3):
         req = MagicMock()
@@ -580,10 +586,10 @@ class TestGenerateTasks:
 
         rag_tasks = [{"similarity": 0.9, "actual_pomodoros": 2, "title": "DB setup", "is_own": True}]
 
-        with patch("main.generate_tasks_with_gemini", return_value=gemini_result), \
-             patch("main.find_similar_tasks", return_value=rag_tasks), \
-             patch("main.estimate_from_similar", return_value=(2, "Based on history", "medium")), \
-             patch("main.build_focus_plan", return_value={"session_type": "STANDARD", "sessions": 2, "total_minutes": 55}):
+        with patch("servicer.generate_tasks_with_gemini", return_value=gemini_result), \
+             patch("task_generator.find_similar_tasks", return_value=rag_tasks), \
+             patch("task_generator.estimate_from_similar", return_value=(2, "Based on history", "medium")), \
+             patch("task_generator.blend_estimates", return_value=(2, "Based on history", {"session_type": "STANDARD", "sessions": 2, "total_minutes": 55}, "medium")):
             resp = await servicer.GenerateTasks(self._make_request(), self._make_context())
 
         assert len(resp.tasks) == 1
@@ -610,9 +616,9 @@ class TestGenerateTasks:
             "summary": "Docs task",
         }
 
-        with patch("main.generate_tasks_with_gemini", return_value=gemini_result), \
-             patch("main.find_similar_tasks", return_value=[]), \
-             patch("main.estimate_from_similar", return_value=(None, None, "none")):
+        with patch("servicer.generate_tasks_with_gemini", return_value=gemini_result), \
+             patch("servicer.find_similar_tasks", return_value=[]), \
+             patch("servicer.estimate_from_similar", return_value=(None, None, "none")):
             resp = await servicer.GenerateTasks(self._make_request(), self._make_context())
 
         assert len(resp.tasks) == 1
@@ -622,9 +628,10 @@ class TestGenerateTasks:
     async def test_caps_max_tasks_at_7(self):
         servicer = self._make_servicer()
 
-        with patch("main.generate_tasks_with_gemini", return_value={"tasks": [], "summary": ""}) as mock_gen, \
-             patch("main.find_similar_tasks", return_value=[]):
-            await servicer.GenerateTasks(self._make_request(max_tasks=20), self._make_context())
+        s = self._make_servicer()
+        with patch("servicer.generate_tasks_with_gemini", return_value={"tasks": [], "summary": ""}) as mock_gen, \
+             patch("servicer.find_similar_tasks", return_value=[]):
+            await s.GenerateTasks(self._make_request(max_tasks=20), self._make_context())
             call_kwargs = mock_gen.call_args
             assert call_kwargs[1]["max_tasks"] <= 7 or call_kwargs[0][2] <= 7
 
@@ -632,16 +639,17 @@ class TestGenerateTasks:
     async def test_uses_default_max_tasks_when_0(self):
         servicer = self._make_servicer()
 
-        with patch("main.generate_tasks_with_gemini", return_value={"tasks": [], "summary": ""}) as mock_gen, \
-             patch("main.find_similar_tasks", return_value=[]):
-            await servicer.GenerateTasks(self._make_request(max_tasks=0), self._make_context())
+        s = self._make_servicer()
+        with patch("servicer.generate_tasks_with_gemini", return_value={"tasks": [], "summary": ""}) as mock_gen, \
+             patch("servicer.find_similar_tasks", return_value=[]):
+            await s.GenerateTasks(self._make_request(max_tasks=0), self._make_context())
             mock_gen.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_json_decode_error(self):
         servicer = self._make_servicer()
         ctx = self._make_context()
-        with patch("main.generate_tasks_with_gemini", side_effect=json.JSONDecodeError("bad json", "", 0)):
+        with patch("servicer.generate_tasks_with_gemini", side_effect=json.JSONDecodeError("bad json", "", 0)):
             resp = await servicer.GenerateTasks(self._make_request(), ctx)
         assert len(resp.tasks) == 0
         ctx.set_code.assert_called_once()
@@ -650,7 +658,7 @@ class TestGenerateTasks:
     async def test_returns_empty_on_general_exception(self):
         servicer = self._make_servicer()
         ctx = self._make_context()
-        with patch("main.generate_tasks_with_gemini", side_effect=RuntimeError("Network error")):
+        with patch("servicer.generate_tasks_with_gemini", side_effect=RuntimeError("Network error")):
             resp = await servicer.GenerateTasks(self._make_request(), ctx)
         assert len(resp.tasks) == 0
         ctx.set_code.assert_called_once()

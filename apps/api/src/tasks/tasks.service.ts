@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject } from "@nestjs/common";
+import { Injectable, NotFoundException, Inject, Optional, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma.service";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TaskStatus } from "@repo/database";
+import { AIService } from "../ai/ai.service";
 import {
     FOCUS_SESSION_EVENTS,
     FocusSessionPausedEvent,
@@ -14,9 +15,12 @@ import {
 
 @Injectable()
 export class TasksService {
+    private readonly logger = new Logger(TasksService.name);
+
     constructor(
         private prisma: PrismaService,
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
+        @Optional() private readonly aiService: AIService,
     ) {}
 
     public async invalidateUserCache(userId: string) {
@@ -125,13 +129,25 @@ export class TasksService {
         });
 
         await this.invalidateUserCache(userId);
+
+        // Store embedding in background so RAG has data for future estimates
+        if (this.aiService) {
+            this.aiService
+                .storeEmbedding(task.id, userId, task.title, task.description ?? "")
+                .catch((err: unknown) =>
+                    this.logger.warn(
+                        `⚠️ Embedding store failed for task ${task.id}: ${(err as Error).message}`,
+                    ),
+                );
+        }
+
         return task;
     }
 
     // Cập nhật task
     async update(id: string, userId: string, updateTaskDto: UpdateTaskDto) {
-        // Kiểm tra task tồn tại
-        await this.findOne(id, userId);
+        // Kiểm tra task tồn tại — throws NotFoundException nếu không tìm thấy
+        const existing = await this.findOne(id, userId);
 
         const updateData: Record<string, any> = { ...updateTaskDto };
 
@@ -153,6 +169,24 @@ export class TasksService {
         });
 
         await this.invalidateUserCache(userId);
+
+        // Re-index embedding only when title or description actually changed
+        const titleChanged =
+            updateTaskDto.title !== undefined && updateTaskDto.title !== existing.title;
+        const descChanged =
+            updateTaskDto.description !== undefined &&
+            (updateTaskDto.description ?? "") !== (existing.description ?? "");
+
+        if (this.aiService && (titleChanged || descChanged)) {
+            this.aiService
+                .storeEmbedding(task.id, userId, task.title, task.description ?? "")
+                .catch((err: unknown) =>
+                    this.logger.warn(
+                        `⚠️ Re-embedding failed for task ${task.id}: ${(err as Error).message}`,
+                    ),
+                );
+        }
+
         return task;
     }
 
