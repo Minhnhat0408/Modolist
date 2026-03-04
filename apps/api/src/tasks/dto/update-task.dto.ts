@@ -54,4 +54,23 @@ export class UpdateTaskDto {
     @IsOptional()
     @IsBoolean()
     isArchived?: boolean;
+
+    @IsOptional()
+    @IsString()
+    suggestedSessionType?: string;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    suggestedSessions?: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    suggestedTotalMinutes?: number;
+
+    @IsOptional()
+    @IsInt()
+    @Min(0)
+    estimatedPomodoros?: number;
 }
