@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
   Play,
   Pause,
@@ -40,8 +41,10 @@ export function FocusTimerModal() {
   } = useFocusStore();
 
   const { openWorld } = useFocusWorldStore();
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { play, stop } = useSoundEffects();
+ 
+  // Track previous status to detect transitions
+  const prevStatusRef = useRef<string | null>(null);
 
   // Timer logic: setInterval + visibilitychange for tab-switch resilience.
   // tick() uses Date-based targetEndTime so the countdown auto-corrects
@@ -89,46 +92,50 @@ export function FocusTimerModal() {
     }
   }, [activeTask]);
 
-  // Handle completion - play sound and notify
   useEffect(() => {
-    if (status === "completed" || status === "all_completed") {
-      // Play completion sound
-      if (audioRef.current) {
-        audioRef.current
-          .play()
-          .catch((err) => console.error("Audio play failed:", err));
+    const prev = prevStatusRef.current;
+
+    if (prev !== status) {
+      if (status === "focusing") {
+        play("focus-start");
       }
 
-      // Show notification
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Session Completed!", {
-          body: `Great job completing your ${mode === "WORK" ? "focus" : "break"} session!`,
-          icon: "/favicon.ico",
-        });
+      if (status === "break") {
+        play("session-end");
       }
 
-      // Auto-save session to API
-      if (mode === "WORK" && activeTask) {
-        handleSaveSession();
+      if (status === "completed" || status === "all_completed") {
+        play("session-complete");
+
+        if (
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          new Notification("Session Completed!", {
+            body: `Great job! Your focus ${status === "all_completed" ? "plan" : "session"} is done.`,
+            icon: "/favicon.ico",
+          });
+        }
+
+        // Auto-save session to API
+        if (mode === "WORK" && activeTask) {
+          handleSaveSession();
+        }
       }
+
+      prevStatusRef.current = status;
     }
-  }, [status, mode, activeTask, handleSaveSession]);
 
-  // Request notification permission on mount
+    return () => {
+        stop();
+    };
+
+  }, [status, mode, activeTask, handleSaveSession, play, stop]);
+
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
-
-    // Initialize audio (disabled - file not found)
-    // audioRef.current = new Audio('/sounds/timer-complete.mp3');
-    // audioRef.current.load();
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current = null;
-      }
-    };
   }, []);
 
   const formatTime = (seconds: number): string => {

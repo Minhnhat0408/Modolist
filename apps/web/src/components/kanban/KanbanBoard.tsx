@@ -24,6 +24,7 @@ import { DeleteZone } from "./DeleteZone";
 import { KanbanTask, KANBAN_COLUMNS, COLUMN_ORDER } from "@/types/kanban";
 import { TaskStatus } from "@/types/database";
 import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -62,6 +63,8 @@ export function KanbanBoard({
   const [focusDialogOpen, setFocusDialogOpen] = useState(false);
   const [selectedTaskForFocus, setSelectedTaskForFocus] =
     useState<KanbanTask | null>(null);
+
+  const { play } = useSoundEffects();
 
   // ✅ Cấu hình cảm biến (Sensor)
   const sensors = useSensors(
@@ -133,6 +136,7 @@ export function KanbanBoard({
     if (task) {
       setActiveTask(task);
       setShowDeleteZone(true);
+      play("task-click-drag");
     }
   };
 
@@ -154,6 +158,8 @@ export function KanbanBoard({
     setShowDeleteZone(false);
 
     if (!over) return;
+
+    play("task-drop");
 
     const taskId = active.id as string;
     // ✅ Dùng initialTasks để lấy status gốc (chưa bị handleDragOver thay đổi)
