@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Play, Clock, Zap } from "lucide-react";
 import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface TaskCardProps {
   task: KanbanTask;
@@ -33,6 +34,8 @@ export function TaskCard({
   } = useSortable({
     id: task.id,
   });
+
+  const { play } = useSoundEffects();
 
   const {
     activeTask,
@@ -108,6 +111,7 @@ export function TaskCard({
 
   const handleClick = () => {
     if (onEdit && !isDragging) {
+      play("task-click-drag");
       onEdit(task);
     }
   };

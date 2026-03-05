@@ -94,4 +94,8 @@ jobs:
       - name: Test — Python AI Service
         run: |
           cd apps/ai-service
-          pytest test_main.py --cov=main --cov-fail-under=80 -q
+          pytest test_main.py \
+            --cov=config --cov=database --cov=rag \
+            --cov=estimation --cov=task_generator \
+            --cov=servicer --cov=main \
+            --cov-fail-under=80 -q

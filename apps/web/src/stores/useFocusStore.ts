@@ -380,6 +380,18 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           });
       }
     } else {
+      // LONG_BREAK ends after all sessions completed → go back to completion modal
+      if (mode === "LONG_BREAK" || completedSessions >= totalSessions) {
+        set({
+          status: "all_completed",
+          timeLeft: 0,
+          showCompletionModal: true,
+          targetEndTime: null,
+        });
+        return;
+      }
+
+      // SHORT_BREAK ends → start next work session
       const nextSession = currentSession + 1;
       const activeTask = get().activeTask;
 
@@ -458,11 +470,22 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
   // Skip to next phase
   skipToNext: () => {
-    const { mode, focusType, currentSession, activeTask } = get();
+    const { mode, focusType, currentSession, completedSessions, totalSessions, activeTask } = get();
 
     if (focusType === "SHORT") return;
 
     if (mode !== "WORK") {
+      // Skipping a LONG_BREAK (taken after all sessions done) → back to completion modal
+      if (mode === "LONG_BREAK" || completedSessions >= totalSessions) {
+        set({
+          status: "all_completed",
+          timeLeft: 0,
+          showCompletionModal: true,
+          targetEndTime: null,
+        });
+        return;
+      }
+
       const nextSession = currentSession + 1;
 
       set({
