@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, Inject, Optional, Logger } from "@nestjs
 import { OnEvent } from "@nestjs/event-emitter";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TaskStatus } from "@repo/database";

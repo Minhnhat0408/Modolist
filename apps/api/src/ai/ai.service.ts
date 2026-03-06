@@ -1,11 +1,11 @@
 import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import { ClientGrpc } from "@nestjs/microservices";
 import { firstValueFrom, timeout, catchError, of } from "rxjs";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { AI_GRPC_PACKAGE } from "./ai.constants";
 import { TaskStatus, TaskPriority } from "@repo/database";
 import { SimilarTask } from "./ai.types";
-import { AIServiceGrpc } from "./interfaces/grpc.interface";
+import { AIServiceGrpc } from "./ai.types";
 
 @Injectable()
 export class AIService implements OnModuleInit {

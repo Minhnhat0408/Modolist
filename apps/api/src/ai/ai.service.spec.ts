@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { of, throwError } from "rxjs";
 import { AIService } from "./ai.service";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { AI_GRPC_PACKAGE } from "./ai.constants";
 import { TaskStatus, TaskPriority } from "@repo/database";
 import type {

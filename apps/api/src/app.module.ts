@@ -5,7 +5,7 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
 import { BullModule } from "@nestjs/bullmq";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { PrismaService } from "./prisma.service";
+import { PrismaModule } from "./prisma/prisma.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { AuthModule } from "./auth/auth.module";
 import { FocusSessionsModule } from "./focus-sessions/focus-sessions.module";
@@ -46,8 +46,9 @@ import { AIModule } from "./ai/ai.module";
         FocusWorldModule,
         CronModule,
         AIModule,
+        PrismaModule,
     ],
     controllers: [AppController],
-    providers: [AppService, PrismaService],
+    providers: [AppService],
 })
 export class AppModule {}

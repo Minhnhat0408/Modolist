@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { FocusSessionStatus } from "@repo/database";
 import { FocusWorldService } from "./focus-world.service";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 const mockPrisma = {
     focusSession: {

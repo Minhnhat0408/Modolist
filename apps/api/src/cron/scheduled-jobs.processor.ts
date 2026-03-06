@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { FocusSessionStatus } from "@repo/database";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { SCHEDULED_QUEUE, SCHEDULED_JOBS } from "./scheduled-jobs.constants";
 
 @Processor(SCHEDULED_QUEUE)

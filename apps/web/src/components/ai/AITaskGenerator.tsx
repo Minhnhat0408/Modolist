@@ -399,7 +399,7 @@ export function AITaskGenerator({
                           </span>
                           {task.reasoning && (
                             <span
-                              className="flex items-center gap-1 max-w-[300px] truncate"
+                              className="flex items-center gap-1 max-w-75 truncate"
                               title={task.reasoning}
                             >
                               <Brain className="w-3 h-3 shrink-0" />

@@ -1,5 +1,4 @@
-/** gRPC interfaces matching ai_service.proto — used by both service and controller. */
-
+import { Observable } from "rxjs";
 export interface FocusPlan {
     sessionType: string; // "QUICK_5" | "QUICK_25" | "STANDARD"
     sessions: number; // 1 for quick, N for standard
@@ -39,4 +38,30 @@ export interface EstimateTimeResponse {
 
 export interface StoreTaskEmbeddingResponse {
     success: boolean;
+}
+
+export interface GenerateTasksRequest {
+    userId: string;
+    goal: string;
+    context: string;
+    maxTasks: number;
+}
+
+export interface EstimateTimeRequest {
+    userId: string;
+    taskTitle: string;
+    taskDescription: string;
+}
+
+export interface StoreTaskEmbeddingRequest {
+    taskId: string;
+    userId: string;
+    title: string;
+    description: string;
+}
+
+export interface AIServiceGrpc {
+    generateTasks(req: GenerateTasksRequest): Observable<GenerateTasksResponse>;
+    estimateTime(req: EstimateTimeRequest): Observable<EstimateTimeResponse>;
+    storeTaskEmbedding(req: StoreTaskEmbeddingRequest): Observable<StoreTaskEmbeddingResponse>;
 }
