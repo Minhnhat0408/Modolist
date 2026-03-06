@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { FocusSessionStatus } from "@repo/database";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { CreateFocusSessionDto } from "./dto/create-focus-session.dto";
 import { UpdateFocusSessionDto } from "./dto/update-focus-session.dto";
 import {

@@ -4,7 +4,6 @@ import { ClientsModule, Transport } from "@nestjs/microservices";
 import { join } from "path";
 import { AIService } from "./ai.service";
 import { AIController } from "./ai.controller";
-import { PrismaService } from "../prisma.service";
 import { AI_GRPC_PACKAGE } from "./ai.constants";
 
 @Module({
@@ -32,7 +31,7 @@ import { AI_GRPC_PACKAGE } from "./ai.constants";
         ]),
     ],
     controllers: [AIController],
-    providers: [AIService, PrismaService],
+    providers: [AIService],
     exports: [AIService],
 })
 export class AIModule {}

@@ -27,13 +27,13 @@ export function CompletionModal() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.8, opacity: 0, y: 20 }}
-          className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl border border-gray-700"
+          className="bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl border border-gray-700"
         >
           {/* Celebration Header */}
           <div className="text-center mb-8">
@@ -43,7 +43,7 @@ export function CompletionModal() {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="inline-block mb-4"
             >
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-green-500 to-emerald-600 flex items-center justify-center">
                 <PartyPopper className="w-10 h-10 text-white" />
               </div>
             </motion.div>
@@ -82,7 +82,7 @@ export function CompletionModal() {
             {!isShortFocus && isAllCompleted && (
               <Button
                 onClick={addOneSession}
-                className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold shadow-lg group relative overflow-hidden"
+                className="w-full h-14 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold shadow-lg group relative overflow-hidden"
               >
                 <motion.div
                   className="absolute inset-0 bg-white/20"
@@ -107,7 +107,7 @@ export function CompletionModal() {
             {!isShortFocus && isAllCompleted && (
               <Button
                 onClick={takeLongBreak}
-                className="w-full h-14 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold shadow-lg"
+                className="w-full h-14 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold shadow-lg"
               >
                 <Coffee className="w-5 h-5 mr-2" />
                 Nghỉ Dài (15 phút)
@@ -120,7 +120,7 @@ export function CompletionModal() {
               variant={isShortFocus ? "default" : "outline"}
               className={`w-full h-14 font-semibold ${
                 isShortFocus
-                  ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg"
+                  ? "bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg"
                   : "border-gray-600 hover:bg-gray-800 text-white"
               }`}
             >

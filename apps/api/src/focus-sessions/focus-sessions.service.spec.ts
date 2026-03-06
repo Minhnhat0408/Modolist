@@ -3,7 +3,7 @@ import { NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { FocusSessionStatus } from "@repo/database";
 import { FocusSessionsService } from "./focus-sessions.service";
-import { PrismaService } from "../prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 import { FOCUS_SESSION_EVENTS } from "./events/focus-session.events";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
