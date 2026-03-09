@@ -17,7 +17,9 @@ export default function NotFound() {
           <div className="flex justify-center mb-2">
             <FileQuestion className="h-12 w-12 text-muted-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold">404 - Không tìm thấy</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            404 - Không tìm thấy
+          </CardTitle>
           <CardDescription>
             Trang bạn đang tìm kiếm không tồn tại hoặc đã bị di chuyển.
           </CardDescription>

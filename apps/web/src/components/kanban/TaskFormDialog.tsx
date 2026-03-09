@@ -293,8 +293,8 @@ export function TaskFormDialog({
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        ✨ AI Ước lượng thời gian
+                        <Sparkles className="h-4 w-4 mr-2" />✨ AI Ước lượng
+                        thời gian
                       </>
                     )}
                   </Button>
@@ -319,7 +319,8 @@ export function TaskFormDialog({
                         <Brain className="h-4 w-4" />
                         Gợi ý từ AI
                         <span className="ml-auto text-xs text-muted-foreground">
-                          Độ tin cậy: {aiSuggestion.confidence === "high" ? (
+                          Độ tin cậy:{" "}
+                          {aiSuggestion.confidence === "high" ? (
                             <span className="text-green-400">Cao</span>
                           ) : aiSuggestion.confidence === "medium" ? (
                             <span className="text-yellow-400">Trung bình</span>

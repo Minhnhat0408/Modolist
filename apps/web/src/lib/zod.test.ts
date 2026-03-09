@@ -11,12 +11,18 @@ describe("signInSchema", () => {
   });
 
   it("accepts password at exactly 8 characters", () => {
-    const result = signInSchema.safeParse({ ...validData, password: "12345678" });
+    const result = signInSchema.safeParse({
+      ...validData,
+      password: "12345678",
+    });
     expect(result.success).toBe(true);
   });
 
   it("accepts password at exactly 32 characters", () => {
-    const result = signInSchema.safeParse({ ...validData, password: "a".repeat(32) });
+    const result = signInSchema.safeParse({
+      ...validData,
+      password: "a".repeat(32),
+    });
     expect(result.success).toBe(true);
   });
 
@@ -27,12 +33,18 @@ describe("signInSchema", () => {
   });
 
   it("rejects invalid email format", () => {
-    const result = signInSchema.safeParse({ ...validData, email: "not-an-email" });
+    const result = signInSchema.safeParse({
+      ...validData,
+      email: "not-an-email",
+    });
     expect(result.success).toBe(false);
   });
 
   it("rejects missing @ in email", () => {
-    const result = signInSchema.safeParse({ ...validData, email: "userdomain.com" });
+    const result = signInSchema.safeParse({
+      ...validData,
+      email: "userdomain.com",
+    });
     expect(result.success).toBe(false);
   });
 
@@ -48,7 +60,10 @@ describe("signInSchema", () => {
   });
 
   it("rejects password longer than 32 characters", () => {
-    const result = signInSchema.safeParse({ ...validData, password: "a".repeat(33) });
+    const result = signInSchema.safeParse({
+      ...validData,
+      password: "a".repeat(33),
+    });
     expect(result.success).toBe(false);
   });
 

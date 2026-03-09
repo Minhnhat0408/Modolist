@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@repo/database"; 
+import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -74,7 +74,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (token?.id) {
         session.user.id = token.id as string;
-        session.user.image = token.picture as string; 
+        session.user.image = token.picture as string;
       }
       return session;
     },

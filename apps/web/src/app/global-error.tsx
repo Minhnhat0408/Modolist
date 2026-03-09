@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
-
 export default function GlobalError({
   error,
   reset,
@@ -46,10 +45,22 @@ export default function GlobalError({
               color="#ef4444"
               style={{ margin: "0 auto 1rem" }}
             />
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+            <h1
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                marginBottom: "0.5rem",
+              }}
+            >
               Ứng dụng gặp sự cố
             </h1>
-            <p style={{ color: "#6b7280", marginBottom: "1.5rem", fontSize: "0.95rem" }}>
+            <p
+              style={{
+                color: "#6b7280",
+                marginBottom: "1.5rem",
+                fontSize: "0.95rem",
+              }}
+            >
               {error.message ||
                 "Đã có lỗi nghiêm trọng xảy ra. Vui lòng tải lại trang."}
             </p>

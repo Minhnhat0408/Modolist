@@ -59,13 +59,13 @@ export function useSoundEffects(volume = 0.5) {
     [volume],
   );
 
-    const stop = useCallback(() => {
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-            currentAudio = null;
-        }
-    }, []);
+  const stop = useCallback(() => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+  }, []);
 
   return { play, stop };
 }

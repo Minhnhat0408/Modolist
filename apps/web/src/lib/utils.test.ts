@@ -26,7 +26,7 @@ describe("cn", () => {
   });
 
   it("handles conditional (object) syntax", () => {
-    expect(cn({ "font-bold": true, "italic": false })).toBe("font-bold");
+    expect(cn({ "font-bold": true, italic: false })).toBe("font-bold");
   });
 
   it("handles array syntax", () => {

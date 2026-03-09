@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { openPip } from "@/hooks/usePictureInPicture";
 import {
   Play,
   Pause,
@@ -42,7 +43,12 @@ export function FocusTimerModal() {
 
   const { openWorld } = useFocusWorldStore();
   const { play, stop } = useSoundEffects();
- 
+
+  const handleMinimize = async () => {
+    await openPip();
+    toggleMinimize();
+  };
+
   // Track previous status to detect transitions
   const prevStatusRef = useRef<string | null>(null);
 
@@ -107,10 +113,7 @@ export function FocusTimerModal() {
       if (status === "completed" || status === "all_completed") {
         play("session-complete");
 
-        if (
-          "Notification" in window &&
-          Notification.permission === "granted"
-        ) {
+        if ("Notification" in window && Notification.permission === "granted") {
           new Notification("Session Completed!", {
             body: `Great job! Your focus ${status === "all_completed" ? "plan" : "session"} is done.`,
             icon: "/favicon.ico",
@@ -127,9 +130,8 @@ export function FocusTimerModal() {
     }
 
     return () => {
-        stop();
+      stop();
     };
-
   }, [status, mode, activeTask, handleSaveSession, play, stop]);
 
   useEffect(() => {
@@ -175,7 +177,7 @@ export function FocusTimerModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="absolute inset-0 bg-black/80 backdrop-blur-md"
-          onClick={() => toggleMinimize()}
+          onClick={() => handleMinimize()}
         />
 
         {/* Main Timer Content */}
@@ -297,9 +299,9 @@ export function FocusTimerModal() {
             {/* Focus World Button (only during work) */}
             {mode === "WORK" && (
               <button
-                onClick={() => {
+                onClick={async () => {
                   openWorld();
-                  toggleMinimize();
+                  await handleMinimize();
                 }}
                 className="w-16 h-16 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors flex items-center justify-center group"
                 aria-label="Mở Focus World"
@@ -361,9 +363,9 @@ export function FocusTimerModal() {
               </button>
             )}
 
-            {/* Minimize */}
+            {/* Minimize (opens PiP if supported, else falls back to in-page) */}
             <button
-              onClick={toggleMinimize}
+              onClick={handleMinimize}
               className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center"
               aria-label="Thu nhỏ"
             >
