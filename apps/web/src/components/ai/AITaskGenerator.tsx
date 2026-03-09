@@ -85,7 +85,6 @@ const priorityConfig: Record<
   },
 };
 
-
 export function AITaskGenerator({
   open,
   onOpenChange,

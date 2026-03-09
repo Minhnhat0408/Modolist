@@ -30,11 +30,10 @@ export default function Error({
           <div className="flex justify-center mb-2">
             <AlertCircle className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle className="text-2xl font-bold">
-            Đã xảy ra lỗi
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Đã xảy ra lỗi</CardTitle>
           <CardDescription>
-            {error.message || "Một lỗi không mong muốn đã xảy ra. Vui lòng thử lại."}
+            {error.message ||
+              "Một lỗi không mong muốn đã xảy ra. Vui lòng thử lại."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

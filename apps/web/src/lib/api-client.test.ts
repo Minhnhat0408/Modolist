@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { api, clearTokenCache, getCachedToken, getClientToken } from "./api-client";
+import {
+  api,
+  clearTokenCache,
+  getCachedToken,
+  getClientToken,
+} from "./api-client";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,9 +39,10 @@ describe("clearTokenCache / getCachedToken", () => {
     const mockToken = "tok_abc123";
     vi.stubGlobal(
       "fetch",
-      vi.fn()
+      vi
+        .fn()
         .mockResolvedValueOnce(makeResponse({ token: mockToken })) // /api/auth/token
-        .mockResolvedValueOnce(makeResponse({ id: 1 })),           // actual request
+        .mockResolvedValueOnce(makeResponse({ id: 1 })), // actual request
     );
 
     await api.get("/tasks");
@@ -49,7 +55,8 @@ describe("clearTokenCache / getCachedToken", () => {
   it("getCachedToken reflects the cached value after a successful request", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn()
+      vi
+        .fn()
         .mockResolvedValueOnce(makeResponse({ token: "tok_xyz" }))
         .mockResolvedValueOnce(makeResponse([])),
     );
@@ -63,9 +70,10 @@ describe("clearTokenCache / getCachedToken", () => {
 
 describe("token caching", () => {
   it("calls /api/auth/token only once across multiple requests", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok_once" })) // auth/token — once
-      .mockResolvedValue(makeResponse({}));                        // subsequent requests
+      .mockResolvedValue(makeResponse({})); // subsequent requests
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -103,7 +111,8 @@ describe("token caching", () => {
 
 describe("api.get", () => {
   it("sends GET request with correct URL and Authorization header", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(makeResponse({ id: 42 }));
 
@@ -115,11 +124,14 @@ describe("api.get", () => {
     const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe("/api/tasks/42");
     expect(init.method).toBe("GET");
-    expect((init.headers as Record<string, string>)["Authorization"]).toBe("Bearer tok");
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      "Bearer tok",
+    );
   });
 
   it("does not attach Content-Type for GET", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(makeResponse({}));
 
@@ -128,7 +140,9 @@ describe("api.get", () => {
     await api.get("/tasks");
 
     const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
-    expect((init.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+    expect(
+      (init.headers as Record<string, string>)["Content-Type"],
+    ).toBeUndefined();
   });
 });
 
@@ -136,7 +150,8 @@ describe("api.get", () => {
 
 describe("api.post", () => {
   it("sends POST with JSON body and Content-Type header", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(makeResponse({ id: 1 }));
 
@@ -149,7 +164,9 @@ describe("api.post", () => {
     const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe("/api/tasks");
     expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+    expect((init.headers as Record<string, string>)["Content-Type"]).toBe(
+      "application/json",
+    );
     expect(init.body).toBe(JSON.stringify(payload));
   });
 });
@@ -158,7 +175,8 @@ describe("api.post", () => {
 
 describe("api.patch", () => {
   it("sends PATCH with JSON body", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(makeResponse({ id: 1, title: "Updated" }));
 
@@ -176,7 +194,8 @@ describe("api.patch", () => {
 
 describe("api.delete", () => {
   it("sends DELETE request without a body", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(makeResponse(null));
 
@@ -206,7 +225,8 @@ describe("error handling", () => {
   });
 
   it("throws with server error message on non-ok API response", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce(
         makeResponse({ message: "Task not found" }, false, 404),
@@ -218,7 +238,8 @@ describe("error handling", () => {
   });
 
   it("falls back to statusText when error body has no message", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(makeResponse({ token: "tok" }))
       .mockResolvedValueOnce({
         ok: false,

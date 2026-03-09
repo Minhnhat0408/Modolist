@@ -470,7 +470,14 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
   // Skip to next phase
   skipToNext: () => {
-    const { mode, focusType, currentSession, completedSessions, totalSessions, activeTask } = get();
+    const {
+      mode,
+      focusType,
+      currentSession,
+      completedSessions,
+      totalSessions,
+      activeTask,
+    } = get();
 
     if (focusType === "SHORT") return;
 

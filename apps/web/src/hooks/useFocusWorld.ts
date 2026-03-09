@@ -75,7 +75,10 @@ export function useFocusWorld({
 
     console.log("Focus World: Connecting...", { userId, sessionId });
 
-    const apiUrl = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const apiUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:3001";
     const socket = io(`${apiUrl}/focus-world`, {
       transports: ["websocket"],
       reconnection: true,

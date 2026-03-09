@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Users, Wifi, WifiOff, Minimize2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { openPip } from "@/hooks/usePictureInPicture";
 
 function ProgressRing({
   startTime,
@@ -136,6 +137,11 @@ export function FocusWorldModal() {
   const { sessionId, activeTask, status, timeLeft } = useFocusStore();
   const [isInitializing, setIsInitializing] = useState(true);
 
+  const handleMinimize = async () => {
+    await openPip();
+    toggleMinimize();
+  };
+
   const userId = session?.user?.id || null;
   const taskId = activeTask?.id || null;
 
@@ -174,7 +180,7 @@ export function FocusWorldModal() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-        onClick={toggleMinimize}
+        onClick={handleMinimize}
       >
         <motion.div
           layoutId="focus-world"
@@ -217,7 +223,7 @@ export function FocusWorldModal() {
               <Badge variant="outline">{otherUsers.length} người</Badge>
 
               <button
-                onClick={toggleMinimize}
+                onClick={handleMinimize}
                 className="w-9 h-9 rounded-lg hover:bg-accent transition-colors flex items-center justify-center"
                 aria-label="Thu nhỏ"
               >

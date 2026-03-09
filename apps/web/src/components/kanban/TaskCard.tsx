@@ -84,8 +84,7 @@ export function TaskCard({
   };
 
   const hasSessionData = task.focusTotalSessions && task.focusTotalSessions > 0;
-  const hasQuickSessions =
-    !hasSessionData && task.focusCompletedSessions > 0;
+  const hasQuickSessions = !hasSessionData && task.focusCompletedSessions > 0;
   const shouldShowProgress =
     (isFocusing && focusType === "STANDARD") || hasSessionData;
 

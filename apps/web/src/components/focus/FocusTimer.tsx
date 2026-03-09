@@ -1,19 +1,19 @@
 "use client";
 
 import { FocusTimerModal } from "./FocusTimerModal";
-import { FloatingTimer } from "./FloatingTimer";
+import { FloatingWidget } from "./FloatingWidget";
 import { CompletionModal } from "./CompletionModal";
-import { FocusWorld } from "./FocusWorld";
 import { useSessionLifecycle } from "@/hooks/useSessionLifecycle";
+import { FocusWorldModal } from "./FocusWorldModal";
 
 export function FocusTimer() {
   useSessionLifecycle();
   return (
     <>
       <FocusTimerModal />
-      <FloatingTimer />
+      <FloatingWidget />
       <CompletionModal />
-      <FocusWorld />
+      <FocusWorldModal />
     </>
   );
 }
