@@ -48,6 +48,8 @@ interface TaskCardProps {
   onEdit?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
   showCreatedDate?: boolean;
+  /** Set to false to disable drag-and-drop (e.g. inside a modal/drawer) */
+  draggable?: boolean;
 }
 
 export function TaskCard({
@@ -55,6 +57,7 @@ export function TaskCard({
   onEdit,
   onStartFocus,
   showCreatedDate,
+  draggable = true,
 }: TaskCardProps) {
   const {
     attributes,
@@ -155,10 +158,10 @@ export function TaskCard({
 
   return (
     <motion.div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
+      ref={draggable ? setNodeRef : undefined}
+      style={draggable ? style : undefined}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
       whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       className={`
@@ -195,7 +198,7 @@ export function TaskCard({
           }
           hover:bg-white/10 hover:border-white/20
           hover:shadow-lg hover:shadow-primary/5
-          cursor-grab active:cursor-grabbing
+          ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
           transition-all duration-200
           group
           relative

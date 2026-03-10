@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import type { Task } from "@/types/database";
 import { TaskStatus, TaskPriority } from "@/types/database";
 import { api } from "@/lib/api-client";
@@ -27,18 +28,27 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   AlignLeft,
+  Brain,
   CalendarDays,
   Check,
   Clock,
   Loader2,
   Pencil,
   RotateCcw,
+  Sparkles,
   Tag,
   Trash2,
   Zap,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────
+
+type AISuggestion = {
+  estimatedPomodoros?: number;
+  reasoning?: string;
+  confidence?: string;
+  focusPlan?: { sessionType: string; sessions: number; totalMinutes: number; label: string };
+};
 
 export interface TaskDetailModalProps {
   open: boolean;
@@ -232,16 +242,25 @@ export function TaskDetailModal({
   const [editingTags, setEditingTags] = useState(false);
   const [tagsDraft, setTagsDraft] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [aiEstimating, setAiEstimating] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const prevTaskIdRef = useRef<string | null>(null);
 
   // Sync when modal opens or task changes
   useEffect(() => {
     if (open && task) {
+      const isNewTask = prevTaskIdRef.current !== task.id;
+      prevTaskIdRef.current = task.id;
       setLocalTask({ ...task });
       setEditingPriority(false);
       setEditingDueDate(false);
       setEditingTags(false);
+      if (isNewTask) setAiSuggestion(null);
     }
-    if (!open) setLocalTask(null);
+    if (!open) {
+      prevTaskIdRef.current = null;
+      setLocalTask(null);
+    }
   }, [open, task]);
 
   // Optimistic patch + API call
@@ -277,6 +296,32 @@ export function TaskDetailModal({
     }
   };
 
+  const handleAIEstimate = async () => {
+    if (!localTask) return;
+    setAiEstimating(true);
+    setAiSuggestion(null);
+    try {
+      const result = await api.post<AISuggestion>("/ai/estimate-time", {
+        taskTitle: localTask.title,
+        taskDescription: localTask.description || undefined,
+      });
+      console.log(result);
+      setAiSuggestion(result);
+      if (result.estimatedPomodoros) {
+        await patchField("estimatedPomodoros", result.estimatedPomodoros);
+      }
+      if (result.focusPlan) {
+        await patchField("suggestedSessionType", result.focusPlan.sessionType);
+        await patchField("suggestedSessions", result.focusPlan.sessions);
+        await patchField("suggestedTotalMinutes", result.focusPlan.totalMinutes);
+      }
+    } catch (e) {
+      console.error("AI estimate failed:", e);
+    } finally {
+      setAiEstimating(false);
+    }
+  };
+
   const handleSaveTags = () => {
     setEditingTags(false);
     const tags = tagsDraft.split(",").map((t) => t.trim()).filter(Boolean);
@@ -290,10 +335,6 @@ export function TaskDetailModal({
   const isDone = localTask.status === TaskStatus.DONE;
   const dueInfo = formatDueDate(localTask.dueDate);
   const priorityOpt = getPriorityOption(localTask.priority);
-  const hasFocusInfo =
-    localTask.estimatedPomodoros ||
-    localTask.suggestedSessionType ||
-    localTask.focusCompletedSessions > 0;
 
   // ── DONE = read-only "history" view ─────────────────────────────────
   if (isDone) {
@@ -473,6 +514,8 @@ export function TaskDetailModal({
             />
           </section>
 
+          
+
           {/* Status quick-switch */}
           <section>
             <SectionLabel>Trạng thái</SectionLabel>
@@ -639,36 +682,98 @@ export function TaskDetailModal({
             )}
           </section>
 
-          {/* Focus info (read-only) */}
-          {hasFocusInfo && (
-            <section>
+          {/* Focus info + AI estimate */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
               <SectionLabel icon={Clock}>Thông tin Focus</SectionLabel>
-              <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground/70 px-1">
-                {localTask.estimatedPomodoros ? (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-green-400" />
-                    {localTask.estimatedPomodoros} pomodoros
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={aiEstimating}
+                onClick={handleAIEstimate}
+                className="h-6 px-2 text-[10px] gap-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 -mt-0.5"
+              >
+                {aiEstimating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                Ước lượng AI
+              </Button>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground/70 px-1">
+              {localTask.estimatedPomodoros ? (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-green-400" />
+                  {localTask.estimatedPomodoros} pomodoros
+                </span>
+              ) : (
+                <span className="text-muted-foreground/30 italic">Chưa có ước lượng</span>
+              )}
+              {localTask.suggestedSessionType ? (
+                <span className="flex items-center gap-1">
+                  <Zap className="h-3.5 w-3.5 text-yellow-400" />
+                  {localTask.suggestedSessionType === "QUICK_5"
+                    ? "Quick 5p"
+                    : localTask.suggestedSessionType === "QUICK_25"
+                      ? "Quick 25p"
+                      : "Pomodoro chuẩn"}
+                </span>
+              ) : null}
+              {localTask.focusCompletedSessions > 0 ? (
+                <span className="flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                  {localTask.focusCompletedSessions} phiên đã focus
+                </span>
+              ) : null}
+            </div>
+
+            {/* AI suggestion result */}
+            {aiSuggestion && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className="mt-3 rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 space-y-2"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-purple-400">
+                  <Brain className="h-4 w-4" />
+                  Gợi ý từ AI
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    Độ tin cậy:{" "}
+                    {aiSuggestion.confidence === "high" ? (
+                      <span className="text-green-400">Cao</span>
+                    ) : aiSuggestion.confidence === "medium" ? (
+                      <span className="text-yellow-400">Trung bình</span>
+                    ) : (
+                      <span className="text-red-400">Thấp</span>
+                    )}
                   </span>
-                ) : null}
-                {localTask.suggestedSessionType ? (
-                  <span className="flex items-center gap-1">
-                    <Zap className="h-3.5 w-3.5 text-yellow-400" />
-                    {localTask.suggestedSessionType === "QUICK_5"
-                      ? "Quick 5p"
-                      : localTask.suggestedSessionType === "QUICK_25"
-                        ? "Quick 25p"
-                        : "Pomodoro chuẩn"}
-                  </span>
-                ) : null}
-                {localTask.focusCompletedSessions > 0 ? (
-                  <span className="flex items-center gap-1">
-                    <Check className="h-3.5 w-3.5 text-primary" />
-                    {localTask.focusCompletedSessions} phiên đã focus
-                  </span>
-                ) : null}
-              </div>
-            </section>
-          )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-3 w-3 text-green-400" />
+                    <span>
+                      {aiSuggestion.estimatedPomodoros} pomodoros
+                      {aiSuggestion.focusPlan ? ` (~${aiSuggestion.focusPlan.totalMinutes} phút)` : ""}
+                    </span>
+                  </div>
+                  {aiSuggestion.focusPlan && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Zap className="h-3 w-3 text-yellow-400" />
+                      <span>{aiSuggestion.focusPlan.label}</span>
+                    </div>
+                  )}
+                </div>
+
+                {aiSuggestion.reasoning && (
+                  <p className="text-xs text-muted-foreground/70 italic">
+                    {aiSuggestion.reasoning}
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </section>
         </ResponsiveModalBody>
 
         {/* ── Footer ── */}

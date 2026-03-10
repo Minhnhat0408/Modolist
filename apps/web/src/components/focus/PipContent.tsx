@@ -7,7 +7,8 @@
  * but Zustand stores are global singletons so it reads the same state.
  *
  * Mirrors FloatingTimer's layout and visual style exactly.
- * Uses inline styles + Lucide SVG icons (self-contained SVGs, no font dependency).
+ * All Tailwind CSS is copied from the main document into the PiP window,
+ * and the dark class is propagated, so dark: variants work correctly.
  */
 
 import { useEffect, useState } from "react";
@@ -107,59 +108,35 @@ export function PipContent({ onClose }: PipContentProps) {
         ? "☕ Nghỉ Ngắn"
         : "🌴 Nghỉ Dài";
 
-  // ── Shared button style ───────────────────────────────────────────────
+  // ── Shared button class ───────────────────────────────────────────────
 
-  const btn = (extra?: React.CSSProperties): React.CSSProperties => ({
-    width: 32,
-    height: 32,
-    borderRadius: "50%",
-    border: "none",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#fff",
-    background: "rgba(255,255,255,0.1)",
-    flexShrink: 0,
-    ...extra,
-  });
+  const btnCls =
+    "w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 " +
+    "bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 " +
+    "text-gray-700 dark:text-white transition-colors";
 
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div
-      style={{
-        overflow: "hidden",
-        fontFamily: "system-ui,-apple-system,sans-serif",
-        width: "100%",
-      }}
-    >
+    <div className="overflow-hidden font-sans w-full">
       {/* ── Tab bar ── */}
       {showTabs && (
-        <div style={{ display: "flex", borderBottom: "1px solid #374151" }}>
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
           {(["timer", "world"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                border: "none",
-                cursor: "pointer",
-                background:
-                  activeTab === tab ? "rgba(255,255,255,0.05)" : "transparent",
-                color: activeTab === tab ? "#fff" : "#6b7280",
-                fontSize: 11,
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                borderBottom:
-                  activeTab === tab
-                    ? `2px solid ${tab === "timer" ? "#3b82f6" : "#6366f1"}`
-                    : "2px solid transparent",
-              }}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
+                activeTab === tab
+                  ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
+                  : "bg-transparent text-gray-500 dark:text-gray-400"
+              } border-b-2 ${
+                activeTab === tab
+                  ? tab === "timer"
+                    ? "border-blue-500"
+                    : "border-indigo-500"
+                  : "border-transparent"
+              }`}
             >
               {tab === "timer" ? (
                 <>
@@ -180,7 +157,7 @@ export function PipContent({ onClose }: PipContentProps) {
       {(!showTabs || activeTab === "timer") && (
         <>
           {/* Progress bar */}
-          <div style={{ height: 4, background: "#374151" }}>
+          <div className="h-1 bg-gray-200 dark:bg-gray-700">
             <div
               style={{
                 height: "100%",
@@ -192,23 +169,9 @@ export function PipContent({ onClose }: PipContentProps) {
           </div>
 
           {/* Content row */}
-          <div
-            style={{
-              padding: "12px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-            }}
-          >
+          <div className="px-4 py-3 flex items-center gap-4">
             {/* SVG ring */}
-            <div
-              style={{
-                position: "relative",
-                flexShrink: 0,
-                width: 48,
-                height: 48,
-              }}
-            >
+            <div className="relative shrink-0 w-12 h-12">
               <svg
                 width="48"
                 height="48"
@@ -218,7 +181,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   cx="24"
                   cy="24"
                   r="20"
-                  stroke="rgba(255,255,255,0.1)"
+                  className="stroke-black/10 dark:stroke-white/10"
                   strokeWidth="3"
                   fill="none"
                 />
@@ -234,84 +197,43 @@ export function PipContent({ onClose }: PipContentProps) {
                   strokeDashoffset={2 * Math.PI * 20 * (1 - progress)}
                 />
               </svg>
-              <span
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "#fff",
-                  fontFamily: "monospace",
-                }}
-              >
+              <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold font-mono text-gray-800 dark:text-white">
                 {Math.floor(timeLeft / 60)}
               </span>
             </div>
 
             {/* Task info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#9ca3af",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  marginBottom: 2,
-                }}
-              >
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">
                 {modeLabel}
               </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#fff",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
+              <div className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
                 {activeTask?.title ?? ""}
               </div>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "#fff",
-                  fontFamily: "monospace",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
+              <div className="text-lg font-bold font-mono tabular-nums text-gray-900 dark:text-white">
                 {formatTime(timeLeft)}
               </div>
             </div>
 
             {/* Controls */}
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="flex gap-2 items-center">
               {mode === "WORK" && !worldOpen && (
                 <button
                   onClick={() => {
                     openWorld();
                     if (!worldMinimized) toggleWorldMinimize();
                   }}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
+                  className={btnCls}
                   aria-label="Focus World"
                 >
-                  <Users className="w-4 h-4" />
+                  <Users size={16} />
                 </button>
               )}
               <button
                 onClick={() =>
                   status === "paused" ? resumeFocus() : pauseFocus()
                 }
-                style={btn(
-                  status === "paused"
-                    ? { color: "#fbbf24" }
-                    : { color: "#fff" },
-                )}
+                className={`${btnCls} ${status === "paused" ? "text-yellow-500 dark:text-yellow-400" : ""}`}
                 title={status === "paused" ? "Tiếp tục" : "Tạm dừng"}
               >
                 {status === "paused" ? (
@@ -325,7 +247,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   toggleMinimize();
                   onClose();
                 }}
-                style={btn()}
+                className={btnCls}
                 title="Phóng to"
               >
                 <Maximize2 size={16} />
@@ -335,7 +257,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   stopFocus();
                   onClose();
                 }}
-                style={btn({ background: "rgba(239,68,68,0.2)" })}
+                className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
                 title="Dừng"
               >
                 <X size={16} />
@@ -344,25 +266,8 @@ export function PipContent({ onClose }: PipContentProps) {
           </div>
 
           {status === "paused" && (
-            <div
-              style={{
-                padding: "0 16px 10px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11,
-                color: "#fbbf24",
-              }}
-            >
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "#fbbf24",
-                  display: "inline-block",
-                }}
-              />
+            <div className="px-4 pb-2.5 flex items-center gap-1.5 text-[11px] text-yellow-500 dark:text-yellow-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 dark:bg-yellow-400 inline-block" />
               Đang Tạm Dừng
             </div>
           )}
@@ -371,56 +276,21 @@ export function PipContent({ onClose }: PipContentProps) {
 
       {/* ══ WORLD PANEL ══ */}
       {showTabs && activeTab === "world" && (
-        <div
-          style={{
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
+        <div className="px-4 py-3 flex items-center gap-3">
           {/* Icon */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "rgba(99,102,241,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
               <Users size={20} color="#818cf8" />
             </div>
             {isWorldConnected && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: "#22c55e",
-                  border: "2px solid #111827",
-                }}
-              />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
             )}
           </div>
 
           {/* Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="flex-1 min-w-0">
             <div
-              style={{
-                fontSize: 10,
-                color: isWorldConnected ? "#4ade80" : "#6b7280",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                marginBottom: 2,
-              }}
+              className={`text-[10px] flex items-center gap-1 mb-0.5 ${isWorldConnected ? "text-green-500 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}
             >
               {isWorldConnected ? (
                 <>
@@ -432,7 +302,7 @@ export function PipContent({ onClose }: PipContentProps) {
                 </>
               )}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>
+            <div className="text-[13px] font-semibold text-gray-900 dark:text-white">
               {onlineCount === 0
                 ? "Chưa có ai"
                 : `${onlineCount} người đang focus`}
@@ -440,13 +310,13 @@ export function PipContent({ onClose }: PipContentProps) {
           </div>
 
           {/* Controls */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="flex gap-2">
             <button
               onClick={() => {
                 toggleWorldMinimize();
                 onClose();
               }}
-              style={btn()}
+              className={btnCls}
               title="Phóng to"
             >
               <Maximize2 size={16} />
@@ -455,7 +325,7 @@ export function PipContent({ onClose }: PipContentProps) {
               onClick={() => {
                 closeWorld();
               }}
-              style={btn({ background: "rgba(239,68,68,0.2)" })}
+              className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
               title="Đóng"
             >
               <X size={16} />
@@ -466,3 +336,4 @@ export function PipContent({ onClose }: PipContentProps) {
     </div>
   );
 }
+

@@ -198,12 +198,16 @@ function TaskGroupedList({
               )}
               <div className="space-y-3">
                 {group.tasks.map((task) => (
-                  <div key={task.id} className="group/row relative">
+                  <div
+                    key={task.id}
+                    className="group/row relative cursor-pointer"
+                  >
                     <TaskCard
                       task={task}
                       onEdit={onEditTask}
                       onStartFocus={onStartFocus}
                       showCreatedDate={status === TaskStatus.BACKLOG}
+                      draggable={false}
                     />
                     {/* Quick-action buttons overlay */}
                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity z-10">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { UserNav } from "@/components/user-nav";
@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [aiOpen, setAIOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<Task | undefined>(undefined);
+  const todayScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -168,7 +169,14 @@ export default function DashboardPage() {
     } else {
       try {
         const newTask = await api.post<Task>("/tasks", data);
-        setTasks((prev) => [...prev, newTask as KanbanTask]);
+        // Prepend so new task appears first in its column
+        setTasks((prev) => [newTask as KanbanTask, ...prev]);
+        // Scroll TODAY column to top so user sees the new task
+        if ((newTask as KanbanTask).status === TaskStatus.TODAY) {
+          requestAnimationFrame(() => {
+            if (todayScrollRef.current) todayScrollRef.current.scrollTop = 0;
+          });
+        }
       } catch (error) {
         console.error("Error creating task:", error);
       }
@@ -268,6 +276,7 @@ export default function DashboardPage() {
           onTaskReorder={handleTaskReorder}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
+          onTodayScrollRef={(el) => { todayScrollRef.current = el; }}
         />
 
         <TaskDetailModal
