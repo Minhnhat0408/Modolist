@@ -13,30 +13,30 @@ export const KANBAN_COLUMNS = {
   [TaskStatus.BACKLOG]: {
     id: TaskStatus.BACKLOG,
     title: "📋 Danh sách chờ",
-    color: "bg-white/10 border border-white/10",
+    color: "bg-white/50 border border-slate-200/70 dark:bg-white/10 dark:border-white/10",
     // Accent tokens used in sheets / overflow drawers
     accent: {
       /** Handle pill on bottom sheet */
-      handle: "bg-white/25",
+      handle: "bg-muted dark:bg-white/25",
       /** Header area gradient background */
-      headerBg: "bg-white/5",
+      headerBg: "bg-muted/60 dark:bg-white/5",
       /** Header bottom border */
-      headerBorder: "border-white/15",
+      headerBorder: "border-border dark:border-white/15",
       /** Badge background + text */
-      badgeCls: "bg-white/15 text-white/80 border-white/20",
+      badgeCls: "bg-muted text-muted-foreground border-border dark:bg-white/15 dark:text-white/80 dark:border-white/20",
       /** Date-group section label */
-      dateLabelCls: "text-white/60",
+      dateLabelCls: "text-muted-foreground dark:text-white/60",
       /** Date-group icon color */
-      dateIconCls: "text-white/40",
+      dateIconCls: "text-muted-foreground/70 dark:text-white/40",
       /** Sticky date header background */
-      dateStickyBg: "bg-white/5",
+      dateStickyBg: "bg-muted/30 dark:bg-white/5",
     },
   },
   [TaskStatus.TODAY]: {
     id: TaskStatus.TODAY,
     title: "🎯 Hôm nay",
     color:
-      "bg-linear-to-br from-secondary/20 via-secondary/10 to-transparent border-2 border-secondary/20",
+      "bg-linear-to-br from-secondary/10 via-secondary/5 to-transparent border-2 border-secondary/20 dark:from-secondary/20 dark:via-secondary/10",
     accent: {
       handle: "bg-secondary/40",
       headerBg: "bg-secondary/10",
@@ -51,7 +51,7 @@ export const KANBAN_COLUMNS = {
     id: TaskStatus.DONE,
     title: "✅ Hoàn thành",
     color:
-      "bg-linear-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/20",
+      "bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-2 border-primary/15 dark:from-primary/20 dark:via-primary/10 dark:border-primary/20",
     accent: {
       handle: "bg-primary/40",
       headerBg: "bg-primary/10",

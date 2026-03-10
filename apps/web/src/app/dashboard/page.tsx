@@ -15,6 +15,7 @@ import { api } from "@/lib/api-client";
 import Image from "next/image";
 import { StatsModal } from "@/components/stats/StatsModal";
 import { AITaskGenerator } from "@/components/ai/AITaskGenerator";
+import { TaskDetailModal } from "@/components/kanban/TaskDetailModal";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -28,6 +29,8 @@ export default function DashboardPage() {
   );
   const [statsOpen, setStatsOpen] = useState(false);
   const [aiOpen, setAIOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTask, setDetailTask] = useState<Task | undefined>(undefined);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -130,9 +133,25 @@ export default function DashboardPage() {
   };
 
   const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setDialogOpen(true);
+    setDetailTask(task);
+    setDetailOpen(true);
   };
+
+  const handleTaskFieldUpdate = useCallback(
+    (taskId: string, data: Partial<Task>) => {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? ({ ...t, ...data } as KanbanTask) : t)),
+      );
+      setDetailTask((prev) =>
+        prev?.id === taskId ? ({ ...prev, ...data } as Task) : prev,
+      );
+    },
+    [],
+  );
+
+  const handleDetailTaskDelete = useCallback((taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }, []);
 
   const handleTaskSubmit = async (data: Partial<Task>) => {
     if (editingTask) {
@@ -184,9 +203,16 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center bg-background justify-center min-h-screen">
         <Image
+          src="/background-light.avif"
+          alt="Background"
+          className="fixed w-full h-full object-cover opacity-25 dark:opacity-0 pointer-events-none"
+          width={1920}
+          height={1080}
+        />
+        <Image
           src="/background.webp"
-          alt="Dashboard Background"
-          className="fixed w-full h-full object-cover opacity-90 dark:opacity-20 pointer-events-none"
+          alt="Background Dark"
+          className="fixed w-full h-full object-cover opacity-0 dark:opacity-20 pointer-events-none"
           width={1920}
           height={1080}
         />
@@ -205,9 +231,16 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <Image
-        src={"/background.webp"}
-        alt="Dashboard Background"
-        className="fixed blur-sm w-full h-full object-cover opacity-0  dark:opacity-20 pointer-events-none"
+        src="/background-light.avif"
+        alt="Background"
+        className="fixed blur-sm w-full h-full object-cover opacity-30 dark:opacity-0 pointer-events-none"
+        width={1920}
+        height={1080}
+      />
+      <Image
+        src="/background.webp"
+        alt="Background Dark"
+        className="fixed blur-sm w-full h-full object-cover opacity-0 dark:opacity-20 pointer-events-none"
         width={1920}
         height={1080}
       />
@@ -235,6 +268,14 @@ export default function DashboardPage() {
           onTaskReorder={handleTaskReorder}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
+        />
+
+        <TaskDetailModal
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          task={detailTask ?? null}
+          onTaskUpdated={handleTaskFieldUpdate}
+          onTaskDeleted={handleDetailTaskDelete}
         />
 
         <TaskFormDialog

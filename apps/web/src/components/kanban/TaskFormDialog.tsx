@@ -14,7 +14,6 @@ import {
   ResponsiveModalTitle,
   ResponsiveModalDescription,
   ResponsiveModalBody,
-  ResponsiveModalFooter,
 } from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

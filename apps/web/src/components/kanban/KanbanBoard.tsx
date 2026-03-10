@@ -22,10 +22,46 @@ import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { DeleteZone } from "./DeleteZone";
 import { KanbanTask, KANBAN_COLUMNS, COLUMN_ORDER } from "@/types/kanban";
-import { TaskStatus } from "@/types/database";
+import { TaskStatus, TaskPriority } from "@/types/database";
 import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+/** Priority weight — higher = more important (sort DESC) */
+const PRIORITY_WEIGHT: Record<string, number> = {
+  [TaskPriority.URGENT]: 4,
+  [TaskPriority.HIGH]: 3,
+  [TaskPriority.MEDIUM]: 2,
+  [TaskPriority.LOW]: 1,
+};
+
+/** Column-specific sort comparators */
+function sortBacklog(a: KanbanTask, b: KanbanTask): number {
+  // 1. order ASC (drag-drop)
+  if (a.order !== b.order) return a.order - b.order;
+  // 2. priority DESC
+  const pa = PRIORITY_WEIGHT[a.priority] ?? 0;
+  const pb = PRIORITY_WEIGHT[b.priority] ?? 0;
+  if (pa !== pb) return pb - pa;
+  // 3. dueDate ASC (null → bottom)
+  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+  const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+  return da - db;
+}
+
+function sortToday(a: KanbanTask, b: KanbanTask): number {
+  // Respect user drag-drop order absolutely
+  if (a.order !== b.order) return a.order - b.order;
+  // Tie-break: recently touched first
+  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+}
+
+function sortDone(a: KanbanTask, b: KanbanTask): number {
+  // Most recently completed first
+  const ca = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+  const cb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+  return cb - ca;
+}
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -94,13 +130,28 @@ export function KanbanBoard({
       }
     });
 
-    // Sort nội bộ để đảm bảo thứ tự hiển thị đúng
-    Object.keys(grouped).forEach((status) => {
-      grouped[status]!.sort((a, b) => (a.order || 0) - (b.order || 0));
-    });
+    // Per-column sorting
+    grouped.BACKLOG?.sort(sortBacklog);
+    grouped.TODAY?.sort(sortToday);
+    grouped.DONE?.sort(sortDone);
 
     return grouped;
   }, [tasks]);
+
+  // DONE surface: only tasks completed today
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const doneSurfaceTasks = useMemo(
+    () =>
+      (tasksByStatus.DONE || []).filter(
+        (t) => t.completedAt && new Date(t.completedAt) >= todayStart,
+      ),
+    [tasksByStatus.DONE, todayStart],
+  );
 
   // ✅ Thuật toán phát hiện va chạm tùy chỉnh (Custom Collision Detection)
   const customCollisionDetection: CollisionDetection = (args) => {
@@ -226,6 +277,9 @@ export function KanbanBoard({
       return;
     }
 
+    // DONE column: fixed order (by completedAt DESC), no user reordering
+    if (originalTask.status === TaskStatus.DONE) return;
+
     // If same column and different position, reorder
     if (active.id !== over.id) {
       console.log("🔄 Reordering within same column");
@@ -277,6 +331,30 @@ export function KanbanBoard({
     setFocusDialogOpen(true);
   };
 
+  const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+    await onTaskMove(taskId, newStatus);
+  };
+
+  const handleMoveToTop = (taskId: string, status: TaskStatus) => {
+    if (onTaskReorder) {
+      // Move to order 0 (top)
+      const columnTasks = tasksByStatus[status] || [];
+      const oldIndex = columnTasks.findIndex((t) => t.id === taskId);
+      if (oldIndex > 0) {
+        const reordered = arrayMove(columnTasks, oldIndex, 0);
+        setTasks((prev) => {
+          const otherTasks = prev.filter((t) => t.status !== status);
+          const updatedColumn = reordered.map((task, index) => ({
+            ...task,
+            order: index,
+          }));
+          return [...otherTasks, ...updatedColumn];
+        });
+        onTaskReorder(taskId, 0, status);
+      }
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -292,6 +370,9 @@ export function KanbanBoard({
         <div className="flex gap-4 overflow-x-auto p-4 h-full items-start">
           {COLUMN_ORDER.map((status) => {
             const columnTasks = tasksByStatus[status] || [];
+            // DONE surface: only show today's completed tasks
+            const surfaceTasks = status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
+            const allColumnTasks = columnTasks;
             return (
               <SortableContext
                 key={status}
@@ -301,11 +382,14 @@ export function KanbanBoard({
                 <KanbanColumn
                   status={status}
                   title={KANBAN_COLUMNS[status].title}
-                  tasks={columnTasks}
+                  tasks={surfaceTasks}
+                  allTasks={allColumnTasks}
                   color={KANBAN_COLUMNS[status].color}
                   onAddTask={onAddTask}
                   onEditTask={onEditTask}
                   onStartFocus={handleStartFocus}
+                  onTaskMove={handleMoveTask}
+                  onTaskMoveToTop={handleMoveToTop}
                 />
               </SortableContext>
             );
@@ -355,6 +439,8 @@ export function KanbanBoard({
           <div className="flex-1 overflow-y-auto p-4 px-0">
             {COLUMN_ORDER.filter((s) => s === activeTab).map((status) => {
               const columnTasks = tasksByStatus[status] || [];
+              const surfaceTasks = status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
+              const allColumnTasks = columnTasks;
               return (
                 <SortableContext
                   key={status}
@@ -364,12 +450,15 @@ export function KanbanBoard({
                   <KanbanColumn
                     status={status}
                     title={KANBAN_COLUMNS[status].title}
-                    tasks={columnTasks}
+                    tasks={surfaceTasks}
+                    allTasks={allColumnTasks}
                     color={KANBAN_COLUMNS[status].color}
                     className="w-full max-w-none min-w-0"
                     onAddTask={onAddTask}
                     onEditTask={onEditTask}
                     onStartFocus={handleStartFocus}
+                    onTaskMove={handleMoveTask}
+                    onTaskMoveToTop={handleMoveToTop}
                   />
                 </SortableContext>
               );

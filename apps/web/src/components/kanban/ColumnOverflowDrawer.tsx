@@ -16,7 +16,14 @@
 import { useMemo, useState } from "react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { KanbanTask, KANBAN_COLUMNS } from "@/types/kanban";
-import { TaskStatus } from "@/types/database";
+import { TaskStatus, TaskPriority } from "@/types/database";
+
+const PRIORITY_LABELS: Record<string, { label: string; icon: string }> = {
+  [TaskPriority.URGENT]: { label: "Khẩn cấp", icon: "🔴" },
+  [TaskPriority.HIGH]: { label: "Cao", icon: "🟠" },
+  [TaskPriority.MEDIUM]: { label: "Trung bình", icon: "🟡" },
+  [TaskPriority.LOW]: { label: "Thấp", icon: "🔵" },
+};
 import { TaskCard } from "./TaskCard";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,12 +41,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+
 import { DndContext } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { Search, CalendarDays, X } from "lucide-react";
+import { Search, CalendarDays, X, ArrowUpDown, ArrowUpToLine, CalendarCheck, Flag, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+/** Sort mode for BACKLOG drawer */
+type BacklogSortMode = "default" | "priority" | "dueDate";
 
 interface ColumnOverflowDrawerProps {
   open: boolean;
@@ -49,6 +57,10 @@ interface ColumnOverflowDrawerProps {
   tasks: KanbanTask[];
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
+  /** Move a task to a different status column */
+  onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
+  /** Move a task to the top of its column (order=0) */
+  onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -109,17 +121,40 @@ function TaskGroupedList({
   onEditTask,
   onStartFocus,
   accent,
+  groupBy = "date",
+  onTaskMove,
+  onTaskMoveToTop,
 }: {
   tasks: KanbanTask[];
   status: TaskStatus;
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
   accent: typeof KANBAN_COLUMNS[TaskStatus]["accent"];
+  groupBy?: "date" | "priority";
+  onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
+  onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
 }) {
-  // Group tasks by date
+  // Group tasks by date or priority
   const groups = useMemo(() => {
-    const map = new Map<string, { date: Date; tasks: KanbanTask[] }>();
+    if (groupBy === "priority") {
+      const order = [TaskPriority.URGENT, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW];
+      const map = new Map<string, KanbanTask[]>();
+      for (const task of tasks) {
+        const key = task.priority || TaskPriority.MEDIUM;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(task);
+      }
+      return order
+        .filter((p) => map.has(p))
+        .map((p) => ({
+          key: p,
+          label: `${PRIORITY_LABELS[p]?.icon ?? ""} ${PRIORITY_LABELS[p]?.label ?? p}`,
+          tasks: map.get(p)!,
+        }));
+    }
 
+    // date grouping
+    const map = new Map<string, { date: Date; tasks: KanbanTask[] }>();
     for (const task of tasks) {
       const d = getGroupDate(task, status);
       const key = dateKey(d);
@@ -129,7 +164,6 @@ function TaskGroupedList({
       map.get(key)!.tasks.push(task);
     }
 
-    // Sort groups: newest first
     const sorted = [...map.entries()].sort((a, b) => {
       return b[1].date.getTime() - a[1].date.getTime();
     });
@@ -139,23 +173,18 @@ function TaskGroupedList({
       label: formatSectionDate(val.date),
       tasks: val.tasks,
     }));
-  }, [tasks, status]);
+  }, [tasks, status, groupBy]);
 
-  // If only 1 group, don't show section header (avoid noise)
-  const showHeaders = groups.length > 1;
+  const showHeaders = groups.length > 1 || status === TaskStatus.DONE;
+  const DateIcon = groupBy === "date" ? CalendarDays : ArrowUpDown;
 
   return (
-    <DndContext onDragEnd={() => {}}>
-      <SortableContext
-        items={tasks.map((t) => t.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="space-y-4">
+    <div className="space-y-4">
           {groups.map((group) => (
             <div key={group.key}>
               {showHeaders && (
                 <div className={`sticky top-0 z-10 flex items-center gap-2 py-2 px-1 mb-2 ${accent.dateStickyBg} backdrop-blur-sm rounded-lg`}>
-                  <CalendarDays className={`h-3.5 w-3.5 ${accent.dateIconCls}`} />
+                  <DateIcon className={`h-3.5 w-3.5 ${accent.dateIconCls}`} />
                   <span className={`text-xs font-semibold ${accent.dateLabelCls} uppercase tracking-wider`}>
                     {group.label}
                   </span>
@@ -169,20 +198,50 @@ function TaskGroupedList({
               )}
               <div className="space-y-3">
                 {group.tasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onEdit={onEditTask}
-                    onStartFocus={onStartFocus}
-                    showCreatedDate={status === TaskStatus.BACKLOG}
-                  />
+                  <div key={task.id} className="group/row relative">
+                    <TaskCard
+                      task={task}
+                      onEdit={onEditTask}
+                      onStartFocus={onStartFocus}
+                      showCreatedDate={status === TaskStatus.BACKLOG}
+                    />
+                    {/* Quick-action buttons overlay */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity z-10">
+                      {status === TaskStatus.BACKLOG && onTaskMoveToTop && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-white/15 hover:border-white/25"
+                          title="Đưa lên đầu danh sách"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskMoveToTop(task.id, status);
+                          }}
+                        >
+                          <ArrowUpToLine className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {status !== TaskStatus.TODAY && onTaskMove && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-secondary/30 hover:border-secondary/40 hover:text-secondary"
+                          title="Cho vào Hôm nay"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskMove(task.id, TaskStatus.TODAY);
+                          }}
+                        >
+                          <CalendarCheck className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    </div>
   );
 }
 
@@ -263,13 +322,24 @@ export function ColumnOverflowDrawer({
   tasks,
   onEditTask,
   onStartFocus,
+  onTaskMove,
+  onTaskMoveToTop,
 }: ColumnOverflowDrawerProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const accent = KANBAN_COLUMNS[status].accent;
 
+  // Close drawer then open edit dialog — ensures clean UX without overlay stacking
+  const handleEditTask = (task: KanbanTask) => {
+    onOpenChange(false);
+    setTimeout(() => onEditTask?.(task), 200);
+  };
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [backlogSort, setBacklogSort] = useState<BacklogSortMode>("default");
+
+  const isBacklog = status === TaskStatus.BACKLOG;
 
   // Reset filters when drawer closes
   const handleOpenChange = (v: boolean) => {
@@ -280,9 +350,9 @@ export function ColumnOverflowDrawer({
     onOpenChange(v);
   };
 
-  // Apply filters
+  // Apply filters + sort
   const filteredTasks = useMemo(() => {
-    let result = tasks;
+    let result = [...tasks];
 
     // Search by title or description
     if (searchQuery.trim()) {
@@ -303,12 +373,83 @@ export function ColumnOverflowDrawer({
       });
     }
 
+    // BACKLOG sort modes
+    if (isBacklog) {
+      const PRIORITY_WEIGHT: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+      if (backlogSort === "priority") {
+        result.sort((a, b) => (PRIORITY_WEIGHT[b.priority] ?? 0) - (PRIORITY_WEIGHT[a.priority] ?? 0));
+      } else if (backlogSort === "dueDate") {
+        // dueDate ASC, nulls last
+        result.sort((a, b) => {
+          const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+          const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+          return da - db;
+        });
+      }
+      // "default" → no sort, keep original order
+    }
+
     return result;
-  }, [tasks, searchQuery, dateFilter, status]);
+  }, [tasks, searchQuery, dateFilter, status, isBacklog, backlogSort]);
 
   const description = `${tasks.length} nhiệm vụ`;
 
-  const filterBar = (
+  // BACKLOG: sort cycle button + search. DONE: search + date filter
+  const SORT_CYCLE: BacklogSortMode[] = ["default", "priority", "dueDate"];
+  const SORT_CONFIG: Record<BacklogSortMode, {
+    icon: React.ElementType;
+    nextTooltip: string;
+    active: boolean;
+  }> = {
+    default:  { icon: ArrowUpDown, nextTooltip: "Sắp xếp theo độ ưu tiên",  active: false },
+    priority: { icon: Flag,        nextTooltip: "Sắp xếp theo hạn chót",     active: true  },
+    dueDate:  { icon: Clock,       nextTooltip: "Trở về mặc định",           active: true  },
+  };
+  const cycleSortMode = () => {
+    const idx = SORT_CYCLE.indexOf(backlogSort);
+    setBacklogSort(SORT_CYCLE[(idx + 1) % SORT_CYCLE.length]!);
+  };
+
+  const filterBar = isBacklog ? (
+    <div className="relative flex items-center gap-2">
+      {/* Search */}
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Tìm theo tên, mô tả..."
+        className="flex-1 pl-9 pr-9 h-9 bg-white/5 border-white/10 focus:border-primary/50 text-sm"
+      />
+      {searchQuery && (
+        <button
+          onClick={() => setSearchQuery("")}
+          className="absolute right-12 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {/* Sort cycle button */}
+      {(() => {
+        const cfg = SORT_CONFIG[backlogSort];
+        const SortIcon = cfg.icon;
+        return (
+          <Button
+            variant={cfg.active ? "default" : "ghost"}
+            size="icon"
+            className={`h-9 w-9 shrink-0 transition-all ${
+              cfg.active
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shadow-primary/30"
+                : "text-muted-foreground hover:text-foreground border border-white/10"
+            }`}
+            title={cfg.nextTooltip}
+            onClick={cycleSortMode}
+          >
+            <SortIcon className="h-4 w-4" />
+          </Button>
+        );
+      })()}
+    </div>
+  ) : (
     <FilterBar
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
@@ -331,8 +472,11 @@ export function ColumnOverflowDrawer({
         tasks={filteredTasks}
         status={status}
         accent={accent}
-        onEditTask={onEditTask}
+        onEditTask={handleEditTask}
         onStartFocus={onStartFocus}
+        onTaskMove={onTaskMove}
+        onTaskMoveToTop={onTaskMoveToTop}
+        groupBy={isBacklog ? (backlogSort === "priority" ? "priority" : "date") : "date"}
       />
     );
 
@@ -358,7 +502,9 @@ export function ColumnOverflowDrawer({
             {filterBar}
           </DialogHeader>
 
-          <div className="overflow-y-auto flex-1 px-6 py-4">{taskContent}</div>
+          <DndContext>
+            <div className="overflow-y-auto flex-1 px-6 py-4">{taskContent}</div>
+          </DndContext>
         </DialogContent>
       </Dialog>
     );
@@ -389,7 +535,9 @@ export function ColumnOverflowDrawer({
           {filterBar}
         </SheetHeader>
 
-        <div className="overflow-y-auto flex-1 px-4 py-4">{taskContent}</div>
+        <DndContext>
+          <div className="overflow-y-auto flex-1 px-4 py-4">{taskContent}</div>
+        </DndContext>
       </SheetContent>
     </Sheet>
   );
