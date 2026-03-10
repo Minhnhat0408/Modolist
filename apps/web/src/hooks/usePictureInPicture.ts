@@ -96,9 +96,29 @@ export async function openPip(): Promise<boolean> {
     // Copy all Tailwind / app styles so classes work
     copyStyles(document, win.document);
 
+    // Propagate dark/light theme from main document
+    win.document.documentElement.className =
+      document.documentElement.className;
+
+    // Keep pip theme in sync if user toggles while pip is open
+    const themeObserver = new MutationObserver(() => {
+      if (!pipWindow) return;
+      pipWindow.document.documentElement.className =
+        document.documentElement.className;
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    win.addEventListener("pagehide", () => themeObserver.disconnect(), {
+      once: true,
+    });
+
     const body = win.document.body;
-    body.className =
-      "m-0 p-0 min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 bg-no-repeat bg-fixed";
+    const isDark = document.documentElement.classList.contains("dark");
+    body.className = isDark
+      ? "m-0 p-0 min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 bg-no-repeat bg-fixed"
+      : "m-0 p-0 min-h-screen bg-white bg-no-repeat bg-fixed";
 
     const container = win.document.createElement("div");
     container.style.cssText = "width:100%;height:100vh;";

@@ -108,22 +108,19 @@ export class TasksService {
 
     // Tạo task mới
     async create(userId: string, createTaskDto: CreateTaskDto) {
-        // Get max order in the same status column
-        const maxOrderTask = await this.prisma.task.findFirst({
-            where: {
-                userId,
-                status: createTaskDto.status || TaskStatus.BACKLOG,
-            },
-            orderBy: { order: "desc" },
-        });
+        const targetStatus = createTaskDto.status || TaskStatus.BACKLOG;
 
-        const newOrder = (maxOrderTask?.order || 0) + 1;
+        // Shift all existing tasks in the column up by 1 to make room at top
+        await this.prisma.task.updateMany({
+            where: { userId, status: targetStatus },
+            data: { order: { increment: 1 } },
+        });
 
         const task = await this.prisma.task.create({
             data: {
                 ...createTaskDto,
                 userId,
-                order: newOrder,
+                order: 0,
                 dueDate: createTaskDto.dueDate ? new Date(createTaskDto.dueDate) : null,
             },
         });

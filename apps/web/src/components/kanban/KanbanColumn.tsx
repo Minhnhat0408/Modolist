@@ -29,6 +29,7 @@ interface KanbanColumnProps {
   onStartFocus?: (task: KanbanTask) => void;
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
+  onTodayScrollRef?: (el: HTMLDivElement | null) => void;
 }
 
 export function KanbanColumn({
@@ -43,6 +44,7 @@ export function KanbanColumn({
   onStartFocus,
   onTaskMove,
   onTaskMoveToTop,
+  onTodayScrollRef,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -145,10 +147,13 @@ export function KanbanColumn({
           )}
         </div>
 
-        <div className={clsx(
-          "px-4 mb-4 pt-0 space-y-3 min-h-50",
-          isToday && "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
-        )}>
+        <div
+          ref={isToday ? onTodayScrollRef : undefined}
+          className={clsx(
+            "px-4 mb-4 pt-0 space-y-3 min-h-50",
+            isToday && "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+          )}
+        >
           {(isToday ? tasks : visibleTasks).map((task, index) => (
             <motion.div
               key={task.id}
