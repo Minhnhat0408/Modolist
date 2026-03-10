@@ -18,7 +18,7 @@ export default function Home() {
           <div className="flex items-center space-x-2">
             <Target className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold text-foreground">
-              Co-Focus Space
+              Modolist
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -41,7 +41,7 @@ export default function Home() {
               <span className="text-primary">tập trung hiệu quả</span>
             </h1>
             <p className="text-xl text-muted-foreground">
-              Co-Focus Space giúp bạn tổ chức công việc, theo dõi tiến độ và
+              Modolist giúp bạn tổ chức công việc, theo dõi tiến độ và
               cộng tác cùng đội nhóm một cách dễ dàng với giao diện trực quan và
               tính năng mạnh mẽ.
             </p>
@@ -160,7 +160,7 @@ export default function Home() {
               Sẵn sàng bắt đầu?
             </h2>
             <p className="text-xl text-muted-foreground">
-              Tham gia cùng hàng nghìn người dùng đang sử dụng Co-Focus Space để
+              Tham gia cùng hàng nghìn người dùng đang sử dụng Modolist để
               quản lý công việc hiệu quả hơn
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
@@ -180,11 +180,11 @@ export default function Home() {
             <div className="flex items-center space-x-2">
               <Target className="h-6 w-6 text-primary" />
               <span className="font-semibold text-foreground">
-                Co-Focus Space
+                Modolist
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 Co-Focus Space. Tất cả quyền được bảo lưu.
+              © 2026 Modolist. Tất cả quyền được bảo lưu.
             </p>
           </div>
         </div>

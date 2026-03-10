@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+  ResponsiveModalBody,
+  ResponsiveModalFooter,
+} from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,8 +186,11 @@ export function AITaskGenerator({
     .reduce((sum, t) => sum + t.estimatedPomodoros, 0);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl backdrop-blur-2xl bg-background/90 border-white/20 shadow-2xl shadow-primary/10">
+    <ResponsiveModal open={open} onOpenChange={handleClose}>
+      <ResponsiveModalContent
+        dialogClassName="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl backdrop-blur-2xl bg-background/90 border-white/20 shadow-2xl shadow-primary/10"
+        className="p-0 gap-0"
+      >
         <AnimatePresence mode="wait">
           {/* ─── Step 1: Input ─────────────────────────────────────── */}
           {step === "input" && (
@@ -198,20 +202,20 @@ export function AITaskGenerator({
               transition={{ duration: 0.3 }}
               className="p-6"
             >
-              <DialogHeader className="pb-4">
+              <ResponsiveModalHeader className="pb-4 px-0 border-none">
                 <div className="flex items-center gap-3 mb-1">
                   <div className="p-2 rounded-xl bg-primary/20">
                     <Wand2 className="w-5 h-5 text-primary" />
                   </div>
-                  <DialogTitle className="text-xl">
+                  <ResponsiveModalTitle className="text-xl">
                     AI Task Generator
-                  </DialogTitle>
+                  </ResponsiveModalTitle>
                 </div>
-                <DialogDescription>
+                <ResponsiveModalDescription>
                   Mô tả mục tiêu của bạn — AI sẽ phân tích và tạo ra các nhiệm
                   vụ cụ thể với ước lượng thời gian.
-                </DialogDescription>
-              </DialogHeader>
+                </ResponsiveModalDescription>
+              </ResponsiveModalHeader>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -275,7 +279,7 @@ export function AITaskGenerator({
                 )}
               </div>
 
-              <DialogFooter className="mt-6">
+              <ResponsiveModalFooter className="mt-6 px-0 border-none">
                 <Button
                   variant="outline"
                   onClick={() => handleClose(false)}
@@ -300,7 +304,7 @@ export function AITaskGenerator({
                     </>
                   )}
                 </Button>
-              </DialogFooter>
+              </ResponsiveModalFooter>
             </motion.div>
           )}
 
@@ -314,21 +318,21 @@ export function AITaskGenerator({
               transition={{ duration: 0.3 }}
               className="p-6"
             >
-              <DialogHeader className="pb-3">
+              <ResponsiveModalHeader className="pb-3 px-0 border-none">
                 <div className="flex items-center gap-3 mb-1">
                   <div className="p-2 rounded-xl bg-primary/20">
                     <Brain className="w-5 h-5 text-primary" />
                   </div>
-                  <DialogTitle className="text-xl">
+                  <ResponsiveModalTitle className="text-xl">
                     AI đề xuất {tasks.length} nhiệm vụ
-                  </DialogTitle>
+                  </ResponsiveModalTitle>
                 </div>
                 {summary && (
-                  <DialogDescription className="text-sm">
+                  <ResponsiveModalDescription className="text-sm">
                     {summary}
-                  </DialogDescription>
+                  </ResponsiveModalDescription>
                 )}
-              </DialogHeader>
+              </ResponsiveModalHeader>
 
               {/* Task list */}
               <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
@@ -481,7 +485,7 @@ export function AITaskGenerator({
             </motion.div>
           )}
         </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

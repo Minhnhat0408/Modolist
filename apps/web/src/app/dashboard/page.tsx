@@ -212,7 +212,7 @@ export default function DashboardPage() {
         height={1080}
       />
       <div className="container relative  mx-auto p-6">
-        <div className="flex items-center  justify-between mb-8">
+        <div className="flex items-center  justify-between mb-5">
           <div>
             <h1 className="text-3xl font-bold">Danh sách công việc</h1>
             <p className="text-muted-foreground">

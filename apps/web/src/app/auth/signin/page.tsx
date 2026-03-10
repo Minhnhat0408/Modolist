@@ -35,7 +35,7 @@ export default function SignInPage() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-bold">Co-Focus Space</CardTitle>
+          <CardTitle className="text-3xl font-bold">Modolist</CardTitle>
           <CardDescription>
             Đăng nhập để bắt đầu quản lý công việc và tập trung hiệu quả
           </CardDescription>

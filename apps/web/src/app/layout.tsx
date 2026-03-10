@@ -13,7 +13,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Co-Focus Space",
+  title: "Modolist",
   description: "Quản lý công việc và tập trung hiệu quả",
 };
 

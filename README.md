@@ -1,4 +1,4 @@
-# TodoList - Co-Focus Space
+# TodoList - Modolist
 
 > **Ứng dụng Năng suất Xã hội**: Kết hợp Todo List + Pomodoro Timer + Theo dõi Focus Real-time + AI Coach
 
