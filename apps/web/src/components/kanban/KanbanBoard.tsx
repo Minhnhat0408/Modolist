@@ -25,6 +25,7 @@ import { KanbanTask, KANBAN_COLUMNS, COLUMN_ORDER } from "@/types/kanban";
 import { TaskStatus } from "@/types/database";
 import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
@@ -63,6 +64,10 @@ export function KanbanBoard({
   const [focusDialogOpen, setFocusDialogOpen] = useState(false);
   const [selectedTaskForFocus, setSelectedTaskForFocus] =
     useState<KanbanTask | null>(null);
+
+  // Mobile tab state
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [activeTab, setActiveTab] = useState<TaskStatus>(TaskStatus.TODAY);
 
   const { play } = useSoundEffects();
 
@@ -282,28 +287,96 @@ export function KanbanBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex gap-4 overflow-x-auto p-4 h-full items-start">
-        {COLUMN_ORDER.map((status) => {
-          const columnTasks = tasksByStatus[status] || [];
-          return (
-            <SortableContext
-              key={status}
-              items={columnTasks.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <KanbanColumn
-                status={status}
-                title={KANBAN_COLUMNS[status].title}
-                tasks={columnTasks}
-                color={KANBAN_COLUMNS[status].color}
-                onAddTask={onAddTask}
-                onEditTask={onEditTask}
-                onStartFocus={handleStartFocus}
-              />
-            </SortableContext>
-          );
-        })}
-      </div>
+      {isDesktop ? (
+        /* ── Desktop: 3 columns side by side ─────────────────────── */
+        <div className="flex gap-4 overflow-x-auto p-4 h-full items-start">
+          {COLUMN_ORDER.map((status) => {
+            const columnTasks = tasksByStatus[status] || [];
+            return (
+              <SortableContext
+                key={status}
+                items={columnTasks.map((t) => t.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <KanbanColumn
+                  status={status}
+                  title={KANBAN_COLUMNS[status].title}
+                  tasks={columnTasks}
+                  color={KANBAN_COLUMNS[status].color}
+                  onAddTask={onAddTask}
+                  onEditTask={onEditTask}
+                  onStartFocus={handleStartFocus}
+                />
+              </SortableContext>
+            );
+          })}
+        </div>
+      ) : (
+        /* ── Mobile: Tab bar + single active column ───────────────── */
+        <div className="flex flex-col h-full">
+          {/* Tab bar */}
+          <div className="flex border-b border-white/10 bg-background/50 backdrop-blur-sm shrink-0  mt-2 rounded-sm overflow-hidden">
+            {COLUMN_ORDER.map((status) => {
+              const count = (tasksByStatus[status] || []).length;
+              const isActive = activeTab === status;
+              return (
+                <button
+                  key={status}
+                  onClick={() => setActiveTab(status)}
+                  className={`flex-1 flex flex-col items-center justify-center py-2.5 text-xs font-medium transition-colors relative ${
+                    isActive
+                      ? "text-white bg-white/10"
+                      : "text-muted-foreground hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <span className="text-base leading-none mb-0.5">
+                    {KANBAN_COLUMNS[status].title.split(" ")[0]}
+                  </span>
+                  <span className={`text-[10px] ${isActive ? "text-white/80" : "text-muted-foreground/60"}`}>
+                    {KANBAN_COLUMNS[status].title.split(" ").slice(1).join(" ")}
+                    {count > 0 && (
+                      <span className={`ml-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] font-semibold ${
+                        isActive ? "bg-primary/80 text-white" : "bg-white/10"
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </span>
+                  {/* Active underline */}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active column */}
+          <div className="flex-1 overflow-y-auto p-4 px-0">
+            {COLUMN_ORDER.filter((s) => s === activeTab).map((status) => {
+              const columnTasks = tasksByStatus[status] || [];
+              return (
+                <SortableContext
+                  key={status}
+                  items={columnTasks.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <KanbanColumn
+                    status={status}
+                    title={KANBAN_COLUMNS[status].title}
+                    tasks={columnTasks}
+                    color={KANBAN_COLUMNS[status].color}
+                    className="w-full max-w-none min-w-0"
+                    onAddTask={onAddTask}
+                    onEditTask={onEditTask}
+                    onStartFocus={handleStartFocus}
+                  />
+                </SortableContext>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {showDeleteZone && <DeleteZone />}
 

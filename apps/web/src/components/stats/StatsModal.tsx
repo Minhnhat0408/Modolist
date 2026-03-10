@@ -15,11 +15,12 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalBody,
+} from "@/components/ui/responsive-modal";
 
 interface WeeklyDataPoint {
   label: string;
@@ -456,19 +457,20 @@ export function StatsModal({
   }, [open, fetchStats]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        dialogClassName="sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl"
+        className="p-0 gap-0"
         showCloseButton={false}
-        className="w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl"
       >
-        {/* Sticky header */}
-        <DialogHeader className="sticky top-0 z-10 flex-row items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur-sm gap-0">
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
+        {/* Header */}
+        <ResponsiveModalHeader className="sticky top-0 z-10 flex-row items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur-sm gap-0">
+          <ResponsiveModalTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <TrendingUp className="h-4 w-4" />
             </div>
             Thống kê
-          </DialogTitle>
+          </ResponsiveModalTitle>
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -477,10 +479,10 @@ export function StatsModal({
           >
             <X className="h-4 w-4" />
           </motion.button>
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
         {/* Body */}
-        <div className="p-6">
+        <ResponsiveModalBody>
           {loading && (
             <div className="flex items-center justify-center py-16">
               <motion.div
@@ -491,8 +493,8 @@ export function StatsModal({
             </div>
           )}
           {!loading && stats && <StatsContent stats={stats} />}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalBody>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

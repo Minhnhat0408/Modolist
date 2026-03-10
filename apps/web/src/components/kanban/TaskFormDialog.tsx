@@ -8,13 +8,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Task } from "@/types/database";
 import { TaskStatus, TaskPriority } from "@/types/database";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+  ResponsiveModalBody,
+  ResponsiveModalFooter,
+} from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,15 +186,10 @@ export function TaskFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="
-          sm:max-w-150
-          backdrop-blur-2xl
-          bg-background/80
-          border-white/20
-          shadow-2xl shadow-primary/10
-        "
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        dialogClassName="sm:max-w-150 backdrop-blur-2xl bg-background/80 border-white/20 shadow-2xl shadow-primary/10"
+        className="gap-0 p-0"
       >
         <AnimatePresence>
           {open && (
@@ -202,21 +198,23 @@ export function TaskFormDialog({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="flex flex-col max-h-[85dvh] md:max-h-none"
             >
-              <DialogHeader>
-                <DialogTitle className="text-xl">
+              <ResponsiveModalHeader>
+                <ResponsiveModalTitle className="text-xl">
                   {isEditing ? "Chỉnh sửa nhiệm vụ" : "Tạo nhiệm vụ mới"}
-                </DialogTitle>
-                <DialogDescription>
+                </ResponsiveModalTitle>
+                <ResponsiveModalDescription>
                   {isEditing
                     ? "Cập nhật thông tin chi tiết của nhiệm vụ."
                     : "Nhập thông tin chi tiết để tạo nhiệm vụ mới."}
-                </DialogDescription>
-              </DialogHeader>
+                </ResponsiveModalDescription>
+              </ResponsiveModalHeader>
 
+              <ResponsiveModalBody>
               <form
                 onSubmit={handleSubmit(handleFormSubmit)}
-                className="space-y-5 mt-6"
+                className="space-y-5"
               >
                 {/* Title */}
                 <motion.div
@@ -353,6 +351,38 @@ export function TaskFormDialog({
                   )}
                 </motion.div>
 
+                {/* Quick Status Buttons (mobile-friendly) */}
+                {isEditing && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.18 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium">Di chuyển nhanh</Label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: TaskStatus.BACKLOG, label: "📋 Chờ", color: "bg-muted hover:bg-muted/80" },
+                        { value: TaskStatus.TODAY, label: "🎯 Hôm nay", color: "bg-secondary/20 hover:bg-secondary/30 border border-secondary/30" },
+                        { value: TaskStatus.DONE, label: "✅ Xong", color: "bg-primary/20 hover:bg-primary/30 border border-primary/30" },
+                      ].map((s) => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => setValue("status", s.value)}
+                          className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-medium transition-all ${
+                            currentStatus === s.value
+                              ? `${s.color} ring-2 ring-primary/50 scale-[1.02]`
+                              : "bg-white/5 hover:bg-white/10 border border-white/10"
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Status & Priority */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
@@ -473,8 +503,8 @@ export function TaskFormDialog({
                 </motion.div>
 
                 {/* Footer */}
-                <DialogFooter className="gap-2 mt-8">
-                  {isEditing && onDelete && (
+                <div className="flex justify-between items-center gap-2 mt-8 pb-2">
+                  {isEditing && onDelete ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -490,7 +520,7 @@ export function TaskFormDialog({
                         Xóa
                       </Button>
                     </motion.div>
-                  )}
+                  ) : <div />}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -508,12 +538,13 @@ export function TaskFormDialog({
                           : "Tạo"}
                     </Button>
                   </motion.div>
-                </DialogFooter>
+                </div>
               </form>
+              </ResponsiveModalBody>
             </motion.div>
           )}
         </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

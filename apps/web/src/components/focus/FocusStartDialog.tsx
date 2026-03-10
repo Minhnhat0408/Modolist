@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Target, Plus, Minus, Sparkles } from "lucide-react";
+import { Zap, Target, Plus, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanTask } from "@/types/kanban";
 import { useFocusStore } from "@/stores/useFocusStore";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+  ResponsiveModalBody,
+} from "@/components/ui/responsive-modal";
 
 interface FocusStartDialogProps {
   task: KanbanTask;
@@ -80,36 +88,21 @@ export function FocusStartDialog({
   if (!open) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+    <ResponsiveModal open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <ResponsiveModalContent
+        dialogClassName="sm:max-w-md bg-linear-to-br from-gray-900 to-gray-800 border-gray-700 p-0 gap-0"
+        className="bg-linear-to-br from-gray-900 to-gray-800 border-gray-700 p-0 gap-0"
       >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-gray-700"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Bắt đầu Focus
-              </h2>
-              <p className="text-sm text-gray-400 line-clamp-2">{task.title}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
+        <ResponsiveModalHeader className="px-6 pt-6 pb-4">
+          <ResponsiveModalTitle className="text-2xl font-bold text-white">
+            Bắt đầu Focus
+          </ResponsiveModalTitle>
+          <ResponsiveModalDescription className="text-sm text-gray-400 line-clamp-2">
+            {task.title}
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
+
+        <ResponsiveModalBody className="px-6 pb-8">
 
           {/* AI Recommendation Banner */}
           {!isSessionInProgress &&
@@ -383,8 +376,8 @@ export function FocusStartDialog({
               </>
             )}
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        </ResponsiveModalBody>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

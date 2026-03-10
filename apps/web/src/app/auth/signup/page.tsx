@@ -121,7 +121,7 @@ export default function SignUpPage() {
             Đăng ký tài khoản
           </CardTitle>
           <CardDescription>
-            Tạo tài khoản mới để bắt đầu sử dụng Co-Focus Space
+            Tạo tài khoản mới để bắt đầu sử dụng Modolist
           </CardDescription>
         </CardHeader>
         <CardContent>

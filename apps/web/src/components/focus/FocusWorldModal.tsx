@@ -10,6 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Wifi, WifiOff, Minimize2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { openPip } from "@/hooks/usePictureInPicture";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+  ResponsiveModalBody,
+} from "@/components/ui/responsive-modal";
 
 function ProgressRing({
   startTime,
@@ -173,125 +181,115 @@ export function FocusWorldModal() {
 
   if (!isOpen || isMinimized) return null;
 
+  const modalOpen = isOpen && !isMinimized;
+
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-        onClick={handleMinimize}
+    <ResponsiveModal open={modalOpen} onOpenChange={(v) => { if (!v) handleMinimize(); }}>
+      <ResponsiveModalContent
+        dialogClassName="sm:max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl"
+        className="p-0 gap-0"
+        showCloseButton={false}
       >
-        <motion.div
-          layoutId="focus-world"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b">
-            <div className="flex items-center gap-3">
-              <Users className="h-6 w-6 text-primary" />
-              <div>
-                <h2 className="text-2xl font-bold">Co-Focus World</h2>
-                <p className="text-sm text-muted-foreground">
-                  Những người đang tập trung cùng bạn
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={isConnected ? "default" : "secondary"}
-                className="gap-1"
-              >
-                {isConnected ? (
-                  <>
-                    <Wifi className="h-3 w-3" />
-                    Live
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="h-3 w-3" />
-                    Offline
-                  </>
-                )}
-              </Badge>
-              <Badge variant="outline">{otherUsers.length} người</Badge>
-
-              <button
-                onClick={handleMinimize}
-                className="w-9 h-9 rounded-lg hover:bg-accent transition-colors flex items-center justify-center"
-                aria-label="Thu nhỏ"
-              >
-                <Minimize2 className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={closeWorld}
-                className="w-9 h-9 rounded-lg hover:bg-accent transition-colors flex items-center justify-center"
-                aria-label="Đóng"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        {/* Header */}
+        <ResponsiveModalHeader className="flex-row items-center justify-between px-6 py-4 border-b gap-0">
+          <div className="flex items-center gap-3">
+            <Users className="h-6 w-6 text-primary" />
+            <div>
+              <ResponsiveModalTitle className="text-2xl font-bold">Co-Focus World</ResponsiveModalTitle>
+              <ResponsiveModalDescription className="text-sm">
+                Những người đang tập trung cùng bạn
+              </ResponsiveModalDescription>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-6 max-h-[calc(80vh-180px)] overflow-y-auto">
-            {!enabled && (
-              <div className="text-center py-12">
-                <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">
-                  Bắt đầu Focus Session
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Bạn cần có focus session đang chạy để vào Focus World
-                </p>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={isConnected ? "default" : "secondary"}
+              className="gap-1"
+            >
+              {isConnected ? (
+                <>
+                  <Wifi className="h-3 w-3" />
+                  Live
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3" />
+                  Offline
+                </>
+              )}
+            </Badge>
+            <Badge variant="outline">{otherUsers.length} người</Badge>
 
-            {enabled && isInitializing && (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-                <p className="text-muted-foreground">Đang kết nối...</p>
-              </div>
-            )}
+            <button
+              onClick={handleMinimize}
+              className="w-9 h-9 rounded-lg hover:bg-accent transition-colors flex items-center justify-center"
+              aria-label="Thu nhỏ"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </button>
 
-            {enabled && !isInitializing && otherUsers.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium mb-2">Chưa có ai ở đây</p>
-                <p className="text-sm text-muted-foreground">
-                  Hãy là người tiên phong! Các bạn khác sẽ sớm tham gia 🚀
-                </p>
-              </div>
-            )}
-
-            {enabled && !isInitializing && otherUsers.length > 0 && (
-              <div className="space-y-3">
-                <AnimatePresence mode="popLayout">
-                  {otherUsers.map((user) => (
-                    <FocusUserCard key={user.userId} user={user} />
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
+            <button
+              onClick={closeWorld}
+              className="w-9 h-9 rounded-lg hover:bg-accent transition-colors flex items-center justify-center"
+              aria-label="Đóng"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
+        </ResponsiveModalHeader>
 
-          {/* Footer */}
-          {enabled && !isInitializing && (
-            <div className="px-6 py-4 border-t bg-muted/50">
-              <p className="text-xs text-center text-muted-foreground">
-                💡 Tip: Thu nhỏ để xem trong khi làm việc
+        {/* Content */}
+        <ResponsiveModalBody>
+          {!enabled && (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">
+                Bắt đầu Focus Session
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Bạn cần có focus session đang chạy để vào Focus World
               </p>
             </div>
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+
+          {enabled && isInitializing && (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+              <p className="text-muted-foreground">Đang kết nối...</p>
+            </div>
+          )}
+
+          {enabled && !isInitializing && otherUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">Chưa có ai ở đây</p>
+              <p className="text-sm text-muted-foreground">
+                Hãy là người tiên phong! Các bạn khác sẽ sớm tham gia 🚀
+              </p>
+            </div>
+          )}
+
+          {enabled && !isInitializing && otherUsers.length > 0 && (
+            <div className="space-y-3">
+              <AnimatePresence mode="popLayout">
+                {otherUsers.map((user) => (
+                  <FocusUserCard key={user.userId} user={user} />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </ResponsiveModalBody>
+
+        {/* Footer */}
+        {enabled && !isInitializing && (
+          <div className="px-6 py-4 border-t bg-muted/50 shrink-0">
+            <p className="text-xs text-center text-muted-foreground">
+              💡 Tip: Thu nhỏ để xem trong khi làm việc
+            </p>
+          </div>
+        )}
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

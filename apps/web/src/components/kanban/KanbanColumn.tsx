@@ -1,20 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { motion } from "framer-motion";
 import { KanbanTask } from "@/types/kanban";
 import { TaskStatus } from "@/types/database";
 import { TaskCard } from "./TaskCard";
+import { ColumnOverflowDrawer } from "./ColumnOverflowDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Play } from "lucide-react";
+import { Plus, Play, ChevronDown } from "lucide-react";
 import clsx from "clsx";
+
+/** Max tasks shown directly in the column before truncating */
+const VISIBLE_LIMIT = 3;
 
 interface KanbanColumnProps {
   status: TaskStatus;
   title: string;
   tasks: KanbanTask[];
   color: string;
+  className?: string;
   onAddTask?: (status: TaskStatus) => void;
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
@@ -25,6 +31,7 @@ export function KanbanColumn({
   title,
   tasks,
   color,
+  className,
   onAddTask,
   onEditTask,
   onStartFocus,
@@ -34,6 +41,12 @@ export function KanbanColumn({
   });
 
   const isToday = status === TaskStatus.TODAY;
+
+  // ── Truncation logic ─────────────────────────────────────────────────
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const hasOverflow = tasks.length > VISIBLE_LIMIT;
+  const visibleTasks = hasOverflow ? tasks.slice(0, VISIBLE_LIMIT) : tasks;
+  const overflowCount = tasks.length - VISIBLE_LIMIT;
 
   return (
     <motion.div
@@ -45,6 +58,7 @@ export function KanbanColumn({
         flex-1 min-w-80 max-w-md
         ${isOver ? "ring-2 ring-primary/50 scale-[1.02]" : ""}
         transition-all duration-200
+        ${className ?? ""}
       `}
     >
       <div
@@ -86,7 +100,7 @@ export function KanbanColumn({
               transition={{ delay: 0.2 }}
             >
               <Button
-                className="w-full mb-4 bg-primary/20 hover:bg-primary/30 border border-primary/30 backdrop-blur-sm group relative overflow-hidden"
+                className="w-full  cursor-pointer bg-primary/20 hover:bg-primary/30 border border-primary/30 backdrop-blur-sm group relative overflow-hidden"
                 onClick={() => {
                   // Auto-select first task in Today column
                   const firstTask = tasks[0];
@@ -98,26 +112,26 @@ export function KanbanColumn({
                 size="lg"
               >
                 <motion.div
-                  className="absolute inset-0 bg-primary/10"
+                  className="absolute inset-0 bg-primary"
                   animate={{
                     scale: [1, 1.2, 1],
                     opacity: [0.5, 0.8, 0.5],
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 1,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
                 />
-                <Play className="mr-2 h-5 w-5" />
+                <Play className="mr-2 h-5 w-5 z-10 font-bold text-black" />
                 <span className="relative z-10">Bắt đầu Focus Mode</span>
               </Button>
             </motion.div>
           )}
         </div>
 
-        <div className="px-4 pb-10 pt-0 space-y-3 min-h-50">
-          {tasks.map((task, index) => (
+        <div className="px-4 pb-4 pt-0 space-y-3 min-h-50">
+          {visibleTasks.map((task, index) => (
             <motion.div
               key={task.id}
               initial={{ opacity: 0, y: 20 }}
@@ -135,6 +149,23 @@ export function KanbanColumn({
             </motion.div>
           ))}
 
+          {/* ── "Show more" button ── */}
+          {hasOverflow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: VISIBLE_LIMIT * 0.05 }}
+            >
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+                Xem thêm {overflowCount} nhiệm vụ...
+              </button>
+            </motion.div>
+          )}
+
           {tasks.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -145,6 +176,17 @@ export function KanbanColumn({
             </motion.div>
           )}
         </div>
+
+        {/* ── Overflow Drawer/Dialog ── */}
+        <ColumnOverflowDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          title={title}
+          status={status}
+          tasks={tasks}
+          onEditTask={onEditTask}
+          onStartFocus={onStartFocus}
+        />
       </div>
     </motion.div>
   );
