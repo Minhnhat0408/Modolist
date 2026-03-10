@@ -63,7 +63,7 @@ def estimate_from_similar(
     if not similar_tasks:
         return None, None, "none"
 
-    relevant = [t for t in similar_tasks if t["similarity"] >= 0.50]
+    relevant = [t for t in similar_tasks if t["similarity"] >= 0.70]
 
     if not relevant:
         return None, None, "none"
@@ -87,8 +87,8 @@ def estimate_from_similar(
         reasoning += f" Kết hợp thêm {other_count} task từ người dùng khác."
 
     avg_similarity = total_weight / len(relevant)
-    quantity_factor = min(1.0, len(relevant) / 5.0)
-    similarity_factor = max(0.0, (avg_similarity - 0.50) / 0.40)
+    quantity_factor = min(1.0, len(relevant) / 7.0)
+    similarity_factor = max(0.0, (avg_similarity - 0.70) / 0.25)
     confidence_score = min(1.0, quantity_factor * 0.5 + similarity_factor * 0.5)
 
     if len(relevant) <= 1 and avg_similarity < 0.65:

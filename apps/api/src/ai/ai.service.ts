@@ -70,12 +70,11 @@ export class AIService implements OnModuleInit {
             suggestedTotalMinutes?: number;
         }>,
     ) {
-        const existingMaxOrder = await this.prisma.task.findFirst({
+        // Shift all existing BACKLOG tasks up to make room at the top
+        await this.prisma.task.updateMany({
             where: { userId, status: TaskStatus.BACKLOG, isArchived: false },
-            orderBy: { order: "desc" },
-            select: { order: true },
+            data: { order: { increment: tasks.length } },
         });
-        const baseOrder = (existingMaxOrder?.order ?? 0) + 1;
 
         const createdTasks = await this.prisma.$transaction(
             tasks.map((task, index) =>
@@ -83,14 +82,14 @@ export class AIService implements OnModuleInit {
                     data: {
                         title: task.title,
                         description: task.description || null,
-                        status: TaskStatus.TODAY,
+                        status: TaskStatus.BACKLOG,
                         priority: this.mapPriority(task.priority),
                         estimatedPomodoros: task.estimatedPomodoros || null,
                         suggestedSessionType: task.suggestedSessionType || null,
                         suggestedSessions: task.suggestedSessions || null,
                         suggestedTotalMinutes: task.suggestedTotalMinutes || null,
                         tags: task.tags || [],
-                        order: baseOrder + (task.order ?? index),
+                        order: task.order ?? index,
                         userId,
                     },
                 }),

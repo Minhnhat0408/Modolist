@@ -9,7 +9,7 @@ import { TaskCard } from "./TaskCard";
 import { ColumnOverflowDrawer } from "./ColumnOverflowDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, ChevronDown } from "lucide-react";
+import { Plus, Play, ChevronDown, CalendarDays } from "lucide-react";
 import clsx from "clsx";
 
 /** Max tasks shown directly in the column before truncating */
@@ -18,23 +18,31 @@ const VISIBLE_LIMIT = 3;
 interface KanbanColumnProps {
   status: TaskStatus;
   title: string;
+  /** Tasks shown directly on the column surface */
   tasks: KanbanTask[];
+  /** All tasks in the column (for drawer). Falls back to tasks if omitted. */
+  allTasks?: KanbanTask[];
   color: string;
   className?: string;
   onAddTask?: (status: TaskStatus) => void;
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
+  onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
+  onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
 }
 
 export function KanbanColumn({
   status,
   title,
   tasks,
+  allTasks,
   color,
   className,
   onAddTask,
   onEditTask,
   onStartFocus,
+  onTaskMove,
+  onTaskMoveToTop,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -42,9 +50,13 @@ export function KanbanColumn({
 
   const isToday = status === TaskStatus.TODAY;
 
-  // ── Truncation logic ─────────────────────────────────────────────────
+  const isDone = status === TaskStatus.DONE;
+  const drawerTasks = allTasks ?? tasks;
+  const totalCount = drawerTasks.length;
+
+  // ── Truncation logic (not used for TODAY — it scrolls inline) ────────
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const hasOverflow = tasks.length > VISIBLE_LIMIT;
+  const hasOverflow = !isToday && tasks.length > VISIBLE_LIMIT;
   const visibleTasks = hasOverflow ? tasks.slice(0, VISIBLE_LIMIT) : tasks;
   const overflowCount = tasks.length - VISIBLE_LIMIT;
 
@@ -80,8 +92,11 @@ export function KanbanColumn({
                 variant="secondary"
                 className="h-6 min-w-6 px-2 rounded-full bg-white/10 backdrop-blur-sm"
               >
-                {tasks.length}
+                {isDone ? tasks.length : totalCount}
               </Badge>
+              {isDone && totalCount > tasks.length && (
+                <span className="text-xs text-muted-foreground/60">/{totalCount} tổng</span>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -130,8 +145,11 @@ export function KanbanColumn({
           )}
         </div>
 
-        <div className="px-4 pb-4 pt-0 space-y-3 min-h-50">
-          {visibleTasks.map((task, index) => (
+        <div className={clsx(
+          "px-4 mb-4 pt-0 space-y-3 min-h-50",
+          isToday && "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+        )}>
+          {(isToday ? tasks : visibleTasks).map((task, index) => (
             <motion.div
               key={task.id}
               initial={{ opacity: 0, y: 20 }}
@@ -166,6 +184,22 @@ export function KanbanColumn({
             </motion.div>
           )}
 
+          {/* ── DONE: always show history button when there are older tasks ── */}
+          {isDone && !hasOverflow && totalCount > tasks.length && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Xem tất cả {totalCount} nhiệm vụ đã hoàn thành
+              </button>
+            </motion.div>
+          )}
+
           {tasks.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -177,16 +211,18 @@ export function KanbanColumn({
           )}
         </div>
 
-        {/* ── Overflow Drawer/Dialog ── */}
-        <ColumnOverflowDrawer
+        {/* ── Overflow Drawer/Dialog (BACKLOG + DONE only) ── */}
+        {!isToday && <ColumnOverflowDrawer
           open={drawerOpen}
           onOpenChange={setDrawerOpen}
           title={title}
           status={status}
-          tasks={tasks}
+          tasks={drawerTasks}
           onEditTask={onEditTask}
           onStartFocus={onStartFocus}
-        />
+          onTaskMove={onTaskMove}
+          onTaskMoveToTop={onTaskMoveToTop}
+        />}
       </div>
     </motion.div>
   );

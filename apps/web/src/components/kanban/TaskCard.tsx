@@ -6,10 +6,42 @@ import { motion } from "framer-motion";
 import { KanbanTask } from "@/types/kanban";
 import { TaskPriority, TaskStatus } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Play, Clock, Zap } from "lucide-react";
+import { CalendarDays, Play, Clock, Zap, AlertTriangle } from "lucide-react";
 import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+
+// ── Due-date helpers ─────────────────────────────────────────────────
+
+/** Compute how urgent a dueDate is relative to today */
+function getDueDateUrgency(
+  dueDate: Date | string | null,
+): "overdue" | "today" | "soon" | "normal" | null {
+  if (!dueDate) return null;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(dueDate);
+  const targetDay = new Date(
+    target.getFullYear(),
+    target.getMonth(),
+    target.getDate(),
+  );
+  const diffDays = Math.round(
+    (targetDay.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays < 0) return "overdue";
+  if (diffDays === 0) return "today";
+  if (diffDays <= 2) return "soon";
+  return "normal";
+}
+
+const URGENCY_STYLES = {
+  overdue: "text-red-400 font-semibold",
+  today: "text-orange-400 font-semibold",
+  soon: "text-yellow-400",
+  normal: "text-muted-foreground/60",
+} as const;
 
 interface TaskCardProps {
   task: KanbanTask;
@@ -116,6 +148,10 @@ export function TaskCard({
   };
 
   const isToday = task.status === TaskStatus.TODAY;
+  const isDone = task.status === TaskStatus.DONE;
+  const dueDateUrgency = getDueDateUrgency(task.dueDate);
+  /** In TODAY column: overdue dueDate → blinking alert */
+  const showOverdueAlert = isToday && dueDateUrgency === "overdue";
 
   return (
     <motion.div
@@ -298,13 +334,28 @@ export function TaskCard({
                   </div>
                 )}
 
-              {task.dueDate && (
-                <div className="flex items-center gap-1">
+              {task.dueDate && !isDone && (
+                <div className={`flex items-center gap-1 ${dueDateUrgency ? URGENCY_STYLES[dueDateUrgency] : ""}`}>
                   <CalendarDays className="h-3 w-3" />
                   <span>
-                    {new Date(task.dueDate).toLocaleDateString("vi-VN")}
+                    {dueDateUrgency === "overdue"
+                      ? "Quá hạn"
+                      : dueDateUrgency === "today"
+                        ? "Hôm nay"
+                        : new Date(task.dueDate).toLocaleDateString("vi-VN")}
                   </span>
                 </div>
+              )}
+
+              {showOverdueAlert && (
+                <motion.div
+                  animate={{ opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex items-center gap-1 text-red-400"
+                  title="Nhiệm vụ này đã quá hạn!"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                </motion.div>
               )}
 
               {showCreatedDate && task.createdAt && (
