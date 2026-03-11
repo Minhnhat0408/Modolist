@@ -19,7 +19,7 @@ export const FOCUS_DURATIONS = {
   SHORT_BREAK: 5 * 60, // 5 minutes
   LONG_BREAK: 15 * 60, // 15 minutes
   QUICK_5: 5 * 60, // 5 minutes quick focus
-  QUICK_25: 25 * 60, // 25 minutes quick focus
+  QUICK_15: 15 * 60, // 15 minutes quick focus
 } as const;
 
 interface FocusStore {
@@ -31,7 +31,7 @@ interface FocusStore {
   mode: FocusMode;
   sessionId: string | null;
   focusType: FocusType;
-  shortFocusDuration: number; // Actual duration for SHORT type (QUICK_5 or QUICK_25)
+  shortFocusDuration: number; // Actual duration for SHORT type (QUICK_5 or QUICK_15)
 
   // Date-based timer: stores the wall-clock timestamp when timer should reach 0
   targetEndTime: number | null; // Date.now() + timeLeft*1000
@@ -45,7 +45,8 @@ interface FocusStore {
   showCompletionModal: boolean; // Show when all sessions complete
 
   // Actions
-  startShortFocus: (task: KanbanTask, minutes: 5 | 25) => void;
+  startShortFocus: (task: KanbanTask, minutes: 5 | 15) => void;
+  addQuickSession: (minutes: 5 | 15) => void;
   startStandardFocus: (task: KanbanTask, sessionCount: number) => void;
   pauseFocus: () => void;
   resumeFocus: () => void;
@@ -72,25 +73,17 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   mode: "WORK",
   sessionId: null,
   focusType: "SHORT",
-  shortFocusDuration: FOCUS_DURATIONS.QUICK_25,
+  shortFocusDuration: FOCUS_DURATIONS.QUICK_15,
   targetEndTime: null,
   totalSessions: 1,
   currentSession: 1,
   completedSessions: 0,
   showCompletionModal: false,
 
-  // Type A: Short Focus (5 or 25 minutes, no break)
+  // Type A: Short Focus (5 or 15 minutes, no break)
   startShortFocus: (task, minutes) => {
     const duration =
-      minutes === 5 ? FOCUS_DURATIONS.QUICK_5 : FOCUS_DURATIONS.QUICK_25;
-
-    // Quick Focus logic: detect if adding more session after completion
-    const currentCompleted = task.focusCompletedSessions || 0;
-    const currentTotal = task.focusTotalSessions || 0;
-    const isAddingMore = currentTotal > 0 && currentCompleted >= currentTotal;
-
-    // Calculate new total sessions for Quick Focus (always +1)
-    const newTotalSessions = isAddingMore ? currentTotal + 1 : 1;
+      minutes === 5 ? FOCUS_DURATIONS.QUICK_5 : FOCUS_DURATIONS.QUICK_15;
 
     set({
       activeTask: task,
@@ -100,7 +93,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       isMinimized: false,
       focusType: "SHORT",
       shortFocusDuration: duration,
-      totalSessions: newTotalSessions,
+      totalSessions: 1,
       currentSession: 1,
       completedSessions: 0,
       sessionId: null,
@@ -108,24 +101,25 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       targetEndTime: Date.now() + duration * 1000,
     });
 
-    // Update task's focusTotalSessions if adding more
-    if (isAddingMore) {
-      api
-        .patch(`/tasks/${task.id}`, {
-          focusTotalSessions: newTotalSessions,
-        })
-        .catch((error) => {
-          console.error("Failed to update task focus total sessions:", error);
-        });
-    }
-
     api
       .post("/focus-sessions/start", {
         taskId: task.id,
         plannedDuration: duration,
       })
       .then((data) => {
-        set({ sessionId: (data as SessionResponse).id });
+        const { status } = get();
+        if (
+          status === "focusing" ||
+          status === "break" ||
+          status === "paused"
+        ) {
+          set({ sessionId: (data as SessionResponse).id });
+        } else {
+          // Race condition: user skipped before API responded — delete orphan session
+          api
+            .delete(`/focus-sessions/${(data as SessionResponse).id}`)
+            .catch(() => {});
+        }
       })
       .catch((error) => {
         console.error("Failed to create focus session:", error);
@@ -136,7 +130,11 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
   // Type B: Standard Focus (Pomodoro loop with breaks)
   startStandardFocus: (task, sessionCount) => {
-    const currentCompleted = task.focusCompletedSessions || 0;
+    // Count only standard sessions from actual records (accurate vs. counter)
+    const standardCompletedCount = (task.focusSessions ?? []).filter(
+      (s) => s.plannedDuration > 900,
+    ).length;
+    const currentCompleted = standardCompletedCount;
     const currentTotal = task.focusTotalSessions || 0;
 
     // Check if resuming existing session (not yet completed all)
@@ -310,6 +308,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
     } = get();
 
     if (focusType === "SHORT") {
+      const { shortFocusDuration: sd } = get();
       set({
         status: "completed",
         timeLeft: 0,
@@ -319,7 +318,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       if (sessionId) {
         api
           .patch(`/focus-sessions/${sessionId}/complete`, {
-            actualDuration: 25 * 60,
+            actualDuration: sd, // timer fully expired => actual == planned
           })
           .then(() => {
             const task = get().activeTask;
@@ -523,7 +522,22 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   skipWorkSession: () => {
     const { focusType, totalSessions, completedSessions, sessionId } = get();
 
-    if (focusType === "SHORT") return;
+    // SHORT: skip = discard current session (no credit), show completion
+    if (focusType === "SHORT") {
+      if (sessionId) {
+        api.delete(`/focus-sessions/${sessionId}`).catch((error) => {
+          console.error("Failed to delete skipped session:", error);
+        });
+      }
+      set({
+        status: "completed",
+        timeLeft: 0,
+        sessionId: null,
+        showCompletionModal: true,
+        targetEndTime: null,
+      });
+      return;
+    }
 
     if (sessionId) {
       api.delete(`/focus-sessions/${sessionId}`).catch((error) => {
@@ -551,8 +565,14 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   },
 
   markWorkDone: () => {
-    const { focusType, totalSessions, completedSessions, sessionId, timeLeft } =
-      get();
+    const {
+      focusType,
+      totalSessions,
+      completedSessions,
+      sessionId,
+      timeLeft,
+      shortFocusDuration,
+    } = get();
 
     if (focusType === "SHORT") {
       set({
@@ -562,7 +582,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
       });
 
       if (sessionId) {
-        const actualDuration = (FOCUS_DURATIONS.QUICK_25 - timeLeft) * 60;
+        const actualDuration = shortFocusDuration - timeLeft; // both in seconds
         api
           .patch(`/focus-sessions/${sessionId}/complete`, {
             actualDuration,
@@ -587,7 +607,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
     const newCompletedSessions = completedSessions + 1;
 
     if (sessionId) {
-      const actualDuration = (FOCUS_DURATIONS.WORK - timeLeft) * 60;
+      const actualDuration = FOCUS_DURATIONS.WORK - timeLeft; // both in seconds
       api
         .patch(`/focus-sessions/${sessionId}/complete`, {
           actualDuration,
@@ -625,6 +645,53 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         sessionId: null,
         targetEndTime: Date.now() + FOCUS_DURATIONS.SHORT_BREAK * 1000,
       });
+    }
+  },
+
+  // Add one more quick focus session (5 or 15 min)
+  addQuickSession: (minutes: 5 | 15) => {
+    const { activeTask, completedSessions } = get();
+    const duration =
+      minutes === 5 ? FOCUS_DURATIONS.QUICK_5 : FOCUS_DURATIONS.QUICK_15;
+
+    set({
+      // Keep completedSessions as-is; totalSessions = completed + 1 (this session)
+      totalSessions: completedSessions + 1,
+      status: "focusing",
+      mode: "WORK",
+      timeLeft: duration,
+      shortFocusDuration: duration,
+      currentSession: completedSessions + 1,
+      sessionId: null,
+      showCompletionModal: false,
+      targetEndTime: Date.now() + duration * 1000,
+    });
+
+    // Do NOT patch focusTotalSessions — quick sessions are ad-hoc.
+    if (activeTask) {
+      api
+        .post("/focus-sessions/start", {
+          taskId: activeTask.id,
+          plannedDuration: duration,
+        })
+        .then((data) => {
+          const { status } = get();
+          if (
+            status === "focusing" ||
+            status === "break" ||
+            status === "paused"
+          ) {
+            set({ sessionId: (data as SessionResponse).id });
+          } else {
+            // Race condition guard — delete orphan session
+            api
+              .delete(`/focus-sessions/${(data as SessionResponse).id}`)
+              .catch(() => {});
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to create focus session:", error);
+        });
     }
   },
 
@@ -716,7 +783,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
             title: string;
             status: string;
             focusTotalSessions?: number | null;
-            focusCompletedSessions?: number;
+            completedPomodoros?: number;
           };
         };
         canResume?: boolean;
@@ -753,7 +820,6 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           title: task.title,
           status: task.status as "TODO" | "IN_PROGRESS" | "DONE",
           focusTotalSessions: task.focusTotalSessions ?? 1,
-          focusCompletedSessions: task.focusCompletedSessions ?? 0,
         } as unknown as KanbanTask,
         status: focusStatus,
         timeLeft,
@@ -761,13 +827,11 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         isMinimized: false,
         sessionId: session.id,
         focusType:
-          session.plannedDuration <= FOCUS_DURATIONS.QUICK_25
-            ? "SHORT"
-            : "STANDARD",
+          session.plannedDuration < FOCUS_DURATIONS.WORK ? "SHORT" : "STANDARD",
         targetEndTime,
         totalSessions: task.focusTotalSessions ?? 1,
-        currentSession: (task.focusCompletedSessions ?? 0) + 1,
-        completedSessions: task.focusCompletedSessions ?? 0,
+        currentSession: (task.completedPomodoros ?? 0) + 1,
+        completedSessions: task.completedPomodoros ?? 0,
         showCompletionModal: false,
       });
     } catch (error) {

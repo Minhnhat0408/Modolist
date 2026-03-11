@@ -75,30 +75,29 @@ model VerificationToken {
 }
 
 model Task {
-    id                     String                 @id @default(cuid())
-    title                  String
-    description            String?
-    status                 TaskStatus             @default(BACKLOG)
-    priority               TaskPriority           @default(MEDIUM)
-    completedPomodoros     Int                    @default(0)
-    focusTotalSessions     Int? // Total sessions planned for current focus cycle
-    focusCompletedSessions Int                    @default(0) // Sessions completed in current focus cycle
-    order                  Int                    @default(0)
-    tags                   String[]
-    dueDate                DateTime?
-    completedAt            DateTime?
-    estimatedPomodoros     Int?
-    suggestedSessionType   String? // "QUICK_5" | "QUICK_25" | "STANDARD" — AI suggested focus mode
-    suggestedSessions      Int? // Number of sessions AI suggested
-    suggestedTotalMinutes  Int? // Total estimated minutes from AI
-    embedding              Unsupported("vector")?
-    isArchived             Boolean                @default(false)
-    userId                 String
-    createdAt              DateTime               @default(now())
-    updatedAt              DateTime               @updatedAt
-    focusSessions          FocusSession[]
-    posts                  Post[]
-    user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id                    String                 @id @default(cuid())
+    title                 String
+    description           String?
+    status                TaskStatus             @default(BACKLOG)
+    priority              TaskPriority           @default(MEDIUM)
+    completedPomodoros    Int                    @default(0)
+    focusTotalSessions    Int? // Total sessions planned for current focus cycle
+    order                 Int                    @default(0)
+    tags                  String[]
+    dueDate               DateTime?
+    completedAt           DateTime?
+    estimatedPomodoros    Int?
+    suggestedSessionType  String? // "QUICK_5" | "QUICK_15" | "STANDARD" — AI suggested focus mode
+    suggestedSessions     Int? // Number of sessions AI suggested
+    suggestedTotalMinutes Int? // Total estimated minutes from AI
+    embedding             Unsupported("vector")?
+    isArchived            Boolean                @default(false)
+    userId                String
+    createdAt             DateTime               @default(now())
+    updatedAt             DateTime               @updatedAt
+    focusSessions         FocusSession[]
+    posts                 Post[]
+    user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@index([userId, status])
     @@index([userId, isArchived])

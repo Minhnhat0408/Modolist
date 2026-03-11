@@ -23,25 +23,25 @@ service AIService {
 
 message GenerateTasksRequest {
     string user_id = 1;
-    string goal = 2;              // e.g. "Build a REST API with authentication"
-    string context = 3;           // optional extra context / description
-    int32  max_tasks = 4;         // 3-7, default 5
+    string goal = 2; // e.g. "Build a REST API with authentication"
+    string context = 3; // optional extra context / description
+    int32  max_tasks = 4; // 3-7, default 5
 }
 
 message GeneratedTask {
     string title = 1;
     string description = 2;
-    string priority = 3;          // "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+    string priority = 3; // "LOW" | "MEDIUM" | "HIGH" | "URGENT"
     int32  estimated_pomodoros = 4;
-    string reasoning = 5;         // Why this estimate (RAG explanation)
-    int32  order = 6;             // Suggested execution order
-    repeated string tags = 7;     // e.g. ["backend", "database", "UI/UX"]
-    FocusPlan focus_plan = 8;     // Recommended focus strategy
+    string reasoning = 5; // Why this estimate (RAG explanation)
+    int32  order = 6; // Suggested execution order
+    repeated string tags = 7; // e.g. ["backend", "database", "UI/UX"]
+    FocusPlan focus_plan = 8; // Recommended focus strategy
 }
 
 message GenerateTasksResponse {
     repeated GeneratedTask tasks = 1;
-    string summary = 2;           // AI summary of the plan
+    string summary = 2; // AI summary of the plan
 }
 
 // ─── FocusPlan ──────────────────────────────────────────────────────────────────
@@ -49,10 +49,10 @@ message GenerateTasksResponse {
 // Maps to frontend FocusType: "SHORT" (Quick) or "STANDARD" (Pomodoro).
 
 message FocusPlan {
-    string session_type = 1;      // "QUICK_5" | "QUICK_25" | "STANDARD"
-    int32  sessions = 2;          // Number of sessions (1 for quick, N for standard)
-    int32  total_minutes = 3;     // Total estimated time in minutes
-    string label = 4;             // Human-readable label, e.g. "Quick 5 phút" or "3 Pomodoros (~1h30)"
+    string session_type = 1; // "QUICK_5" | "QUICK_15" | "STANDARD"
+    int32  sessions = 2; // Number of sessions (1 for quick, N for standard)
+    int32  total_minutes = 3; // Total estimated time in minutes
+    string label = 4; // Human-readable label, e.g. "Quick 5 phút" or "3 Pomodoros (~1h30)"
 }
 
 // ─── EstimateTime ───────────────────────────────────────────────────────────────
@@ -65,16 +65,16 @@ message EstimateTimeRequest {
 
 message SimilarTask {
     string title = 1;
-    int32  actual_pomodoros = 2;   // completedPomodoros from past task
-    double similarity = 3;        // cosine similarity score
+    int32  actual_pomodoros = 2; // completedPomodoros from past task
+    double similarity = 3; // cosine similarity score
 }
 
 message EstimateTimeResponse {
     int32  estimated_pomodoros = 1;
     string reasoning = 2;
     repeated SimilarTask similar_tasks = 3;
-    string confidence = 4;        // "high" | "medium" | "low"
-    FocusPlan focus_plan = 5;     // Recommended focus strategy
+    string confidence = 4; // "high" | "medium" | "low"
+    FocusPlan focus_plan = 5; // Recommended focus strategy
 }
 
 // ─── StoreTaskEmbedding ─────────────────────────────────────────────────────────

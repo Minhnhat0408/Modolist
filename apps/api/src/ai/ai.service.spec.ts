@@ -25,6 +25,7 @@ const mockPrisma = {
     task: {
         findFirst: jest.fn(),
         create: jest.fn(),
+        updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
 };

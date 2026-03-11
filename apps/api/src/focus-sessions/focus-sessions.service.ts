@@ -71,7 +71,6 @@ export class FocusSessionsService {
                     where: { id: session.taskId },
                     data: {
                         completedPomodoros: { increment: 1 },
-                        focusCompletedSessions: { increment: 1 },
                     },
                 });
             }
@@ -164,6 +163,25 @@ export class FocusSessionsService {
             orderBy: {
                 startedAt: "desc",
             },
+        });
+    }
+
+    async findByTask(userId: string, taskId: string) {
+        return await this.prisma.focusSession.findMany({
+            where: {
+                userId,
+                taskId,
+                status: { in: ["COMPLETED", "INTERRUPTED"] },
+            },
+            select: {
+                id: true,
+                startedAt: true,
+                endedAt: true,
+                plannedDuration: true,
+                duration: true,
+                status: true,
+            },
+            orderBy: { startedAt: "desc" },
         });
     }
 
@@ -472,7 +490,7 @@ export class FocusSessionsService {
                         title: true,
                         status: true,
                         focusTotalSessions: true,
-                        focusCompletedSessions: true,
+                        completedPomodoros: true,
                     },
                 },
             },
@@ -501,7 +519,7 @@ export class FocusSessionsService {
                         title: true,
                         status: true,
                         focusTotalSessions: true,
-                        focusCompletedSessions: true,
+                        completedPomodoros: true,
                     },
                 },
             },

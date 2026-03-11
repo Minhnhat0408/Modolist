@@ -11,6 +11,26 @@ import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
+// ── Session type colors ───────────────────────────────────────────────
+const SESSION_COLORS = {
+  QUICK_5: "#f59e0b", // amber
+  QUICK_15: "#8b5cf6", // purple
+  STANDARD: "#3b82f6", // blue
+} as const;
+type SessionColorKey = keyof typeof SESSION_COLORS;
+
+function getSessionType(plannedDuration: number): SessionColorKey {
+  if (plannedDuration <= 300) return "QUICK_5";
+  if (plannedDuration <= 900) return "QUICK_15";
+  return "STANDARD";
+}
+
+const SESSION_LABELS: Record<SessionColorKey, string> = {
+  QUICK_5: "5p",
+  QUICK_15: "15p",
+  STANDARD: "25p",
+};
+
 // ── Due-date helpers ─────────────────────────────────────────────────
 
 /** Compute how urgent a dueDate is relative to today */
@@ -78,7 +98,7 @@ export function TaskCard({
     focusType,
     currentSession,
     totalSessions,
-    completedSessions,
+    shortFocusDuration,
   } = useFocusStore();
 
   const isFocusing =
@@ -118,23 +138,79 @@ export function TaskCard({
     },
   };
 
-  const hasSessionData = task.focusTotalSessions && task.focusTotalSessions > 0;
-  const hasQuickSessions = !hasSessionData && task.focusCompletedSessions > 0;
-  const shouldShowProgress =
-    (isFocusing && focusType === "STANDARD") || hasSessionData;
+  // ── Session type color bar helpers ──────────────────────────────────
+  const allFocusSessions = task.focusSessions ?? [];
+  const quick5 = allFocusSessions.filter(
+    (s) => getSessionType(s.plannedDuration) === "QUICK_5",
+  );
+  const quick15 = allFocusSessions.filter(
+    (s) => getSessionType(s.plannedDuration) === "QUICK_15",
+  );
+  const standardDone = allFocusSessions.filter(
+    (s) =>
+      getSessionType(s.plannedDuration) === "STANDARD" &&
+      s.status === "COMPLETED",
+  );
 
-  const displayTotalSessions =
-    isFocusing && focusType === "STANDARD"
-      ? totalSessions
-      : task.focusTotalSessions || 0;
-  const displayCompletedSessions =
-    isFocusing && focusType === "STANDARD"
-      ? completedSessions
-      : task.focusCompletedSessions || 0;
-  const sessionProgress =
-    displayTotalSessions > 0
-      ? (displayCompletedSessions / displayTotalSessions) * 100
-      : 0;
+  const standardPlan = task.focusTotalSessions || 0;
+  const standardRemaining = Math.max(0, standardPlan - standardDone.length);
+
+  const liveType: SessionColorKey | null = isFocusing
+    ? focusType === "STANDARD"
+      ? "STANDARD"
+      : shortFocusDuration <= 300
+        ? "QUICK_5"
+        : "QUICK_15"
+    : null;
+
+  type Seg = {
+    colorKey: SessionColorKey;
+    state: "done" | "live" | "empty";
+    minutes: number;
+  };
+  const segments: Seg[] = [
+    ...quick5.map(
+      (): Seg => ({ colorKey: "QUICK_5", state: "done", minutes: 5 }),
+    ),
+    ...(liveType === "QUICK_5"
+      ? [{ colorKey: "QUICK_5" as const, state: "live" as const, minutes: 5 }]
+      : []),
+    ...quick15.map(
+      (): Seg => ({ colorKey: "QUICK_15", state: "done", minutes: 15 }),
+    ),
+    ...(liveType === "QUICK_15"
+      ? [{ colorKey: "QUICK_15" as const, state: "live" as const, minutes: 15 }]
+      : []),
+    ...standardDone.map(
+      (): Seg => ({ colorKey: "STANDARD", state: "done", minutes: 25 }),
+    ),
+    ...Array.from(
+      { length: standardRemaining },
+      (_, i): Seg => ({
+        colorKey: "STANDARD",
+        state: liveType === "STANDARD" && i === 0 ? "live" : "empty",
+        minutes: 25,
+      }),
+    ),
+    ...(liveType === "STANDARD" && standardRemaining === 0
+      ? [{ colorKey: "STANDARD" as const, state: "live" as const, minutes: 25 }]
+      : []),
+  ];
+  const totalMinutes = segments.reduce((s, seg) => s + seg.minutes, 0) || 1;
+  const shouldShowProgress = segments.length > 0;
+
+  const liveFocusingStandard = isFocusing && focusType === "STANDARD";
+  const standardTotal = liveFocusingStandard ? totalSessions : standardPlan;
+  // Always derive from the focusSessions array (never from store counters which include quick sessions)
+  const standardCompletedCount = standardDone.length;
+  const showStandardProgress = standardTotal > 0;
+  const standardPct = showStandardProgress
+    ? Math.round((standardCompletedCount / standardTotal) * 100)
+    : 0;
+
+  const typesInBar = new Set(
+    segments.filter((s) => s.state !== "empty").map((s) => s.colorKey),
+  );
 
   const handleStartFocus = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -255,42 +331,93 @@ export function TaskCard({
           </div>
 
           {task.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
+            <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap">
               {task.description}
             </p>
           )}
 
           {shouldShowProgress && (
             <div className="space-y-1">
+              {/* Progress label */}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {isFocusing && focusType === "STANDARD"
-                    ? `🎯 Đang Focus: ${displayCompletedSessions} / ${displayTotalSessions}`
-                    : `📊 Tiến Độ: ${displayCompletedSessions} / ${displayTotalSessions}`}
+                <span className="flex items-center gap-1">
+                  {showStandardProgress && (
+                    <span
+                      className="w-2 h-2 rounded-full inline-block"
+                      style={{ backgroundColor: SESSION_COLORS.STANDARD }}
+                    />
+                  )}
+                  {liveFocusingStandard
+                    ? `Tiến độ ${standardDone.length + 1} / ${totalSessions}`
+                    : showStandardProgress
+                      ? `${standardCompletedCount} / ${standardTotal}`
+                      : isFocusing
+                        ? "Đang Focus"
+                        : `✅ ${allFocusSessions.length} phiên hoàn thành`}
                 </span>
-                <span>{Math.round(sessionProgress)}%</span>
+                {showStandardProgress && <span>{standardPct}%</span>}
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${sessionProgress}%` }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                  className={`h-full rounded-full ${
-                    isFocusing && focusType === "STANDARD"
-                      ? "bg-linear-to-r from-blue-500 to-blue-600"
-                      : "bg-linear-to-r from-green-500 to-emerald-600"
-                  }`}
-                />
-              </div>
-            </div>
-          )}
 
-          {hasQuickSessions && (
-            <div className="flex items-center gap-1.5 text-xs text-yellow-400/80">
-              <Zap className="h-3 w-3" />
-              <span>
-                ⚡ {task.focusCompletedSessions} phiên Quick hoàn thành
-              </span>
+              {/* Multi-color proportional progress bar */}
+              <div
+                className="h-1.5 rounded-full overflow-hidden flex gap-0.5"
+                style={{ background: "rgba(255,255,255,0.05)" }}
+              >
+                {segments.map((seg, i) => {
+                  const w = `${(seg.minutes / totalMinutes) * 100}%`;
+                  if (seg.state === "live") {
+                    return (
+                      <motion.div
+                        key={i}
+                        className="h-full"
+                        style={{
+                          width: w,
+                          backgroundColor: SESSION_COLORS[seg.colorKey],
+                        }}
+                        animate={{ opacity: [0.35, 0.75, 0.35] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                    );
+                  }
+                  if (seg.state === "empty") {
+                    return (
+                      <div
+                        key={i}
+                        className="h-full bg-white/10"
+                        style={{ width: w }}
+                      />
+                    );
+                  }
+                  return (
+                    <div
+                      key={i}
+                      className="h-full"
+                      title={SESSION_LABELS[seg.colorKey]}
+                      style={{
+                        width: w,
+                        backgroundColor: SESSION_COLORS[seg.colorKey],
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Legend — only when multiple types present */}
+              {typesInBar.size >= 1 && (
+                <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground/50">
+                  {(["QUICK_5", "QUICK_15", "STANDARD"] as SessionColorKey[])
+                    .filter((t) => typesInBar.has(t))
+                    .map((t) => (
+                      <span key={t} className="flex items-center gap-0.5">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full inline-block"
+                          style={{ backgroundColor: SESSION_COLORS[t] }}
+                        />
+                        {SESSION_LABELS[t]}
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -305,13 +432,13 @@ export function TaskCard({
                   <span>⚡ Quick 5p</span>
                 </div>
               )}
-              {task.suggestedSessionType === "QUICK_25" && (
+              {task.suggestedSessionType === "QUICK_15" && (
                 <div
                   className="flex items-center gap-1 text-purple-400/80"
-                  title="AI gợi ý: Quick 25 phút"
+                  title="AI gợi ý: Quick 15 phút"
                 >
                   <Zap className="h-3 w-3" />
-                  <span>⚡ Quick 25p</span>
+                  <span>⚡ Quick 15p</span>
                 </div>
               )}
               {task.suggestedSessionType === "STANDARD" &&
@@ -338,7 +465,9 @@ export function TaskCard({
                 )}
 
               {task.dueDate && !isDone && (
-                <div className={`flex items-center gap-1 ${dueDateUrgency ? URGENCY_STYLES[dueDateUrgency] : ""}`}>
+                <div
+                  className={`flex items-center gap-1 ${dueDateUrgency ? URGENCY_STYLES[dueDateUrgency] : ""}`}
+                >
                   <CalendarDays className="h-3 w-3" />
                   <span>
                     {dueDateUrgency === "overdue"
@@ -353,7 +482,11 @@ export function TaskCard({
               {showOverdueAlert && (
                 <motion.div
                   animate={{ opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 1.2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   className="flex items-center gap-1 text-red-400"
                   title="Nhiệm vụ này đã quá hạn!"
                 >

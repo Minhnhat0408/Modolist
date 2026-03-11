@@ -97,7 +97,9 @@ export function KanbanColumn({
                 {isDone ? tasks.length : totalCount}
               </Badge>
               {isDone && totalCount > tasks.length && (
-                <span className="text-xs text-muted-foreground/60">/{totalCount} tổng</span>
+                <span className="text-xs text-muted-foreground/60">
+                  /{totalCount} tổng
+                </span>
               )}
             </div>
             <Button
@@ -151,7 +153,8 @@ export function KanbanColumn({
           ref={isToday ? onTodayScrollRef : undefined}
           className={clsx(
             "px-4 mb-4 pt-0 space-y-3 min-h-50",
-            isToday && "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+            isToday &&
+              "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
           )}
         >
           {(isToday ? tasks : visibleTasks).map((task, index) => (
@@ -191,10 +194,7 @@ export function KanbanColumn({
 
           {/* ── DONE: always show history button when there are older tasks ── */}
           {isDone && !hasOverflow && totalCount > tasks.length && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <button
                 onClick={() => setDrawerOpen(true)}
                 className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
@@ -217,17 +217,19 @@ export function KanbanColumn({
         </div>
 
         {/* ── Overflow Drawer/Dialog (BACKLOG + DONE only) ── */}
-        {!isToday && <ColumnOverflowDrawer
-          open={drawerOpen}
-          onOpenChange={setDrawerOpen}
-          title={title}
-          status={status}
-          tasks={drawerTasks}
-          onEditTask={onEditTask}
-          onStartFocus={onStartFocus}
-          onTaskMove={onTaskMove}
-          onTaskMoveToTop={onTaskMoveToTop}
-        />}
+        {!isToday && (
+          <ColumnOverflowDrawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            title={title}
+            status={status}
+            tasks={drawerTasks}
+            onEditTask={onEditTask}
+            onStartFocus={onStartFocus}
+            onTaskMove={onTaskMove}
+            onTaskMoveToTop={onTaskMoveToTop}
+          />
+        )}
       </div>
     </motion.div>
   );

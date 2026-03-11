@@ -11,7 +11,7 @@ def build_focus_plan(estimated_pomodoros: int) -> dict:
         estimated_pomodoros = 1
 
     if estimated_pomodoros == 1:
-        return {"session_type": "QUICK_25", "sessions": 1, "total_minutes": 25}
+        return {"session_type": "QUICK_15", "sessions": 1, "total_minutes": 15}
     else:
         total = estimated_pomodoros * 25 + (estimated_pomodoros - 1) * 5
         return {"session_type": "STANDARD", "sessions": estimated_pomodoros, "total_minutes": total}
@@ -25,8 +25,8 @@ def make_focus_plan_proto(plan: dict) -> "ai_service_pb2.FocusPlan":
 
     if st == "QUICK_5":
         label = "⚡ Quick 5 phút"
-    elif st == "QUICK_25":
-        label = "⚡ Quick 25 phút"
+    elif st == "QUICK_15":
+        label = "⚡ Quick 15 phút"
     else:
         hours = total // 60
         mins = total % 60
@@ -112,12 +112,12 @@ ESTIMATE_PROMPT = """Bạn là AI ước lượng thời gian cho task.
 
 Hệ thống có 3 chế độ Focus:
 1. QUICK_5: Focus nhanh 5 phút — cho việc siêu nhỏ (trả lời tin nhắn, fix typo, quick check)
-2. QUICK_25: Focus nhanh 25 phút không nghỉ — cho việc nhỏ hoàn thành trong 1 lần (review PR, viết email dài, debug nhỏ)
+2. QUICK_15: Focus nhanh 15 phút không nghỉ — cho việc nhỏ hoàn thành trong 1 lần (review PR, viết email dài, debug nhỏ)
 3. STANDARD: Pomodoro chuẩn 25 phút + nghỉ 5 phút, lặp nhiều session — cho việc cần tập trung lâu
 
 Hướng dẫn ước lượng:
 - Task siêu nhỏ (<5 phút): → QUICK_5, 1 session, 5 phút
-- Task nhỏ (5-25 phút): → QUICK_25, 1 session, 25 phút
+- Task nhỏ (5-15 phút): → QUICK_15, 1 session, 15 phút
 - Task trung bình (~1-2 giờ): → STANDARD, 2-4 sessions
 - Task lớn (~2-4 giờ): → STANDARD, 5-8 sessions
 - Tối đa 10 sessions — task lớn hơn nên chia nhỏ
@@ -128,7 +128,7 @@ Tiêu đề: {title}
 
 Trả về JSON (không markdown, không code block):
 {{
-    "session_type": "QUICK_5 hoặc QUICK_25 hoặc STANDARD",
+    "session_type": "QUICK_5 hoặc QUICK_15 hoặc STANDARD",
     "sessions": <số nguyên>,
     "total_minutes": <số phút>,
     "reasoning": "<giải thích ngắn gọn bằng tiếng Việt>"
@@ -159,7 +159,7 @@ async def estimate_with_llm(title: str, description: str = "") -> tuple[int, str
         reasoning = data.get("reasoning", "AI ước lượng dựa trên độ phức tạp.")
 
         # Normalize & clamp
-        if session_type not in ("QUICK_5", "QUICK_25", "STANDARD"):
+        if session_type not in ("QUICK_5", "QUICK_15", "STANDARD"):
             session_type = "STANDARD"
         if session_type.startswith("QUICK"):
             sessions = 1

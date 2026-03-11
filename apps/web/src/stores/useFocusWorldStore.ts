@@ -1,3 +1,4 @@
+import { resizePIP } from "@/hooks/usePictureInPicture";
 import { create } from "zustand";
 
 interface FocusWorldStore {
@@ -22,13 +23,22 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
 
   openWorld: () => set({ isOpen: true, isMinimized: false }),
   closeWorld: () =>
-    set({
-      isOpen: false,
-      isMinimized: false,
-      onlineCount: 0,
-      isWorldConnected: false,
+    set((state) => {
+      if (!state.isOpen) return state;
+      resizePIP(130);
+      return {
+        isOpen: false,
+        isMinimized: false,
+        onlineCount: 0,
+        isWorldConnected: false,
+      };
     }),
-  toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized })),
+  toggleMinimize: () =>
+    set((state) => {
+      if (!state.isOpen) return state;
+      resizePIP(190);
+      return { isMinimized: !state.isMinimized };
+    }),
   setOnlineData: (count, connected) =>
     set({ onlineCount: count, isWorldConnected: connected }),
 }));

@@ -87,6 +87,11 @@ export class FocusSessionsController {
         return this.focusSessionsService.getIncompleteSession(user.id, taskId);
     }
 
+    @Get("by-task/:taskId")
+    findByTask(@Param("taskId") taskId: string, @CurrentUser() user: CurrentUserData) {
+        return this.focusSessionsService.findByTask(user.id, taskId);
+    }
+
     @Get(":id")
     findOne(@Param("id") id: string, @CurrentUser() user: CurrentUserData) {
         return this.focusSessionsService.findOne(id, user.id);

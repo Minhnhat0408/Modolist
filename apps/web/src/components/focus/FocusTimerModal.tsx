@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
@@ -17,7 +17,6 @@ import {
   Users,
   Sparkles,
 } from "lucide-react";
-import { api } from "@/lib/api-client";
 
 export function FocusTimerModal() {
   const {
@@ -77,27 +76,6 @@ export function FocusTimerModal() {
     }
   }, [status, tick]);
 
-  const handleSaveSession = useCallback(async () => {
-    if (!activeTask) return;
-
-    try {
-      const duration = FOCUS_DURATIONS.WORK;
-      await api.post("/focus-sessions", {
-        taskId: activeTask.id,
-        duration,
-        plannedDuration: duration,
-        status: "COMPLETED",
-      });
-
-      // Update task's completed pomodoros
-      await api.patch(`/tasks/${activeTask.id}`, {
-        completedPomodoros: (activeTask.completedPomodoros || 0) + 1,
-      });
-    } catch (error) {
-      console.error("Failed to save focus session:", error);
-    }
-  }, [activeTask]);
-
   useEffect(() => {
     const prev = prevStatusRef.current;
 
@@ -119,11 +97,6 @@ export function FocusTimerModal() {
             icon: "/favicon.ico",
           });
         }
-
-        // Auto-save session to API
-        if (mode === "WORK" && activeTask) {
-          handleSaveSession();
-        }
       }
 
       prevStatusRef.current = status;
@@ -132,7 +105,7 @@ export function FocusTimerModal() {
     return () => {
       stop();
     };
-  }, [status, mode, activeTask, handleSaveSession, play, stop]);
+  }, [status, play, stop]);
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -326,15 +299,19 @@ export function FocusTimerModal() {
               )}
             </button>
 
-            {/* Work Mode Buttons */}
-            {focusType === "STANDARD" && mode === "WORK" && (
+            {/* Work Mode Buttons — available for both STANDARD and SHORT */}
+            {mode === "WORK" && (
               <>
                 {/* Skip Work Session */}
                 <button
                   onClick={skipWorkSession}
                   className="w-16 h-16 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center group"
                   aria-label="Bỏ qua phiên làm việc này"
-                  title="Bỏ qua phiên làm việc (không tính)"
+                  title={
+                    focusType === "SHORT"
+                      ? "Bỏ qua (không tính)"
+                      : "Bỏ qua phiên làm việc (không tính)"
+                  }
                 >
                   <XCircle className="w-8 h-8 text-red-400 group-hover:text-red-300" />
                 </button>

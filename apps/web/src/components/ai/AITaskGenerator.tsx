@@ -8,7 +8,6 @@ import {
   ResponsiveModalHeader,
   ResponsiveModalTitle,
   ResponsiveModalDescription,
-  ResponsiveModalBody,
   ResponsiveModalFooter,
 } from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,7 @@ import {
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 interface FocusPlan {
-  sessionType: string; // "QUICK_5" | "QUICK_25" | "STANDARD"
+  sessionType: string; // "QUICK_5" | "QUICK_15" | "STANDARD"
   sessions: number;
   totalMinutes: number;
   label: string;

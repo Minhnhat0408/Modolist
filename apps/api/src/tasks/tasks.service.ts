@@ -60,11 +60,16 @@ export class TasksService {
             orderBy: [{ status: "asc" }, { order: "asc" }, { createdAt: "desc" }],
             include: {
                 focusSessions: {
+                    where: { status: "COMPLETED" },
                     select: {
                         id: true,
                         duration: true,
                         endedAt: true,
+                        plannedDuration: true,
+                        startedAt: true,
+                        status: true,
                     },
+                    orderBy: { startedAt: "asc" },
                 },
             },
         });
