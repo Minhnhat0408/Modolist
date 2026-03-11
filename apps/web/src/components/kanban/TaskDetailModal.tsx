@@ -31,6 +31,7 @@ import {
   Brain,
   CalendarDays,
   Check,
+  ChevronDown,
   Clock,
   Loader2,
   Pencil,
@@ -47,8 +48,35 @@ type AISuggestion = {
   estimatedPomodoros?: number;
   reasoning?: string;
   confidence?: string;
-  focusPlan?: { sessionType: string; sessions: number; totalMinutes: number; label: string };
+  focusPlan?: {
+    sessionType: string;
+    sessions: number;
+    totalMinutes: number;
+    label: string;
+  };
 };
+
+type SessionHistoryItem = {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  plannedDuration: number;
+  duration: number | null;
+  status: string;
+};
+
+// ── Session history helpers ─────────────────────────────────
+function sessionTypeInfo(plannedDuration: number) {
+  if (plannedDuration <= 300) return { label: "Quick 5p", color: "#f59e0b" };
+  if (plannedDuration <= 900) return { label: "Quick 15p", color: "#8b5cf6" };
+  return { label: "Standard 25p", color: "#3b82f6" };
+}
+function formatSessionDuration(seconds: number | null): string {
+  if (!seconds) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export interface TaskDetailModalProps {
   open: boolean;
@@ -94,7 +122,9 @@ function getPriorityOption(p: TaskPriority | undefined) {
 
 // ── Due-date formatter ────────────────────────────────────────────────
 
-function formatDueDate(d: Date | string | null): { text: string; cls: string } | null {
+function formatDueDate(
+  d: Date | string | null,
+): { text: string; cls: string } | null {
   if (!d) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -102,11 +132,20 @@ function formatDueDate(d: Date | string | null): { text: string; cls: string } |
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000);
 
-  if (diff < 0) return { text: `Quá hạn ${Math.abs(diff)} ngày`, cls: "text-red-400 font-medium" };
-  if (diff === 0) return { text: "Hôm nay", cls: "text-orange-400 font-medium" };
+  if (diff < 0)
+    return {
+      text: `Quá hạn ${Math.abs(diff)} ngày`,
+      cls: "text-red-400 font-medium",
+    };
+  if (diff === 0)
+    return { text: "Hôm nay", cls: "text-orange-400 font-medium" };
   if (diff === 1) return { text: "Ngày mai", cls: "text-yellow-400" };
   return {
-    text: date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    text: date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }),
     cls: "text-muted-foreground",
   };
 }
@@ -218,6 +257,7 @@ function EditableText({
           "flex-1 wrap-break-word min-w-0 leading-relaxed",
           large ? "text-lg font-bold" : "text-sm",
           !value && "text-muted-foreground/40 italic",
+          multiline && "whitespace-pre-wrap",
         )}
       >
         {value || placeholder}
@@ -244,6 +284,11 @@ export function TaskDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>(
+    [],
+  );
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const prevTaskIdRef = useRef<string | null>(null);
 
   // Sync when modal opens or task changes
@@ -255,13 +300,40 @@ export function TaskDetailModal({
       setEditingPriority(false);
       setEditingDueDate(false);
       setEditingTags(false);
-      if (isNewTask) setAiSuggestion(null);
+      if (isNewTask) {
+        setAiSuggestion(null);
+        setSessionsOpen(false);
+        setSessionHistory([]);
+      }
     }
     if (!open) {
       prevTaskIdRef.current = null;
       setLocalTask(null);
     }
   }, [open, task]);
+
+  // ── Session history ─────────────────────────────────────────
+  const loadSessionHistory = useCallback(async () => {
+    if (!localTask) return;
+    setLoadingHistory(true);
+    try {
+      const data = await api.get<SessionHistoryItem[]>(
+        `/focus-sessions/by-task/${localTask.id}`,
+      );
+      setSessionHistory(data);
+    } catch (e) {
+      console.error("Failed to load session history", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [localTask]);
+
+  const toggleSessionHistory = useCallback(() => {
+    if (!sessionsOpen && sessionHistory.length === 0) {
+      loadSessionHistory();
+    }
+    setSessionsOpen((v) => !v);
+  }, [sessionsOpen, sessionHistory.length, loadSessionHistory]);
 
   // Optimistic patch + API call
   const patchField = useCallback(
@@ -313,7 +385,10 @@ export function TaskDetailModal({
       if (result.focusPlan) {
         await patchField("suggestedSessionType", result.focusPlan.sessionType);
         await patchField("suggestedSessions", result.focusPlan.sessions);
-        await patchField("suggestedTotalMinutes", result.focusPlan.totalMinutes);
+        await patchField(
+          "suggestedTotalMinutes",
+          result.focusPlan.totalMinutes,
+        );
       }
     } catch (e) {
       console.error("AI estimate failed:", e);
@@ -324,7 +399,10 @@ export function TaskDetailModal({
 
   const handleSaveTags = () => {
     setEditingTags(false);
-    const tags = tagsDraft.split(",").map((t) => t.trim()).filter(Boolean);
+    const tags = tagsDraft
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     if (JSON.stringify(tags) !== JSON.stringify(localTask?.tags ?? [])) {
       patchField("tags", tags);
     }
@@ -344,7 +422,9 @@ export function TaskDetailModal({
           dialogClassName="sm:max-w-lg bg-background/95 backdrop-blur-2xl border-white/15 shadow-2xl"
           className="gap-0 p-0"
         >
-          <ResponsiveModalTitle className="sr-only">{localTask.title}</ResponsiveModalTitle>
+          <ResponsiveModalTitle className="sr-only">
+            {localTask.title}
+          </ResponsiveModalTitle>
           <ResponsiveModalDescription className="sr-only">
             Lịch sử nhiệm vụ
           </ResponsiveModalDescription>
@@ -356,17 +436,22 @@ export function TaskDetailModal({
               <span>·</span>
               <span>
                 {localTask.completedAt
-                  ? new Date(localTask.completedAt).toLocaleDateString("vi-VN", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                  ? new Date(localTask.completedAt).toLocaleDateString(
+                      "vi-VN",
+                      {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )
                   : new Date(localTask.updatedAt).toLocaleDateString("vi-VN")}
               </span>
             </div>
-            <h2 className="text-lg font-bold px-3 -mx-3 py-1">{localTask.title}</h2>
+            <h2 className="text-lg font-bold px-3 -mx-3 py-1">
+              {localTask.title}
+            </h2>
           </div>
 
           {/* Body */}
@@ -403,11 +488,11 @@ export function TaskDetailModal({
             <section>
               <SectionLabel icon={Clock}>Thống kê Focus</SectionLabel>
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground/80 px-1">
-                {localTask.focusCompletedSessions > 0 ? (
+                {localTask.completedPomodoros > 0 ? (
                   <span className="flex items-center gap-1.5">
                     <Check className="h-4 w-4 text-primary" />
                     <span className="font-medium text-foreground">
-                      {localTask.focusCompletedSessions}
+                      {localTask.completedPomodoros}
                     </span>{" "}
                     phiên Pomodoro hoàn thành
                   </span>
@@ -423,15 +508,99 @@ export function TaskDetailModal({
                   </span>
                 ) : null}
               </div>
+              {/* Expandable session history */}
+              {localTask.completedPomodoros > 0 && (
+                <div className="mt-2.5 px-1">
+                  <button
+                    onClick={toggleSessionHistory}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  >
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${
+                        sessionsOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                    {sessionsOpen ? "Ẩn" : "Xem"} lịch sử
+                  </button>
+                  {sessionsOpen && (
+                    <div className="mt-2 space-y-1">
+                      {loadingHistory ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Đang tải...
+                        </div>
+                      ) : sessionHistory.length === 0 ? (
+                        <p className="text-xs text-muted-foreground/40 italic">
+                          Chưa có dữ liệu
+                        </p>
+                      ) : (
+                        sessionHistory.map((s) => {
+                          const { label, color } = sessionTypeInfo(
+                            s.plannedDuration,
+                          );
+                          const startDate = new Date(s.startedAt);
+                          return (
+                            <div
+                              key={s.id}
+                              className="flex items-center gap-2 py-1 rounded-lg text-xs"
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span
+                                className="font-medium w-20 shrink-0 text-[11px]"
+                                style={{ color }}
+                              >
+                                {label}
+                              </span>
+                              <span className="text-muted-foreground/60 flex-1 text-[11px]">
+                                {startDate.toLocaleDateString("vi-VN")}{" "}
+                                {startDate.toLocaleTimeString("vi-VN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              <span className="text-muted-foreground/60 w-12 text-right text-[11px]">
+                                {formatSessionDuration(s.duration)}
+                              </span>
+                              <span
+                                className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] ${
+                                  s.status === "COMPLETED"
+                                    ? "bg-green-500/15 text-green-400"
+                                    : s.status === "INTERRUPTED"
+                                      ? "bg-red-500/15 text-red-400"
+                                      : "bg-yellow-500/15 text-yellow-400"
+                                }`}
+                              >
+                                {s.status === "COMPLETED"
+                                  ? "✓"
+                                  : s.status === "INTERRUPTED"
+                                    ? "✗"
+                                    : "…"}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* Priority + Due date (read-only) */}
             <div className="flex items-center gap-4 px-1">
-              <Badge variant="outline" className={cn("text-xs", priorityOpt.cls)}>
+              <Badge
+                variant="outline"
+                className={cn("text-xs", priorityOpt.cls)}
+              >
                 {priorityOpt.label}
               </Badge>
               {dueInfo && (
-                <span className={cn("text-xs flex items-center gap-1", dueInfo.cls)}>
+                <span
+                  className={cn("text-xs flex items-center gap-1", dueInfo.cls)}
+                >
                   <CalendarDays className="h-3 w-3" />
                   {dueInfo.text}
                 </span>
@@ -465,7 +634,9 @@ export function TaskDetailModal({
         className="gap-0 p-0"
       >
         {/* Accessible title/description for screen readers */}
-        <ResponsiveModalTitle className="sr-only">{localTask.title}</ResponsiveModalTitle>
+        <ResponsiveModalTitle className="sr-only">
+          {localTask.title}
+        </ResponsiveModalTitle>
         <ResponsiveModalDescription className="sr-only">
           Chi tiết nhiệm vụ
         </ResponsiveModalDescription>
@@ -501,7 +672,6 @@ export function TaskDetailModal({
 
         {/* ── Body ── */}
         <ResponsiveModalBody className="px-6 py-4 space-y-5 overflow-y-auto max-h-[55dvh] md:max-h-[58vh]">
-
           {/* Description */}
           <section>
             <SectionLabel icon={AlignLeft}>Mô tả</SectionLabel>
@@ -513,8 +683,6 @@ export function TaskDetailModal({
               className="-mx-3"
             />
           </section>
-
-          
 
           {/* Status quick-switch */}
           <section>
@@ -529,7 +697,8 @@ export function TaskDetailModal({
                 {
                   value: TaskStatus.TODAY,
                   label: "🎯 Hôm nay",
-                  activeCls: "bg-secondary/20 border-secondary/35 text-secondary",
+                  activeCls:
+                    "bg-secondary/20 border-secondary/35 text-secondary",
                 },
                 {
                   value: TaskStatus.DONE,
@@ -559,7 +728,6 @@ export function TaskDetailModal({
 
           {/* Priority + Due Date */}
           <div className="grid grid-cols-2 gap-5">
-
             {/* Priority */}
             <section>
               <SectionLabel>Độ ưu tiên</SectionLabel>
@@ -608,9 +776,13 @@ export function TaskDetailModal({
                   className="group flex items-center gap-1.5"
                 >
                   {dueInfo ? (
-                    <span className={cn("text-sm", dueInfo.cls)}>{dueInfo.text}</span>
+                    <span className={cn("text-sm", dueInfo.cls)}>
+                      {dueInfo.text}
+                    </span>
                   ) : (
-                    <span className="text-sm text-muted-foreground/40 italic">Chưa đặt</span>
+                    <span className="text-sm text-muted-foreground/40 italic">
+                      Chưa đặt
+                    </span>
                   )}
                   <Pencil className="h-3 w-3 text-transparent group-hover:text-muted-foreground/40 transition-colors" />
                 </button>
@@ -708,25 +880,107 @@ export function TaskDetailModal({
                   {localTask.estimatedPomodoros} pomodoros
                 </span>
               ) : (
-                <span className="text-muted-foreground/30 italic">Chưa có ước lượng</span>
+                <span className="text-muted-foreground/30 italic">
+                  Chưa có ước lượng
+                </span>
               )}
               {localTask.suggestedSessionType ? (
                 <span className="flex items-center gap-1">
                   <Zap className="h-3.5 w-3.5 text-yellow-400" />
                   {localTask.suggestedSessionType === "QUICK_5"
                     ? "Quick 5p"
-                    : localTask.suggestedSessionType === "QUICK_25"
-                      ? "Quick 25p"
+                    : localTask.suggestedSessionType === "QUICK_15"
+                      ? "Quick 15p"
                       : "Pomodoro chuẩn"}
                 </span>
               ) : null}
-              {localTask.focusCompletedSessions > 0 ? (
+              {localTask.completedPomodoros > 0 ? (
                 <span className="flex items-center gap-1">
                   <Check className="h-3.5 w-3.5 text-primary" />
-                  {localTask.focusCompletedSessions} phiên đã focus
+                  {localTask.completedPomodoros} phiên đã focus
                 </span>
               ) : null}
             </div>
+            {/* Expandable session history */}
+            {localTask.completedPomodoros > 0 && (
+              <div className="mt-2">
+                <button
+                  onClick={toggleSessionHistory}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                >
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${
+                      sessionsOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                  {sessionsOpen ? "Ẩn" : "Xem"} lịch sử{" "}
+                  {localTask.completedPomodoros} phiên
+                </button>
+                {sessionsOpen && (
+                  <div className="mt-2 space-y-1">
+                    {loadingHistory ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Đang tải...
+                      </div>
+                    ) : sessionHistory.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/40 italic">
+                        Chưa có dữ liệu
+                      </p>
+                    ) : (
+                      sessionHistory.map((s) => {
+                        const { label, color } = sessionTypeInfo(
+                          s.plannedDuration,
+                        );
+                        const startDate = new Date(s.startedAt);
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-2 py-1 rounded-lg text-xs"
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span
+                              className="font-medium w-20 shrink-0 text-[11px]"
+                              style={{ color }}
+                            >
+                              {label}
+                            </span>
+                            <span className="text-muted-foreground/60 flex-1 text-[11px]">
+                              {startDate.toLocaleDateString("vi-VN")}{" "}
+                              {startDate.toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            <span className="text-muted-foreground/60 w-12 text-right text-[11px]">
+                              {formatSessionDuration(s.duration)}
+                            </span>
+                            <span
+                              className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] ${
+                                s.status === "COMPLETED"
+                                  ? "bg-green-500/15 text-green-400"
+                                  : s.status === "INTERRUPTED"
+                                    ? "bg-red-500/15 text-red-400"
+                                    : "bg-yellow-500/15 text-yellow-400"
+                              }`}
+                            >
+                              {s.status === "COMPLETED"
+                                ? "✓"
+                                : s.status === "INTERRUPTED"
+                                  ? "✗"
+                                  : "…"}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* AI suggestion result */}
             {aiSuggestion && (
@@ -755,7 +1009,9 @@ export function TaskDetailModal({
                     <Clock className="h-3 w-3 text-green-400" />
                     <span>
                       {aiSuggestion.estimatedPomodoros} pomodoros
-                      {aiSuggestion.focusPlan ? ` (~${aiSuggestion.focusPlan.totalMinutes} phút)` : ""}
+                      {aiSuggestion.focusPlan
+                        ? ` (~${aiSuggestion.focusPlan.totalMinutes} phút)`
+                        : ""}
                     </span>
                   </div>
                   {aiSuggestion.focusPlan && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Zap, Target, Plus, Minus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanTask } from "@/types/kanban";
@@ -27,13 +27,15 @@ export function FocusStartDialog({
   onClose,
 }: FocusStartDialogProps) {
   // Detect if task has existing session data
+  const standardCompletedCount = (task.focusSessions ?? []).filter(
+    (s) => s.plannedDuration > 900,
+  ).length;
   const hasExistingSession =
     task.focusTotalSessions && task.focusTotalSessions > 0;
   const isSessionInProgress =
-    hasExistingSession &&
-    (task.focusCompletedSessions || 0) < task.focusTotalSessions!;
+    hasExistingSession && standardCompletedCount < task.focusTotalSessions!;
   const remainingSessions = hasExistingSession
-    ? Math.max(0, task.focusTotalSessions! - (task.focusCompletedSessions || 0))
+    ? Math.max(0, task.focusTotalSessions! - standardCompletedCount)
     : 4;
 
   // If the task has an AI estimate and no existing session, pre-fill with it
@@ -47,7 +49,7 @@ export function FocusStartDialog({
   // Determine AI recommendation
   const aiRecommendation = task.suggestedSessionType as
     | "QUICK_5"
-    | "QUICK_25"
+    | "QUICK_15"
     | "STANDARD"
     | null
     | undefined;
@@ -55,7 +57,7 @@ export function FocusStartDialog({
   const [sessionCount, setSessionCount] = useState(defaultSessions);
   const { startShortFocus, startStandardFocus } = useFocusStore();
 
-  const handleQuickFocus = (minutes: 5 | 25) => {
+  const handleQuickFocus = (minutes: 5 | 15) => {
     startShortFocus(task, minutes);
     onClose();
   };
@@ -88,7 +90,12 @@ export function FocusStartDialog({
   if (!open) return null;
 
   return (
-    <ResponsiveModal open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <ResponsiveModalContent
         dialogClassName="sm:max-w-md bg-linear-to-br from-gray-900 to-gray-800 border-gray-700 p-0 gap-0"
         className="bg-linear-to-br from-gray-900 to-gray-800 border-gray-700 p-0 gap-0"
@@ -103,12 +110,11 @@ export function FocusStartDialog({
         </ResponsiveModalHeader>
 
         <ResponsiveModalBody className="px-6 pb-8">
-
           {/* AI Recommendation Banner */}
           {!isSessionInProgress &&
             aiRecommendation &&
             (aiRecommendation === "QUICK_5" ||
-              aiRecommendation === "QUICK_25") && (
+              aiRecommendation === "QUICK_15") && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -120,7 +126,7 @@ export function FocusStartDialog({
                   <strong>
                     {aiRecommendation === "QUICK_5"
                       ? "Quick 5 phút"
-                      : "Quick 25 phút"}
+                      : "Quick 15 phút"}
                   </strong>{" "}
                   cho task này
                   {task.suggestedTotalMinutes
@@ -164,17 +170,17 @@ export function FocusStartDialog({
                     </div>
                   </Button>
                   <Button
-                    onClick={() => handleQuickFocus(25)}
+                    onClick={() => handleQuickFocus(15)}
                     className={`h-16 text-white font-semibold shadow-lg ${
-                      aiRecommendation === "QUICK_25"
+                      aiRecommendation === "QUICK_15"
                         ? "bg-linear-to-br from-purple-500 to-purple-600 ring-2 ring-purple-400 ring-offset-2 ring-offset-gray-900"
                         : "bg-linear-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600"
                     }`}
                   >
                     <div className="flex flex-col items-center">
-                      <span className="text-2xl font-bold">25</span>
+                      <span className="text-2xl font-bold">15</span>
                       <span className="text-xs opacity-80">Minutes</span>
-                      {aiRecommendation === "QUICK_25" && (
+                      {aiRecommendation === "QUICK_15" && (
                         <span className="text-[10px] text-yellow-300 mt-0.5">
                           ✨ AI gợi ý
                         </span>
@@ -236,8 +242,8 @@ export function FocusStartDialog({
                         Đã hoàn thành
                       </span>
                       <span className="text-white font-bold">
-                        {task.focusCompletedSessions} /{" "}
-                        {task.focusTotalSessions} phiên
+                        {standardCompletedCount} / {task.focusTotalSessions}{" "}
+                        phiên
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -262,7 +268,7 @@ export function FocusStartDialog({
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{
-                            width: `${(task.focusCompletedSessions! / task.focusTotalSessions!) * 100}%`,
+                            width: `${(standardCompletedCount / task.focusTotalSessions!) * 100}%`,
                           }}
                           transition={{ duration: 0.5 }}
                           className="h-full bg-linear-to-r from-blue-500 to-blue-400 rounded-full"

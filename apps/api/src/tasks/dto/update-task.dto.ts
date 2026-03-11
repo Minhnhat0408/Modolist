@@ -38,11 +38,6 @@ export class UpdateTaskDto {
     focusTotalSessions?: number;
 
     @IsOptional()
-    @IsInt()
-    @Min(0)
-    focusCompletedSessions?: number;
-
-    @IsOptional()
     @IsArray()
     @IsString({ each: true })
     tags?: string[];

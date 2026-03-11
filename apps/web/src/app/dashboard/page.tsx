@@ -62,7 +62,6 @@ export default function DashboardPage() {
       if (status !== "authenticated") return;
 
       setLoading(true);
-      console.log("call new");
       await fetchTasks();
       setLoading(false);
     }
@@ -74,7 +73,6 @@ export default function DashboardPage() {
     };
 
     const handleSessionCompleted = () => {
-      console.log("Handle session");
       fetchTasks();
     };
 
@@ -141,7 +139,9 @@ export default function DashboardPage() {
   const handleTaskFieldUpdate = useCallback(
     (taskId: string, data: Partial<Task>) => {
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? ({ ...t, ...data } as KanbanTask) : t)),
+        prev.map((t) =>
+          t.id === taskId ? ({ ...t, ...data } as KanbanTask) : t,
+        ),
       );
       setDetailTask((prev) =>
         prev?.id === taskId ? ({ ...prev, ...data } as Task) : prev,
@@ -276,7 +276,9 @@ export default function DashboardPage() {
           onTaskReorder={handleTaskReorder}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
-          onTodayScrollRef={(el) => { todayScrollRef.current = el; }}
+          onTodayScrollRef={(el) => {
+            todayScrollRef.current = el;
+          }}
         />
 
         <TaskDetailModal

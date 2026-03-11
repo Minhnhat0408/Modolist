@@ -12,11 +12,10 @@ export interface Task {
   priority: TaskPriority;
   completedPomodoros: number;
   estimatedPomodoros?: number | null;
-  suggestedSessionType?: string | null; // "QUICK_5" | "QUICK_25" | "STANDARD"
+  suggestedSessionType?: string | null; // "QUICK_5" | "QUICK_15" | "STANDARD"
   suggestedSessions?: number | null;
   suggestedTotalMinutes?: number | null;
   focusTotalSessions?: number | null; // Total sessions planned for current focus cycle
-  focusCompletedSessions: number; // Sessions completed in current focus cycle
   order: number;
   tags: string[];
   dueDate: Date | null;

@@ -46,7 +46,11 @@ interface ResponsiveModalProps {
   children: React.ReactNode;
 }
 
-function ResponsiveModal({ open, onOpenChange, children }: ResponsiveModalProps) {
+function ResponsiveModal({
+  open,
+  onOpenChange,
+  children,
+}: ResponsiveModalProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   if (isDesktop) {

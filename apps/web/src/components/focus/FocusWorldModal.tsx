@@ -184,7 +184,12 @@ export function FocusWorldModal() {
   const modalOpen = isOpen && !isMinimized;
 
   return (
-    <ResponsiveModal open={modalOpen} onOpenChange={(v) => { if (!v) handleMinimize(); }}>
+    <ResponsiveModal
+      open={modalOpen}
+      onOpenChange={(v) => {
+        if (!v) handleMinimize();
+      }}
+    >
       <ResponsiveModalContent
         dialogClassName="sm:max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl"
         className="p-0 gap-0"
@@ -195,7 +200,9 @@ export function FocusWorldModal() {
           <div className="flex items-center gap-3">
             <Users className="h-6 w-6 text-primary" />
             <div>
-              <ResponsiveModalTitle className="text-2xl font-bold">Co-Focus World</ResponsiveModalTitle>
+              <ResponsiveModalTitle className="text-2xl font-bold">
+                Co-Focus World
+              </ResponsiveModalTitle>
               <ResponsiveModalDescription className="text-sm">
                 Những người đang tập trung cùng bạn
               </ResponsiveModalDescription>
@@ -244,9 +251,7 @@ export function FocusWorldModal() {
           {!enabled && (
             <div className="text-center py-12">
               <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">
-                Bắt đầu Focus Session
-              </p>
+              <p className="text-lg font-medium mb-2">Bắt đầu Focus Session</p>
               <p className="text-sm text-muted-foreground">
                 Bạn cần có focus session đang chạy để vào Focus World
               </p>

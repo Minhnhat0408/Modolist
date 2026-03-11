@@ -373,7 +373,8 @@ export function KanbanBoard({
           {COLUMN_ORDER.map((status) => {
             const columnTasks = tasksByStatus[status] || [];
             // DONE surface: only show today's completed tasks
-            const surfaceTasks = status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
+            const surfaceTasks =
+              status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
             const allColumnTasks = columnTasks;
             return (
               <SortableContext
@@ -392,7 +393,9 @@ export function KanbanBoard({
                   onStartFocus={handleStartFocus}
                   onTaskMove={handleMoveTask}
                   onTaskMoveToTop={handleMoveToTop}
-                  onTodayScrollRef={status === TaskStatus.TODAY ? onTodayScrollRef : undefined}
+                  onTodayScrollRef={
+                    status === TaskStatus.TODAY ? onTodayScrollRef : undefined
+                  }
                 />
               </SortableContext>
             );
@@ -419,12 +422,16 @@ export function KanbanBoard({
                   <span className="text-base leading-none mb-0.5">
                     {KANBAN_COLUMNS[status].title.split(" ")[0]}
                   </span>
-                  <span className={`text-[10px] ${isActive ? "text-white/80" : "text-muted-foreground/60"}`}>
+                  <span
+                    className={`text-[10px] ${isActive ? "text-white/80" : "text-muted-foreground/60"}`}
+                  >
                     {KANBAN_COLUMNS[status].title.split(" ").slice(1).join(" ")}
                     {count > 0 && (
-                      <span className={`ml-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] font-semibold ${
-                        isActive ? "bg-primary/80 text-white" : "bg-white/10"
-                      }`}>
+                      <span
+                        className={`ml-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] font-semibold ${
+                          isActive ? "bg-primary/80 text-white" : "bg-white/10"
+                        }`}
+                      >
                         {count}
                       </span>
                     )}
@@ -442,7 +449,8 @@ export function KanbanBoard({
           <div className="flex-1 overflow-y-auto p-4 px-0">
             {COLUMN_ORDER.filter((s) => s === activeTab).map((status) => {
               const columnTasks = tasksByStatus[status] || [];
-              const surfaceTasks = status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
+              const surfaceTasks =
+                status === TaskStatus.DONE ? doneSurfaceTasks : columnTasks;
               const allColumnTasks = columnTasks;
               return (
                 <SortableContext
@@ -462,7 +470,9 @@ export function KanbanBoard({
                     onStartFocus={handleStartFocus}
                     onTaskMove={handleMoveTask}
                     onTaskMoveToTop={handleMoveToTop}
-                    onTodayScrollRef={status === TaskStatus.TODAY ? onTodayScrollRef : undefined}
+                    onTodayScrollRef={
+                      status === TaskStatus.TODAY ? onTodayScrollRef : undefined
+                    }
                   />
                 </SortableContext>
               );

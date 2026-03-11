@@ -336,4 +336,3 @@ export function PipContent({ onClose }: PipContentProps) {
     </div>
   );
 }
-

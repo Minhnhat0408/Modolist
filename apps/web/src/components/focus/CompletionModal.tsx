@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore } from "@/stores/useFocusStore";
-import { PartyPopper, Plus, CheckCircle, Coffee } from "lucide-react";
+import { PartyPopper, Plus, CheckCircle, Coffee, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function CompletionModal() {
@@ -12,6 +12,7 @@ export function CompletionModal() {
     totalSessions,
     status,
     addOneSession,
+    addQuickSession,
     completeAndExit,
     takeLongBreak,
   } = useFocusStore();
@@ -78,6 +79,26 @@ export function CompletionModal() {
             transition={{ delay: 0.5 }}
             className="space-y-3"
           >
+            {/* Quick Focus: add more quick sessions */}
+            {isShortFocus && (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => addQuickSession(5)}
+                  className="h-14 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold shadow-lg"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  +5 phút nữa
+                </Button>
+                <Button
+                  onClick={() => addQuickSession(15)}
+                  className="h-14 bg-linear-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold shadow-lg"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  +15 phút nữa
+                </Button>
+              </div>
+            )}
+
             {/* Primary: Add +1 Session (only for STANDARD type) */}
             {!isShortFocus && isAllCompleted && (
               <Button

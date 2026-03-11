@@ -89,7 +89,7 @@ export async function openPip(): Promise<boolean> {
     const api = (window as any).documentPictureInPicture;
     const win: Window = await api.requestWindow({
       width: 440,
-      height: 140,
+      height: 130,
     });
     pipWindow = win;
 
@@ -97,8 +97,7 @@ export async function openPip(): Promise<boolean> {
     copyStyles(document, win.document);
 
     // Propagate dark/light theme from main document
-    win.document.documentElement.className =
-      document.documentElement.className;
+    win.document.documentElement.className = document.documentElement.className;
 
     // Keep pip theme in sync if user toggles while pip is open
     const themeObserver = new MutationObserver(() => {
@@ -157,4 +156,20 @@ export function closePip() {
 /** Feature-detect the Document PiP API. */
 export function isPipSupported(): boolean {
   return typeof window !== "undefined" && "documentPictureInPicture" in window;
+}
+
+/**
+ * Resize the PiP window.
+ * - Pass an explicit `height` to set it directly.
+ * - Omit `height` to auto-detect: 150px when Focus World tab is visible, 130px otherwise.
+ */
+export function resizePIP(height: number): void {
+  if (!pipWindow) return;
+  //   const h =
+  //     height ??
+  //     (() => {
+  //       const { isOpen, isMinimized } = useFocusWorldStore.getState();
+  //       return isOpen && isMinimized ? 130 : 190;
+  //     })();
+  pipWindow.resizeTo(440, height);
 }

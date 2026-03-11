@@ -341,7 +341,9 @@ export function FloatingWidget() {
                     {isConnected ? (
                       <>
                         <Wifi className="w-3 h-3 text-green-500 dark:text-green-400" />
-                        <span className="text-green-500 dark:text-green-400">Online</span>
+                        <span className="text-green-500 dark:text-green-400">
+                          Online
+                        </span>
                       </>
                     ) : (
                       <>

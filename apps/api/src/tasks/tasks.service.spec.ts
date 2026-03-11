@@ -16,6 +16,7 @@ const mockPrisma = {
         count: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         delete: jest.fn(),
     },
 };
@@ -175,34 +176,39 @@ describe("TasksService", () => {
     // ─── create ─────────────────────────────────────────────────────────────────
     describe("create", () => {
         it("should create task with order = maxOrder + 1", async () => {
-            mockPrisma.task.findFirst.mockResolvedValue({ order: 5 });
-            const newTask = { id: "t1", title: "New Task", order: 6 };
+            mockPrisma.task.updateMany.mockResolvedValue({ count: 1 });
+            const newTask = { id: "t1", title: "New Task", order: 0 };
             mockPrisma.task.create.mockResolvedValue(newTask);
             mockCacheManager.del.mockResolvedValue(undefined);
 
             const result = await service.create("u1", { title: "New Task" });
             expect(result).toEqual(newTask);
+            // New logic: shifts existing tasks up and inserts at order=0 (top)
+            expect(mockPrisma.task.updateMany).toHaveBeenCalledWith(
+                expect.objectContaining({ data: { order: { increment: 1 } } }),
+            );
             expect(mockPrisma.task.create).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    data: expect.objectContaining({ order: 6, userId: "u1" }),
+                    data: expect.objectContaining({ order: 0, userId: "u1" }),
                 }),
             );
         });
 
         it("should use order=1 when there are no existing tasks", async () => {
-            mockPrisma.task.findFirst.mockResolvedValue(null);
-            mockPrisma.task.create.mockResolvedValue({ id: "t1", order: 1 });
+            mockPrisma.task.updateMany.mockResolvedValue({ count: 0 });
+            mockPrisma.task.create.mockResolvedValue({ id: "t1", order: 0 });
             mockCacheManager.del.mockResolvedValue(undefined);
 
             await service.create("u1", { title: "First Task" });
             const createData = (
                 mockPrisma.task.create.mock.calls[0][0] as { data: Record<string, unknown> }
             ).data;
-            expect(createData.order).toBe(1);
+            // New logic always inserts at order=0
+            expect(createData.order).toBe(0);
         });
 
         it("should convert dueDate string to Date object", async () => {
-            mockPrisma.task.findFirst.mockResolvedValue(null);
+            mockPrisma.task.updateMany.mockResolvedValue({ count: 0 });
             mockPrisma.task.create.mockResolvedValue({ id: "t1" });
             mockCacheManager.del.mockResolvedValue(undefined);
 
@@ -214,7 +220,7 @@ describe("TasksService", () => {
         });
 
         it("should invalidate user cache after creation", async () => {
-            mockPrisma.task.findFirst.mockResolvedValue(null);
+            mockPrisma.task.updateMany.mockResolvedValue({ count: 0 });
             mockPrisma.task.create.mockResolvedValue({ id: "t1" });
             mockCacheManager.del.mockResolvedValue(undefined);
 

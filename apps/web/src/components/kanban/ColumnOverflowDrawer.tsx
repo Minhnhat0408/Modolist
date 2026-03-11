@@ -43,7 +43,16 @@ import {
 } from "@/components/ui/sheet";
 
 import { DndContext } from "@dnd-kit/core";
-import { Search, CalendarDays, X, ArrowUpDown, ArrowUpToLine, CalendarCheck, Flag, Clock } from "lucide-react";
+import {
+  Search,
+  CalendarDays,
+  X,
+  ArrowUpDown,
+  ArrowUpToLine,
+  CalendarCheck,
+  Flag,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /** Sort mode for BACKLOG drawer */
@@ -129,7 +138,7 @@ function TaskGroupedList({
   status: TaskStatus;
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
-  accent: typeof KANBAN_COLUMNS[TaskStatus]["accent"];
+  accent: (typeof KANBAN_COLUMNS)[TaskStatus]["accent"];
   groupBy?: "date" | "priority";
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
@@ -137,7 +146,12 @@ function TaskGroupedList({
   // Group tasks by date or priority
   const groups = useMemo(() => {
     if (groupBy === "priority") {
-      const order = [TaskPriority.URGENT, TaskPriority.HIGH, TaskPriority.MEDIUM, TaskPriority.LOW];
+      const order = [
+        TaskPriority.URGENT,
+        TaskPriority.HIGH,
+        TaskPriority.MEDIUM,
+        TaskPriority.LOW,
+      ];
       const map = new Map<string, KanbanTask[]>();
       for (const task of tasks) {
         const key = task.priority || TaskPriority.MEDIUM;
@@ -180,71 +194,72 @@ function TaskGroupedList({
 
   return (
     <div className="space-y-4">
-          {groups.map((group) => (
-            <div key={group.key}>
-              {showHeaders && (
-                <div className={`sticky top-0 z-10 flex items-center gap-2 py-2 px-1 mb-2 ${accent.dateStickyBg} backdrop-blur-sm rounded-lg`}>
-                  <DateIcon className={`h-3.5 w-3.5 ${accent.dateIconCls}`} />
-                  <span className={`text-xs font-semibold ${accent.dateLabelCls} uppercase tracking-wider`}>
-                    {group.label}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={`h-5 min-w-5 px-1.5 rounded-full text-[10px] ${accent.badgeCls}`}
-                  >
-                    {group.tasks.length}
-                  </Badge>
-                </div>
-              )}
-              <div className="space-y-3">
-                {group.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group/row relative cursor-pointer"
-                  >
-                    <TaskCard
-                      task={task}
-                      onEdit={onEditTask}
-                      onStartFocus={onStartFocus}
-                      showCreatedDate={status === TaskStatus.BACKLOG}
-                      draggable={false}
-                    />
-                    {/* Quick-action buttons overlay */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity z-10">
-                      {status === TaskStatus.BACKLOG && onTaskMoveToTop && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-white/15 hover:border-white/25"
-                          title="Đưa lên đầu danh sách"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskMoveToTop(task.id, status);
-                          }}
-                        >
-                          <ArrowUpToLine className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      {status !== TaskStatus.TODAY && onTaskMove && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-secondary/30 hover:border-secondary/40 hover:text-secondary"
-                          title="Cho vào Hôm nay"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskMove(task.id, TaskStatus.TODAY);
-                          }}
-                        >
-                          <CalendarCheck className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {groups.map((group) => (
+        <div key={group.key}>
+          {showHeaders && (
+            <div
+              className={`sticky top-0 z-10 flex items-center gap-2 py-2 px-1 mb-2 ${accent.dateStickyBg} backdrop-blur-sm rounded-lg`}
+            >
+              <DateIcon className={`h-3.5 w-3.5 ${accent.dateIconCls}`} />
+              <span
+                className={`text-xs font-semibold ${accent.dateLabelCls} uppercase tracking-wider`}
+              >
+                {group.label}
+              </span>
+              <Badge
+                variant="outline"
+                className={`h-5 min-w-5 px-1.5 rounded-full text-[10px] ${accent.badgeCls}`}
+              >
+                {group.tasks.length}
+              </Badge>
             </div>
-          ))}
+          )}
+          <div className="space-y-3">
+            {group.tasks.map((task) => (
+              <div key={task.id} className="group/row relative cursor-pointer">
+                <TaskCard
+                  task={task}
+                  onEdit={onEditTask}
+                  onStartFocus={onStartFocus}
+                  showCreatedDate={status === TaskStatus.BACKLOG}
+                  draggable={false}
+                />
+                {/* Quick-action buttons overlay */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity z-10">
+                  {status === TaskStatus.BACKLOG && onTaskMoveToTop && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-white/15 hover:border-white/25"
+                      title="Đưa lên đầu danh sách"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskMoveToTop(task.id, status);
+                      }}
+                    >
+                      <ArrowUpToLine className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {status !== TaskStatus.TODAY && onTaskMove && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-secondary/30 hover:border-secondary/40 hover:text-secondary"
+                      title="Cho vào Hôm nay"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTaskMove(task.id, TaskStatus.TODAY);
+                      }}
+                    >
+                      <CalendarCheck className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -379,9 +394,18 @@ export function ColumnOverflowDrawer({
 
     // BACKLOG sort modes
     if (isBacklog) {
-      const PRIORITY_WEIGHT: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+      const PRIORITY_WEIGHT: Record<string, number> = {
+        URGENT: 4,
+        HIGH: 3,
+        MEDIUM: 2,
+        LOW: 1,
+      };
       if (backlogSort === "priority") {
-        result.sort((a, b) => (PRIORITY_WEIGHT[b.priority] ?? 0) - (PRIORITY_WEIGHT[a.priority] ?? 0));
+        result.sort(
+          (a, b) =>
+            (PRIORITY_WEIGHT[b.priority] ?? 0) -
+            (PRIORITY_WEIGHT[a.priority] ?? 0),
+        );
       } else if (backlogSort === "dueDate") {
         // dueDate ASC, nulls last
         result.sort((a, b) => {
@@ -400,14 +424,25 @@ export function ColumnOverflowDrawer({
 
   // BACKLOG: sort cycle button + search. DONE: search + date filter
   const SORT_CYCLE: BacklogSortMode[] = ["default", "priority", "dueDate"];
-  const SORT_CONFIG: Record<BacklogSortMode, {
-    icon: React.ElementType;
-    nextTooltip: string;
-    active: boolean;
-  }> = {
-    default:  { icon: ArrowUpDown, nextTooltip: "Sắp xếp theo độ ưu tiên",  active: false },
-    priority: { icon: Flag,        nextTooltip: "Sắp xếp theo hạn chót",     active: true  },
-    dueDate:  { icon: Clock,       nextTooltip: "Trở về mặc định",           active: true  },
+  const SORT_CONFIG: Record<
+    BacklogSortMode,
+    {
+      icon: React.ElementType;
+      nextTooltip: string;
+      active: boolean;
+    }
+  > = {
+    default: {
+      icon: ArrowUpDown,
+      nextTooltip: "Sắp xếp theo độ ưu tiên",
+      active: false,
+    },
+    priority: {
+      icon: Flag,
+      nextTooltip: "Sắp xếp theo hạn chót",
+      active: true,
+    },
+    dueDate: { icon: Clock, nextTooltip: "Trở về mặc định", active: true },
   };
   const cycleSortMode = () => {
     const idx = SORT_CYCLE.indexOf(backlogSort);
@@ -480,7 +515,13 @@ export function ColumnOverflowDrawer({
         onStartFocus={onStartFocus}
         onTaskMove={onTaskMove}
         onTaskMoveToTop={onTaskMoveToTop}
-        groupBy={isBacklog ? (backlogSort === "priority" ? "priority" : "date") : "date"}
+        groupBy={
+          isBacklog
+            ? backlogSort === "priority"
+              ? "priority"
+              : "date"
+            : "date"
+        }
       />
     );
 
@@ -492,7 +533,9 @@ export function ColumnOverflowDrawer({
           className={`sm:max-w-lg max-h-[80vh] flex flex-col gap-0 p-0 overflow-hidden border ${accent.headerBorder}`}
           showCloseButton
         >
-          <DialogHeader className={`px-6 pt-6 pb-4 border-b ${accent.headerBorder} shrink-0 space-y-3 ${accent.headerBg}`}>
+          <DialogHeader
+            className={`px-6 pt-6 pb-4 border-b ${accent.headerBorder} shrink-0 space-y-3 ${accent.headerBg}`}
+          >
             <div className="flex items-center gap-3">
               <DialogTitle>{title}</DialogTitle>
               <Badge
@@ -502,12 +545,16 @@ export function ColumnOverflowDrawer({
                 {tasks.length}
               </Badge>
             </div>
-            <DialogDescription className="sr-only">{description}</DialogDescription>
+            <DialogDescription className="sr-only">
+              {description}
+            </DialogDescription>
             {filterBar}
           </DialogHeader>
 
           <DndContext>
-            <div className="overflow-y-auto flex-1 px-6 py-4">{taskContent}</div>
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              {taskContent}
+            </div>
           </DndContext>
         </DialogContent>
       </Dialog>
@@ -523,9 +570,13 @@ export function ColumnOverflowDrawer({
         showCloseButton={false}
       >
         {/* Drag handle */}
-        <div className={`mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full ${accent.handle}`} />
+        <div
+          className={`mx-auto mt-2 mb-1 h-1.5 w-12 shrink-0 rounded-full ${accent.handle}`}
+        />
 
-        <SheetHeader className={`px-5 pb-3 border-b ${accent.headerBorder} shrink-0 space-y-3 ${accent.headerBg}`}>
+        <SheetHeader
+          className={`px-5 pb-3 border-b ${accent.headerBorder} shrink-0 space-y-3 ${accent.headerBg}`}
+        >
           <div className="flex items-center gap-3">
             <SheetTitle>{title}</SheetTitle>
             <Badge
@@ -546,4 +597,3 @@ export function ColumnOverflowDrawer({
     </Sheet>
   );
 }
-

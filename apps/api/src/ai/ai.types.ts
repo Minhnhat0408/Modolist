@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 export interface FocusPlan {
-    sessionType: string; // "QUICK_5" | "QUICK_25" | "STANDARD"
+    sessionType: string; // "QUICK_5" | "QUICK_15" | "STANDARD"
     sessions: number; // 1 for quick, N for standard
     totalMinutes: number; // Total estimated time in minutes
     label: string; // Human-readable, e.g. "⚡ Quick 5 phút" or "🍅 3 Pomodoros (~1h15)"

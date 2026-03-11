@@ -8,7 +8,6 @@ export class TaskEntity {
     priority: TaskPriority;
     completedPomodoros: number;
     focusTotalSessions?: number | null;
-    focusCompletedSessions: number;
     tags: string[];
     dueDate: Date | null;
     completedAt: Date | null;
