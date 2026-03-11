@@ -1,5 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { io, Socket } from "socket.io-client";
+import {
+  useSpotifyStore,
+  type SpotifyHostState,
+} from "@/stores/useSpotifyStore";
+import { focusWorldSocket } from "@/lib/focusWorldSocket";
 
 export interface FocusUser {
   userId: string;
@@ -47,6 +52,7 @@ export function useFocusWorld({
       }
       socketRef.current.disconnect();
       socketRef.current = null;
+      focusWorldSocket.set(null);
       setIsConnected(false);
       setFocusUsers([]);
     }
@@ -87,6 +93,7 @@ export function useFocusWorld({
     });
 
     socketRef.current = socket;
+    focusWorldSocket.set(socket);
 
     socket.on("connect", () => {
       console.log("Focus World: Connected to server");
@@ -161,6 +168,23 @@ export function useFocusWorld({
       console.error("Focus World error:", error.message);
     });
 
+    // ── Spotify co-listening events ──
+    socket.on("spotify:host_started", (state: SpotifyHostState) => {
+      useSpotifyStore.getState().setHostPlayback(state);
+    });
+
+    socket.on("spotify:host_updated", (state: SpotifyHostState) => {
+      useSpotifyStore.getState().setHostPlayback(state);
+    });
+
+    socket.on("spotify:host_stopped", () => {
+      useSpotifyStore.getState().setHostPlayback(null);
+    });
+
+    socket.on("spotify:sync_response", (state: SpotifyHostState | null) => {
+      useSpotifyStore.getState().setHostPlayback(state);
+    });
+
     return socket;
   }, [enabled, userId, sessionId, taskId, disconnect]);
 
@@ -233,11 +257,68 @@ export function useFocusWorld({
     };
   }, [enabled, userId, sessionId, connect, disconnect]);
 
+  // ── Spotify co-listening emitters ──
+  const startBroadcasting = useCallback(
+    (data: {
+      trackUri: string;
+      trackName: string;
+      artistName: string;
+      albumArt?: string;
+      positionMs: number;
+      isPlaying: boolean;
+    }) => {
+      if (socketRef.current && userId) {
+        socketRef.current.emit("spotify:host_start", {
+          userId,
+          ...data,
+        });
+        useSpotifyStore.getState().setHosting(true);
+      }
+    },
+    [userId],
+  );
+
+  const updateBroadcast = useCallback(
+    (data: {
+      trackUri?: string;
+      trackName?: string;
+      artistName?: string;
+      albumArt?: string;
+      positionMs?: number;
+      isPlaying?: boolean;
+    }) => {
+      if (socketRef.current && userId) {
+        socketRef.current.emit("spotify:host_update", {
+          userId,
+          ...data,
+        });
+      }
+    },
+    [userId],
+  );
+
+  const stopBroadcasting = useCallback(() => {
+    if (socketRef.current && userId) {
+      socketRef.current.emit("spotify:host_stop", { userId });
+      useSpotifyStore.getState().setHosting(false);
+    }
+  }, [userId]);
+
+  const requestSync = useCallback(() => {
+    if (socketRef.current && userId) {
+      socketRef.current.emit("spotify:sync_request", { userId });
+    }
+  }, [userId]);
+
   return {
     isConnected,
     focusUsers,
     disconnect,
     updateProgress,
     emitPause,
+    startBroadcasting,
+    updateBroadcast,
+    stopBroadcasting,
+    requestSync,
   };
 }
