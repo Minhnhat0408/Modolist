@@ -66,3 +66,87 @@ export interface ActiveUser {
     isPaused: boolean;
     elapsedTime: number; // Track elapsed time for disconnect handling
 }
+
+// ── Spotify Co-listening DTOs ──────────────────────────────────────
+
+export class SpotifyHostStartDto {
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+
+    @IsString()
+    @IsNotEmpty()
+    trackUri: string;
+
+    @IsString()
+    @IsNotEmpty()
+    trackName: string;
+
+    @IsString()
+    @IsNotEmpty()
+    artistName: string;
+
+    @IsString()
+    @IsOptional()
+    albumArt?: string;
+
+    @IsNumber()
+    positionMs: number;
+
+    @IsBoolean()
+    isPlaying: boolean;
+}
+
+export class SpotifyHostUpdateDto {
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+
+    @IsString()
+    @IsOptional()
+    trackUri?: string;
+
+    @IsString()
+    @IsOptional()
+    trackName?: string;
+
+    @IsString()
+    @IsOptional()
+    artistName?: string;
+
+    @IsString()
+    @IsOptional()
+    albumArt?: string;
+
+    @IsNumber()
+    @IsOptional()
+    positionMs?: number;
+
+    @IsBoolean()
+    @IsOptional()
+    isPlaying?: boolean;
+}
+
+export class SpotifyHostStopDto {
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+}
+
+export class SpotifySyncRequestDto {
+    @IsString()
+    @IsNotEmpty()
+    userId: string;
+}
+
+export interface SpotifyPlaybackState {
+    hostUserId: string;
+    hostName: string | null;
+    trackUri: string;
+    trackName: string;
+    artistName: string;
+    albumArt?: string;
+    positionMs: number;
+    isPlaying: boolean;
+    updatedAt: number; // Date.now() timestamp for latency compensation
+}

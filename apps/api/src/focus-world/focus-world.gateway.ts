@@ -17,6 +17,11 @@ import {
     PauseFocusDto,
     FocusUser,
     ActiveUser,
+    SpotifyHostStartDto,
+    SpotifyHostUpdateDto,
+    SpotifyHostStopDto,
+    SpotifySyncRequestDto,
+    SpotifyPlaybackState,
 } from "./dto/focus-world.dto";
 
 @WebSocketGateway({
@@ -32,6 +37,7 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
 
     private readonly logger = new Logger(FocusWorldGateway.name);
     private activeUsers: Map<string, ActiveUser> = new Map();
+    private hostPlayback: SpotifyPlaybackState | null = null;
 
     constructor(private readonly focusWorldService: FocusWorldService) {}
 
@@ -47,6 +53,12 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
 
         // Remove from active users immediately
         this.activeUsers.delete(client.id);
+
+        // If the disconnecting user was the Spotify host, stop broadcasting
+        if (this.hostPlayback && this.hostPlayback.hostUserId === user.userId) {
+            this.hostPlayback = null;
+            this.server.to("focus-world").emit("spotify:host_stopped");
+        }
 
         // Notify others → user left
         this.server.to("focus-world").emit("user_left", {
@@ -215,6 +227,12 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             this.activeUsers.delete(client.id);
             void client.leave("focus-world");
 
+            // If the leaving user was the Spotify host, stop broadcasting
+            if (this.hostPlayback && this.hostPlayback.hostUserId === data.userId) {
+                this.hostPlayback = null;
+                this.server.to("focus-world").emit("spotify:host_stopped");
+            }
+
             this.server.to("focus-world").emit("user_left", {
                 userId: data.userId,
             });
@@ -224,6 +242,102 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             );
         } catch (error: unknown) {
             this.logger.error(`Error in leave_floor: ${(error as Error).message}`);
+        }
+    }
+
+    // ── Spotify Co-listening Events ────────────────────────────────────
+
+    @SubscribeMessage("spotify:host_start")
+    handleSpotifyHostStart(
+        @MessageBody() data: SpotifyHostStartDto,
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            const activeUser = this.activeUsers.get(client.id);
+            if (!activeUser) return;
+
+            this.hostPlayback = {
+                hostUserId: data.userId,
+                hostName: activeUser.userName,
+                trackUri: data.trackUri,
+                trackName: data.trackName,
+                artistName: data.artistName,
+                albumArt: data.albumArt,
+                positionMs: data.positionMs,
+                isPlaying: data.isPlaying,
+                updatedAt: Date.now(),
+            };
+
+            client.to("focus-world").emit("spotify:host_started", this.hostPlayback);
+            this.logger.log(`Spotify host started by ${data.userId}`);
+        } catch (error: unknown) {
+            this.logger.error(`Error in spotify:host_start: ${(error as Error).message}`);
+        }
+    }
+
+    @SubscribeMessage("spotify:host_update")
+    handleSpotifyHostUpdate(
+        @MessageBody() data: SpotifyHostUpdateDto,
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            if (!this.hostPlayback || this.hostPlayback.hostUserId !== data.userId) return;
+
+            const activeUser = this.activeUsers.get(client.id);
+            if (!activeUser) return;
+
+            // Merge partial update
+            if (data.trackUri !== undefined) this.hostPlayback.trackUri = data.trackUri;
+            if (data.trackName !== undefined) this.hostPlayback.trackName = data.trackName;
+            if (data.artistName !== undefined) this.hostPlayback.artistName = data.artistName;
+            if (data.albumArt !== undefined) this.hostPlayback.albumArt = data.albumArt;
+            if (data.positionMs !== undefined) this.hostPlayback.positionMs = data.positionMs;
+            if (data.isPlaying !== undefined) this.hostPlayback.isPlaying = data.isPlaying;
+            this.hostPlayback.updatedAt = Date.now();
+
+            client.to("focus-world").emit("spotify:host_updated", this.hostPlayback);
+        } catch (error: unknown) {
+            this.logger.error(`Error in spotify:host_update: ${(error as Error).message}`);
+        }
+    }
+
+    @SubscribeMessage("spotify:host_stop")
+    handleSpotifyHostStop(
+        @MessageBody() data: SpotifyHostStopDto,
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            if (!this.hostPlayback || this.hostPlayback.hostUserId !== data.userId) return;
+
+            this.hostPlayback = null;
+            client.to("focus-world").emit("spotify:host_stopped");
+            this.logger.log(`Spotify host stopped by ${data.userId}`);
+        } catch (error: unknown) {
+            this.logger.error(`Error in spotify:host_stop: ${(error as Error).message}`);
+        }
+    }
+
+    @SubscribeMessage("spotify:sync_request")
+    handleSpotifySyncRequest(
+        @MessageBody() _data: SpotifySyncRequestDto,
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            if (this.hostPlayback) {
+                // Compensate position for elapsed time since last update
+                const elapsed = Date.now() - this.hostPlayback.updatedAt;
+                const compensatedState = {
+                    ...this.hostPlayback,
+                    positionMs: this.hostPlayback.isPlaying
+                        ? this.hostPlayback.positionMs + elapsed
+                        : this.hostPlayback.positionMs,
+                };
+                client.emit("spotify:sync_response", compensatedState);
+            } else {
+                client.emit("spotify:sync_response", null);
+            }
+        } catch (error: unknown) {
+            this.logger.error(`Error in spotify:sync_request: ${(error as Error).message}`);
         }
     }
 

@@ -10,14 +10,17 @@ const nextConfig = {
   outputFileTracingRoot: path.join(__dirname, '../..'),
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'bcryptjs'],
   images: {
-    remotePatterns: [new URL('https://lh3.googleusercontent.com/**')],
+    remotePatterns: [
+      new URL('https://lh3.googleusercontent.com/**'),
+      new URL('https://i.scdn.co/**'),
+    ],
   },
   async rewrites() {
     // eslint-disable-next-line no-undef
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [
       {
-        source: '/api/:path((?!auth).*)',
+        source: '/api/:path((?!auth|spotify).*)',
         destination: `${apiUrl}/:path*`,
       },
     ];
