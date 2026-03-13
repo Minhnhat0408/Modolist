@@ -75,7 +75,7 @@ function copyStyles(src: Document, dst: Document) {
  * Must be called within a user gesture (click / keydown).
  * Returns `true` if PiP opened (or was already open).
  */
-export async function openPip(): Promise<boolean> {
+export async function openPip(height: number, width: number): Promise<boolean> {
   if (pipWindow) return true;
   if (
     typeof window === "undefined" ||
@@ -83,13 +83,12 @@ export async function openPip(): Promise<boolean> {
   ) {
     return false;
   }
-
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const api = (window as any).documentPictureInPicture;
     const win: Window = await api.requestWindow({
-      width: 480,
-      height: 140,
+      width: width,
+      height: height,
     });
     pipWindow = win;
 
@@ -158,12 +157,39 @@ export function isPipSupported(): boolean {
   return typeof window !== "undefined" && "documentPictureInPicture" in window;
 }
 
+/** Returns true if a PiP window is currently open (non-reactive). */
+export function isPipOpen(): boolean {
+  return _active;
+}
+
+/** Content heights per tab type (px). */
+export const PIP_CONTENT_H = { timer: 150, world: 120, spotify: 160 } as const;
+/** Height of the tab bar when multiple tabs are visible. */
+export const PIP_TAB_BAR_H = 38;
+
+/**
+ * Compute the correct PiP height given which tabs will be visible.
+ * - Single tab → content height only (no tab bar)
+ * - Multiple tabs → tab bar + tallest possible content (spotify if present, else 130)
+ *
+ * NOTE: call this from click handlers only — resizeTo() requires a user gesture.
+ */
+export function calcPIPHeight(tabs: {
+  timer: boolean;
+  world: boolean;
+  spotify: boolean;
+  target: "timer" | "world" | "spotify";
+}): number {
+  const contentH = tabs.spotify && tabs.target != "spotify" ? PIP_CONTENT_H.spotify : PIP_CONTENT_H.timer;
+
+  return PIP_TAB_BAR_H + contentH;
+}
+
 /**
  * Resize the PiP window.
- * - Pass an explicit `height` to set it directly.
- * - Omit `height` to auto-detect: 150px when Focus World tab is visible, 130px otherwise.
+ * Must be called from a user-gesture handler (click / keydown).
  */
 export function resizePIP(height: number): void {
   if (!pipWindow) return;
-  pipWindow.resizeTo(480, height);
+  pipWindow.resizeTo(460, height);
 }

@@ -1,5 +1,5 @@
-import { resizePIP } from "@/hooks/usePictureInPicture";
 import { create } from "zustand";
+import { useFocusStore } from "./useFocusStore";
 
 interface FocusWorldStore {
   isOpen: boolean;
@@ -25,7 +25,6 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
   closeWorld: () =>
     set((state) => {
       if (!state.isOpen) return state;
-      resizePIP(140);
       return {
         isOpen: false,
         isMinimized: false,
@@ -36,9 +35,22 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
   toggleMinimize: () =>
     set((state) => {
       if (!state.isOpen) return state;
-      resizePIP(200);
       return { isMinimized: !state.isMinimized };
     }),
   setOnlineData: (count, connected) =>
     set({ onlineCount: count, isWorldConnected: connected }),
 }));
+
+// ── Auto-close Focus World when the timer stops ─────────────────────────
+// Focus World is only meaningful while a focus session is active.
+// Subscribe to useFocusStore at the module level (runs once, no component needed).
+const STOPPED_STATUSES = new Set(["idle", "completed", "all_completed"]);
+
+useFocusStore.subscribe((state, prevState) => {
+  if (
+    STOPPED_STATUSES.has(state.status) &&
+    !STOPPED_STATUSES.has(prevState.status)
+  ) {
+    useFocusWorldStore.getState().closeWorld();
+  }
+});

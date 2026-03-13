@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Users, Wifi, WifiOff, Minimize2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { openPip } from "@/hooks/usePictureInPicture";
+import { openPip, resizePIP, calcPIPHeight } from "@/hooks/usePictureInPicture";
+import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -143,10 +144,18 @@ export function FocusWorldModal() {
   const { isOpen, isMinimized, toggleMinimize, closeWorld } =
     useFocusWorldStore();
   const { sessionId, activeTask, status, timeLeft } = useFocusStore();
+  const spotifyWidgetMinimized = useSpotifyStore((s) => s.isWidgetMinimized);
   const [isInitializing, setIsInitializing] = useState(true);
 
   const handleMinimize = async () => {
-    await openPip();
+    await openPip(120, 460);
+    // Check which tabs are already in PiP before this action
+    const timerInPip = !!activeTask;
+    const spotifyInPip = spotifyWidgetMinimized;
+    // If other tabs exist → tab bar will appear → resize
+    if (timerInPip || spotifyInPip) {
+      resizePIP(calcPIPHeight({ timer: timerInPip, world: true, spotify: spotifyInPip, target: "world" }));
+    }
     toggleMinimize();
   };
 
