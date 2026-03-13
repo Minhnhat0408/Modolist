@@ -3,6 +3,22 @@ import { auth } from "@/lib/auth";
 import { SPOTIFY_CONFIG, getSpotifyCredentials } from "@/lib/spotify";
 import { randomBytes } from "crypto";
 
+/**
+ * Derive the public-facing origin of this request.
+ * Behind a reverse proxy (Railway, Vercel, etc.), request.url contains the
+ * internal container address.  Prefer AUTH_URL env var, then x-forwarded-*
+ * headers injected by the proxy, and fall back to request.url as last resort.
+ */
+function getPublicOrigin(request: NextRequest): string {
+  if (process.env.AUTH_URL) {
+    return new URL(process.env.AUTH_URL).origin;
+  }
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host"))?.split(",")[0]?.trim();
+  if (proto && host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -12,8 +28,7 @@ export async function GET(request: NextRequest) {
   const { clientId } = getSpotifyCredentials();
   const state = randomBytes(16).toString("hex");
 
-  // Use explicit env var (needed when Spotify app whitelist differs from request origin, e.g. 127.0.0.1 vs localhost)
-  const origin = new URL(request.url).origin;
+  const origin = getPublicOrigin(request);
   const redirectUri =
     process.env.SPOTIFY_REDIRECT_URI ?? `${origin}/api/spotify/callback`;
 
