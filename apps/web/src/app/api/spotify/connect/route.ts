@@ -12,9 +12,10 @@ export async function GET(request: NextRequest) {
   const { clientId } = getSpotifyCredentials();
   const state = randomBytes(16).toString("hex");
 
-  // Build redirect_uri from request origin
+  // Use explicit env var (needed when Spotify app whitelist differs from request origin, e.g. 127.0.0.1 vs localhost)
   const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/api/spotify/callback`;
+  const redirectUri =
+    process.env.SPOTIFY_REDIRECT_URI ?? `${origin}/api/spotify/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId,

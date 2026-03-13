@@ -88,8 +88,8 @@ export async function openPip(): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const api = (window as any).documentPictureInPicture;
     const win: Window = await api.requestWindow({
-      width: 440,
-      height: 130,
+      width: 480,
+      height: 140,
     });
     pipWindow = win;
 
@@ -165,11 +165,5 @@ export function isPipSupported(): boolean {
  */
 export function resizePIP(height: number): void {
   if (!pipWindow) return;
-  //   const h =
-  //     height ??
-  //     (() => {
-  //       const { isOpen, isMinimized } = useFocusWorldStore.getState();
-  //       return isOpen && isMinimized ? 130 : 190;
-  //     })();
-  pipWindow.resizeTo(440, height);
+  pipWindow.resizeTo(480, height);
 }

@@ -11,11 +11,30 @@ declare global {
       constructor(options: PlayerOptions);
       connect(): Promise<boolean>;
       disconnect(): void;
-      addListener(event: "ready", callback: (data: { device_id: string }) => void): void;
-      addListener(event: "not_ready", callback: (data: { device_id: string }) => void): void;
-      addListener(event: "player_state_changed", callback: (state: PlaybackState | null) => void): void;
-      addListener(event: "initialization_error" | "authentication_error" | "account_error" | "playback_error", callback: (error: WebPlaybackError) => void): void;
-      removeListener(event: string, callback?: (...args: unknown[]) => void): void;
+      addListener(
+        event: "ready",
+        callback: (data: { device_id: string }) => void,
+      ): void;
+      addListener(
+        event: "not_ready",
+        callback: (data: { device_id: string }) => void,
+      ): void;
+      addListener(
+        event: "player_state_changed",
+        callback: (state: PlaybackState | null) => void,
+      ): void;
+      addListener(
+        event:
+          | "initialization_error"
+          | "authentication_error"
+          | "account_error"
+          | "playback_error",
+        callback: (error: WebPlaybackError) => void,
+      ): void;
+      removeListener(
+        event: string,
+        callback?: (...args: unknown[]) => void,
+      ): void;
       getCurrentState(): Promise<PlaybackState | null>;
       getVolume(): Promise<number>;
       setVolume(volume: number): Promise<void>;

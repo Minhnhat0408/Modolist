@@ -19,7 +19,9 @@
         "NEXT_PUBLIC_UPLOADTHING_APP_ID",
         "UPLOADTHING_SECRET",
         "SPOTIFY_CLIENT_ID",
-        "SPOTIFY_CLIENT_SECRET"
+        "SPOTIFY_CLIENT_SECRET",
+        "SPOTIFY_REDIRECT_URI",
+        "INTERNAL_API_URL"
       ]
     },
     "lint": {

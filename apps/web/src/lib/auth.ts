@@ -6,7 +6,6 @@ import { prisma } from "@repo/database";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-// Schema validate đầu vào
 const signInSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, "Password is required"),
@@ -20,7 +19,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      allowDangerousEmailAccountLinking: true, // Cho phép link Google vào account đã tạo bằng email/pass
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       credentials: {
@@ -29,26 +28,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       authorize: async (credentials) => {
         try {
-          // 1. Validate dữ liệu đầu vào
           const { email, password } =
             await signInSchema.parseAsync(credentials);
 
-          // 2. Tìm user trong DB
-          const user = await prisma.user.findUnique({
-            where: { email },
-          });
+          const user = await prisma.user.findUnique({ where: { email } });
 
-          // 3. Check password
-          if (!user || !user.password) {
-            // User không tồn tại hoặc đăng ký bằng Google (không có pass)
-            return null;
-          }
+          if (!user || !user.password) return null;
 
           const passwordsMatch = await bcrypt.compare(password, user.password);
-
           if (!passwordsMatch) return null;
 
-          // 4. Trả về user (NextAuth sẽ lưu vào token)
           return user;
         } catch {
           return null;
@@ -63,12 +52,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.picture = user.image;
       }
-
-      // Hỗ trợ update session client-side
       if (trigger === "update" && session) {
         return { ...token, ...session.user };
       }
-
       return token;
     },
     async session({ session, token }) {

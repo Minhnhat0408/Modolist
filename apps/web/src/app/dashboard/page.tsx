@@ -16,6 +16,9 @@ import Image from "next/image";
 import { StatsModal } from "@/components/stats/StatsModal";
 import { AITaskGenerator } from "@/components/ai/AITaskGenerator";
 import { TaskDetailModal } from "@/components/kanban/TaskDetailModal";
+import { SpotifyPlayerInit } from "@/components/spotify/SpotifyPlayerInit";
+import { SpotifyHeaderButton } from "@/components/spotify/SpotifyHeaderButton";
+import { SpotifyModal } from "@/components/spotify/SpotifyModal";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -261,6 +264,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <SpotifyHeaderButton />
             <UserNav
               user={session?.user}
               onStatsClick={() => setStatsOpen(true)}
@@ -300,6 +304,12 @@ export default function DashboardPage() {
 
         {/* Focus Timer (Modal + Floating Widget) */}
         <FocusTimer />
+
+        {/* Spotify Player (global init — always mounted) */}
+        <SpotifyPlayerInit />
+
+        {/* Spotify Modal (opened from header button) */}
+        <SpotifyModal />
 
         {/* Stats Modal */}
         <StatsModal open={statsOpen} onOpenChange={setStatsOpen} />
