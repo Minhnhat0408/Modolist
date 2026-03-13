@@ -8,14 +8,31 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { useFocusStore } from "@/stores/useFocusStore";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { SpotifyWidget } from "@/components/focus/SpotifyWidget";
+import { openPip, resizePIP, calcPIPHeight } from "@/hooks/usePictureInPicture";
 import { Minimize2, X, Music } from "lucide-react";
 
 export function SpotifyModal() {
   const { isWidgetOpen, isWidgetMinimized, minimizeWidget, closeWidget } =
     useSpotifyStore();
+  const { activeTask } = useFocusStore();
+  const { isOpen: worldOpen, isMinimized: worldMinimized } = useFocusWorldStore();
 
   const visible = isWidgetOpen && !isWidgetMinimized;
+
+  const handleMinimize = async () => {
+    await openPip(140, 460);
+    // Spotify always needs 220px content; check other existing tabs
+    const timerInPip = !!activeTask;
+    const worldInPip = worldOpen && worldMinimized;
+    // Always resize: Spotify alone = 220, with others = tab bar + 220
+    if (worldInPip || timerInPip) {
+      resizePIP(calcPIPHeight({ timer: timerInPip, world: worldInPip, spotify: true, target: "spotify" }));
+    }
+    minimizeWidget();
+  };
 
   return (
     <AnimatePresence>
@@ -32,7 +49,7 @@ export function SpotifyModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/80 backdrop-blur-md"
-            onClick={minimizeWidget}
+            onClick={handleMinimize}
           />
 
           {/* Content */}
@@ -58,7 +75,7 @@ export function SpotifyModal() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={minimizeWidget}
+                  onClick={handleMinimize}
                   className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
                   title="Thu nhỏ"
                 >

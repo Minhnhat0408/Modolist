@@ -15,6 +15,7 @@ import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import { spotifyActions } from "@/hooks/useSpotifyPlayer";
+import { resizePIP, PIP_CONTENT_H, PIP_TAB_BAR_H } from "@/hooks/usePictureInPicture";
 import {
   Play,
   Pause,
@@ -51,7 +52,7 @@ interface PipContentProps {
 export function PipContent({ onClose }: PipContentProps) {
   /* ── Width tracking (PiP window resize) ────────────────────────────── */
   const [cw, setCw] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 440,
+    typeof window !== "undefined" ? window.innerWidth : 460,
   );
   useEffect(() => {
     const handleResize = () => setCw(window.innerWidth);
@@ -65,6 +66,7 @@ export function PipContent({ onClose }: PipContentProps) {
     activeTask,
     status,
     timeLeft,
+    isMinimized: timerMinimized,
     mode,
     focusType,
     shortFocusDuration,
@@ -112,7 +114,8 @@ export function PipContent({ onClose }: PipContentProps) {
   } = useSpotifyStore();
 
   /* ── Tab logic ────────────────────────────────────────────────────── */
-  const hasTimerTab = !!activeTask;
+  // Only show timer tab when the FocusTimerModal is actually minimized to PiP
+  const hasTimerTab = !!activeTask && timerMinimized;
   const hasWorldTab = worldOpen && worldMinimized;
   const hasSpotifyTab = spotifyWidgetMinimized;
 
@@ -129,6 +132,39 @@ export function PipContent({ onClose }: PipContentProps) {
       setActiveTab(availableTabs[0]!);
     }
   }, [hasTimerTab, hasWorldTab, hasSpotifyTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Close PiP window when no tabs remain (e.g. Spotify widget closed) */
+  useEffect(() => {
+    if (!hasTimerTab && !hasWorldTab && !hasSpotifyTab) {
+      onClose();
+    }
+  }, [hasTimerTab, hasWorldTab, hasSpotifyTab, onClose]);
+
+  /**
+   * Resize PiP after a tab is removed (must be called inside user-gesture handler).
+   * Pass which tabs will remain AFTER the action (not current state).
+   */
+  const resizeAfterRemove = useCallback(
+    (remainTimer: boolean, remainWorld: boolean, remainSpotify: boolean) => {
+      const remaining = [remainTimer, remainWorld, remainSpotify].filter(Boolean);
+      if (remaining.length === 0) return; // PiP will close, no resize needed
+      if (remaining.length === 1) {
+        // Single tab left → no tab bar
+        const h = remainSpotify
+          ? PIP_CONTENT_H.spotify
+          : remainWorld
+            ? PIP_CONTENT_H.world
+            : PIP_CONTENT_H.timer;
+        console.log(h)
+        resizePIP(h);
+      } else {
+        // Multiple tabs remain → keep tab bar, show tallest content
+        const h = remainSpotify ? PIP_CONTENT_H.spotify : PIP_CONTENT_H.timer;
+        resizePIP(PIP_TAB_BAR_H + h);
+      }
+    },
+    [],
+  );
 
   /* ── Spotify local seek ───────────────────────────────────────────── */
   const [localPos, setLocalPos] = useState(0);
@@ -164,18 +200,19 @@ export function PipContent({ onClose }: PipContentProps) {
     }
   }, [status, tick]);
 
-  /* ── Auto-close PiP when session ends (only if no spotify to show) ── */
+  /* ── Auto-close PiP when session ends (only if no other tabs remain) ── */
   useEffect(() => {
     if (
       (status === "idle" ||
         status === "completed" ||
         status === "all_completed") &&
-      !spotifyConnected
+      !hasSpotifyTab &&
+      !hasWorldTab
     ) {
       toggleMinimize();
       onClose();
     }
-  }, [status, spotifyConnected, toggleMinimize, onClose]);
+  }, [status, hasSpotifyTab, hasWorldTab, toggleMinimize, onClose]);
 
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const formatTime = (s: number) => {
@@ -224,7 +261,10 @@ export function PipContent({ onClose }: PipContentProps) {
         <div className="flex border-b border-gray-200 dark:border-gray-700">
           {hasTimerTab && (
             <button
-              onClick={() => setActiveTab("timer")}
+              onClick={() => {
+                setActiveTab("timer");
+                resizePIP(PIP_TAB_BAR_H + PIP_CONTENT_H.timer);
+              }}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
                 activeTab === "timer"
                   ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
@@ -237,7 +277,10 @@ export function PipContent({ onClose }: PipContentProps) {
           )}
           {hasWorldTab && (
             <button
-              onClick={() => setActiveTab("world")}
+              onClick={() => {
+                setActiveTab("world");
+                resizePIP(PIP_TAB_BAR_H + PIP_CONTENT_H.world);
+              }}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
                 activeTab === "world"
                   ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
@@ -251,7 +294,10 @@ export function PipContent({ onClose }: PipContentProps) {
           )}
           {hasSpotifyTab && (
             <button
-              onClick={() => setActiveTab("spotify")}
+              onClick={() => {
+                setActiveTab("spotify");
+                resizePIP(PIP_TAB_BAR_H + PIP_CONTENT_H.spotify);
+              }}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
                 activeTab === "spotify"
                   ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
@@ -328,7 +374,7 @@ export function PipContent({ onClose }: PipContentProps) {
                 <button
                   onClick={() => {
                     openWorld();
-                    if (!worldMinimized) toggleWorldMinimize();
+                    // if (!worldMinimized) toggleWorldMinimize();
                   }}
                   className={btnCls}
                   aria-label="Focus World"
@@ -379,7 +425,12 @@ export function PipContent({ onClose }: PipContentProps) {
               <button
                 onClick={() => {
                   stopFocus();
-                  onClose();
+                  // Only close PiP if no other tabs remain after this
+                  if (!hasWorldTab && !hasSpotifyTab) {
+                    onClose();
+                  } else {
+                    resizeAfterRemove(false, hasWorldTab, hasSpotifyTab);
+                  }
                 }}
                 className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
               >
@@ -434,7 +485,12 @@ export function PipContent({ onClose }: PipContentProps) {
             <button
               onClick={() => {
                 toggleWorldMinimize();
-                onClose();
+                // Only close PiP if no other tabs remain
+                if (!hasTimerTab && !hasSpotifyTab) {
+                  onClose();
+                } else {
+                  resizeAfterRemove(hasTimerTab, false, hasSpotifyTab);
+                }
               }}
               className={btnCls}
               title="Phóng to"
@@ -442,7 +498,10 @@ export function PipContent({ onClose }: PipContentProps) {
               <Maximize2 size={16} />
             </button>
             <button
-              onClick={() => closeWorld()}
+              onClick={() => {
+                closeWorld();
+                resizeAfterRemove(hasTimerTab, false, hasSpotifyTab);
+              }}
               className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
             >
               <X size={16} />
@@ -473,7 +532,10 @@ export function PipContent({ onClose }: PipContentProps) {
                   Kết Nối
                 </a>
                 <button
-                  onClick={() => spotifyCloseWidget()}
+                  onClick={() => {
+                    spotifyCloseWidget();
+                    resizeAfterRemove(hasTimerTab, hasWorldTab, false);
+                  }}
                   className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
                 >
                   <X size={16} />
@@ -628,8 +690,48 @@ export function PipContent({ onClose }: PipContentProps) {
                         )}
                       </button>
 
-                      {/* Search → open modal with search */}
+                       {/* Close spotify widget */}
                       <button
+                        onClick={() => {
+                          spotifyCloseWidget();
+                          resizeAfterRemove(hasTimerTab, hasWorldTab, false);
+                        }}
+                        className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Seek bar */}
+                  
+
+                  {/* Volume bar (horizontal, always visible in PIP) */}
+                  <div className="px-5 pb-2 flex items-center gap-2">
+                 
+                    <button
+                      onClick={toggleMute}
+                      className="p-1 rounded-full border-0 cursor-pointer text-gray-700 dark:text-white shrink-0"
+                    >
+                      {spotifyVolume === 0 ? (
+                        <VolumeX size={14} />
+                      ) : (
+                        <Volume2 size={14} />
+                      )}
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(spotifyVolume * 100)}
+                      onChange={(e) =>
+                        spotifyActions.changeVolume(
+                          Number(e.target.value) / 100,
+                        )
+                      }
+                      className="flex-1 h-1 accent-green-500 cursor-pointer"
+                    />
+                    <button
                         onClick={() => {
                           spotifyOpenSearch();
                           onClose();
@@ -649,19 +751,10 @@ export function PipContent({ onClose }: PipContentProps) {
                         <Unplug size={14} />
                       </button>
 
-                      {/* Close spotify widget */}
-                      <button
-                        onClick={() => spotifyCloseWidget()}
-                        className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
+                     
                   </div>
-
-                  {/* Seek bar */}
                   {currentTrack && (
-                    <div className="px-4 pb-2 flex items-center gap-2">
+                    <div className="px-2 pb-4 flex items-center gap-2">
                       <span className="text-[10px] text-gray-500 tabular-nums w-8 text-right shrink-0">
                         {formatMs(localPos)}
                       </span>
@@ -687,41 +780,16 @@ export function PipContent({ onClose }: PipContentProps) {
                           setIsSeeking(false);
                         }}
                         disabled={!spotifyReady}
-                        className="flex-1 h-1 accent-green-500 cursor-pointer disabled:opacity-40"
+                        className="flex-1 h-1.5 accent-green-500 cursor-pointer disabled:opacity-40"
                       />
                       <span className="text-[10px] text-gray-500 tabular-nums w-8 shrink-0">
                         {formatMs(spotifyDuration)}
                       </span>
                     </div>
                   )}
-
-                  {/* Volume bar (horizontal, always visible in PIP) */}
-                  <div className="px-4 pb-3 flex items-center gap-2">
-                    <button
-                      onClick={toggleMute}
-                      className="p-1 rounded-full border-0 cursor-pointer text-gray-700 dark:text-white shrink-0"
-                    >
-                      {spotifyVolume === 0 ? (
-                        <VolumeX size={14} />
-                      ) : (
-                        <Volume2 size={14} />
-                      )}
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={Math.round(spotifyVolume * 100)}
-                      onChange={(e) =>
-                        spotifyActions.changeVolume(
-                          Number(e.target.value) / 100,
-                        )
-                      }
-                      className="flex-1 h-1 accent-green-500 cursor-pointer"
-                    />
-                  </div>
                 </>
               )}
+
           </>
         )}
     </div>

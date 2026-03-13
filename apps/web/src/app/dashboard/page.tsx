@@ -36,6 +36,15 @@ export default function DashboardPage() {
       url.searchParams.delete("spotify_connected");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
+    const spotifyError = searchParams.get("spotify_error");
+    if (spotifyError) {
+      console.error("[Spotify OAuth error]", decodeURIComponent(spotifyError));
+      // Show error as alert so it's visible immediately for debugging
+      alert(`Spotify kết nối thất bại: ${decodeURIComponent(spotifyError)}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("spotify_error");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
   }, [searchParams, checkConnection]);
 
   const [tasks, setTasks] = useState<KanbanTask[]>([]);

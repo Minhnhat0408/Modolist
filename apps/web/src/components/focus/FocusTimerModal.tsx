@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { openPip } from "@/hooks/usePictureInPicture";
+import { openPip, resizePIP, calcPIPHeight } from "@/hooks/usePictureInPicture";
+import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import {
   Play,
   Pause,
@@ -40,11 +41,20 @@ export function FocusTimerModal() {
     markWorkDone,
   } = useFocusStore();
 
-  const { openWorld } = useFocusWorldStore();
+  const { openWorld, isOpen: worldOpen, isMinimized: worldMinimized } = useFocusWorldStore();
+  const spotifyWidgetMinimized = useSpotifyStore((s) => s.isWidgetMinimized);
   const { play, stop } = useSoundEffects();
 
   const handleMinimize = async () => {
-    await openPip();
+    console.log("reạsiopjeifoas")
+    await openPip(140, 460);
+    // Check which tabs are already in PiP before this action
+    const worldInPip = worldOpen && worldMinimized;
+    const spotifyInPip = spotifyWidgetMinimized;
+    // If other tabs exist → tab bar will appear → resize
+    if (worldInPip || spotifyInPip) {
+      resizePIP(calcPIPHeight({ timer: true, world: worldInPip, spotify: spotifyInPip, target: "timer" }));
+    }
     toggleMinimize();
   };
 
