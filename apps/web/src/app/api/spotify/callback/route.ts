@@ -3,10 +3,27 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@repo/database";
 import { SPOTIFY_CONFIG, getSpotifyBasicAuth } from "@/lib/spotify";
 
+/**
+ * Derive the public-facing origin of this request.
+ * Behind a reverse proxy (Railway, Vercel, etc.), request.url contains the
+ * internal container address.  Prefer AUTH_URL env var, then x-forwarded-*
+ * headers injected by the proxy, and fall back to request.url as last resort.
+ */
+function getPublicOrigin(request: NextRequest): string {
+  if (process.env.AUTH_URL) {
+    return new URL(process.env.AUTH_URL).origin;
+  }
+  const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host"))?.split(",")[0]?.trim();
+  if (proto && host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
+  const origin = getPublicOrigin(request);
+
   if (!session?.user?.id) {
-    const origin = new URL(request.url).origin;
     return NextResponse.redirect(`${origin}/auth/signin`);
   }
 
@@ -15,7 +32,6 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
   const error = searchParams.get("error");
   const storedState = request.cookies.get("spotify_oauth_state")?.value;
-  const origin = new URL(request.url).origin;
 
   if (error) {
     return NextResponse.redirect(
