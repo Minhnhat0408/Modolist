@@ -35,12 +35,12 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      `${origin}/?spotify_error=${encodeURIComponent(error)}`,
+      `${origin}/dashboard?spotify_error=${encodeURIComponent(error)}`,
     );
   }
 
   if (!code || !state || state !== storedState) {
-    return NextResponse.redirect(`${origin}/?spotify_error=state_mismatch`);
+    return NextResponse.redirect(`${origin}/dashboard?spotify_error=state_mismatch`);
   }
 
   // Must match exactly what was sent in /connect
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
   if (!tokenResponse.ok) {
     return NextResponse.redirect(
-      `${origin}/?spotify_error=token_exchange_failed`,
+      `${origin}/dashboard?spotify_error=token_exchange_failed`,
     );
   }
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
   if (!profileResponse.ok) {
     return NextResponse.redirect(
-      `${origin}/?spotify_error=profile_fetch_failed`,
+      `${origin}/dashboard?spotify_error=profile_fetch_failed`,
     );
   }
 
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const response = NextResponse.redirect(`${origin}/?spotify_connected=true`);
+  const response = NextResponse.redirect(`${origin}/dashboard?spotify_connected=true`);
   response.cookies.delete("spotify_oauth_state");
   return response;
 }

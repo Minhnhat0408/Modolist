@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { UserNav } from "@/components/user-nav";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskFormDialog } from "@/components/kanban/TaskFormDialog";
@@ -19,10 +19,25 @@ import { TaskDetailModal } from "@/components/kanban/TaskDetailModal";
 import { SpotifyPlayerInit } from "@/components/spotify/SpotifyPlayerInit";
 import { SpotifyHeaderButton } from "@/components/spotify/SpotifyHeaderButton";
 import { SpotifyModal } from "@/components/spotify/SpotifyModal";
+import { useSpotifyStore } from "@/stores/useSpotifyStore";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const checkConnection = useSpotifyStore((s) => s.checkConnection);
+
+  // Re-check Spotify connection after OAuth callback redirect
+  useEffect(() => {
+    if (searchParams.get("spotify_connected") === "true") {
+      checkConnection();
+      // Clean up the URL param without a full reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("spotify_connected");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, [searchParams, checkConnection]);
+
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
