@@ -25,7 +25,7 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
   closeWorld: () =>
     set((state) => {
       if (!state.isOpen) return state;
-      resizePIP(130);
+      resizePIP(140);
       return {
         isOpen: false,
         isMinimized: false,
@@ -36,7 +36,7 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
   toggleMinimize: () =>
     set((state) => {
       if (!state.isOpen) return state;
-      resizePIP(190);
+      resizePIP(200);
       return { isMinimized: !state.isMinimized };
     }),
   setOnlineData: (count, connected) =>

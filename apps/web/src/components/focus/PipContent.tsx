@@ -3,17 +3,18 @@
 /**
  * Content rendered inside the Picture-in-Picture window.
  *
- * This component lives in a SEPARATE React root (not the main app tree),
- * but Zustand stores are global singletons so it reads the same state.
+ * Three tabs: Timer, Focus World, Spotify — responsive to PiP window width.
+ * Timer & World: all controls always visible; wider → extra buttons (mark done, skip).
+ * Spotify: responsive playback controls.
  *
- * Mirrors FloatingTimer's layout and visual style exactly.
- * All Tailwind CSS is copied from the main document into the PiP window,
- * and the dark class is propagated, so dark: variants work correctly.
+ * Uses Zustand stores (global singletons) to share state with the main app.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { spotifyActions } from "@/hooks/useSpotifyPlayer";
 import {
   Play,
   Pause,
@@ -21,15 +22,45 @@ import {
   X,
   Users,
   Timer,
+  Music,
   Wifi,
   WifiOff,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  Volume2,
+  VolumeX,
+  Unplug,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
+  Search,
 } from "lucide-react";
+
+/* ─── Responsive breakpoints ───────────────────────────────────────── */
+const BP_FULL = 640;
+
+type Tab = "timer" | "world" | "spotify";
 
 interface PipContentProps {
   onClose: () => void;
 }
 
 export function PipContent({ onClose }: PipContentProps) {
+  /* ── Width tracking (PiP window resize) ────────────────────────────── */
+  const [cw, setCw] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 440,
+  );
+  useEffect(() => {
+    const handleResize = () => setCw(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  const full = cw >= BP_FULL;
+
+  /* ── Focus timer state ────────────────────────────────────────────── */
   const {
     activeTask,
     status,
@@ -44,8 +75,11 @@ export function PipContent({ onClose }: PipContentProps) {
     stopFocus,
     toggleMinimize,
     tick,
+    skipWorkSession,
+    markWorkDone,
   } = useFocusStore();
 
+  /* ── Focus world state ────────────────────────────────────────────── */
   const {
     isOpen: worldOpen,
     isMinimized: worldMinimized,
@@ -56,10 +90,73 @@ export function PipContent({ onClose }: PipContentProps) {
     openWorld,
   } = useFocusWorldStore();
 
-  const showTabs = worldOpen && worldMinimized;
-  const [activeTab, setActiveTab] = useState<"timer" | "world">("timer");
+  /* ── Spotify state ────────────────────────────────────────────────── */
+  const {
+    isConnected: spotifyConnected,
+    isPremium: spotifyPremium,
+    isLoading: spotifyLoading,
+    isReady: spotifyReady,
+    hasPlayer: spotifyHasPlayer,
+    isPlaying: spotifyPlaying,
+    isActiveDevice: spotifyActiveDevice,
+    currentTrack,
+    position: spotifyPosition,
+    duration: spotifyDuration,
+    volume: spotifyVolume,
+    shuffle: spotifyShuffle,
+    repeatMode: spotifyRepeat,
+    isWidgetMinimized: spotifyWidgetMinimized,
+    disconnect: spotifyDisconnect,
+    closeWidget: spotifyCloseWidget,
+    openWidgetWithSearch: spotifyOpenSearch,
+  } = useSpotifyStore();
 
-  // Safety-net tick
+  /* ── Tab logic ────────────────────────────────────────────────────── */
+  const hasTimerTab = !!activeTask;
+  const hasWorldTab = worldOpen && worldMinimized;
+  const hasSpotifyTab = spotifyWidgetMinimized;
+
+  const availableTabs: Tab[] = [];
+  if (hasTimerTab) availableTabs.push("timer");
+  if (hasWorldTab) availableTabs.push("world");
+  if (hasSpotifyTab) availableTabs.push("spotify");
+
+  const showTabs = availableTabs.length > 1;
+  const [activeTab, setActiveTab] = useState<Tab>("timer");
+
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0]!);
+    }
+  }, [hasTimerTab, hasWorldTab, hasSpotifyTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Spotify local seek ───────────────────────────────────────────── */
+  const [localPos, setLocalPos] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const prevVol = useRef(spotifyVolume);
+
+  useEffect(() => {
+    if (!isSeeking) setLocalPos(spotifyPosition);
+  }, [spotifyPosition, isSeeking]);
+  useEffect(() => {
+    if (!spotifyPlaying || isSeeking) return;
+    const id = setInterval(
+      () => setLocalPos((p) => Math.min(p + 1000, spotifyDuration)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [spotifyPlaying, isSeeking, spotifyDuration]);
+
+  const toggleMute = useCallback(() => {
+    if (spotifyVolume > 0) {
+      prevVol.current = spotifyVolume;
+      spotifyActions.changeVolume(0);
+    } else {
+      spotifyActions.changeVolume(prevVol.current || 0.5);
+    }
+  }, [spotifyVolume]);
+
+  /* ── Timer tick ───────────────────────────────────────────────────── */
   useEffect(() => {
     if (status === "focusing" || status === "break") {
       const id = setInterval(tick, 1000);
@@ -67,24 +164,30 @@ export function PipContent({ onClose }: PipContentProps) {
     }
   }, [status, tick]);
 
-  // Auto-close PiP when session ends
+  /* ── Auto-close PiP when session ends (only if no spotify to show) ── */
   useEffect(() => {
     if (
-      status === "idle" ||
-      status === "completed" ||
-      status === "all_completed"
+      (status === "idle" ||
+        status === "completed" ||
+        status === "all_completed") &&
+      !spotifyConnected
     ) {
       toggleMinimize();
       onClose();
     }
-  }, [status, toggleMinimize, onClose]);
+  }, [status, spotifyConnected, toggleMinimize, onClose]);
 
-  // ── Derived values ────────────────────────────────────────────────────
-
+  /* ── Helpers ──────────────────────────────────────────────────────── */
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+  const formatMs = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const getMaxDuration = () => {
@@ -108,55 +211,63 @@ export function PipContent({ onClose }: PipContentProps) {
         ? "☕ Nghỉ Ngắn"
         : "🌴 Nghỉ Dài";
 
-  // ── Shared button class ───────────────────────────────────────────────
-
   const btnCls =
     "w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 " +
     "bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 " +
     "text-gray-700 dark:text-white transition-colors";
 
-  // ── Render ────────────────────────────────────────────────────────────
-
+  /* ── Render ────────────────────────────────────────────────────────── */
   return (
     <div className="overflow-hidden font-sans w-full">
       {/* ── Tab bar ── */}
       {showTabs && (
         <div className="flex border-b border-gray-200 dark:border-gray-700">
-          {(["timer", "world"] as const).map((tab) => (
+          {hasTimerTab && (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setActiveTab("timer")}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
-                activeTab === tab
+                activeTab === "timer"
                   ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
                   : "bg-transparent text-gray-500 dark:text-gray-400"
-              } border-b-2 ${
-                activeTab === tab
-                  ? tab === "timer"
-                    ? "border-blue-500"
-                    : "border-indigo-500"
-                  : "border-transparent"
-              }`}
+              } border-b-2 ${activeTab === "timer" ? "border-blue-500" : "border-transparent"}`}
             >
-              {tab === "timer" ? (
-                <>
-                  <Timer size={12} /> Bộ Đếm
-                </>
-              ) : (
-                <>
-                  <Users size={12} /> Focus World{" "}
-                  {onlineCount > 0 && `(${onlineCount})`}
-                </>
-              )}
+              <Timer size={12} />
+              {" Bộ Đếm"}
             </button>
-          ))}
+          )}
+          {hasWorldTab && (
+            <button
+              onClick={() => setActiveTab("world")}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
+                activeTab === "world"
+                  ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
+                  : "bg-transparent text-gray-500 dark:text-gray-400"
+              } border-b-2 ${activeTab === "world" ? "border-indigo-500" : "border-transparent"}`}
+            >
+              <Users size={12} />
+              {" Focus World"}
+              {onlineCount > 0 && ` (${onlineCount})`}
+            </button>
+          )}
+          {hasSpotifyTab && (
+            <button
+              onClick={() => setActiveTab("spotify")}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 border-0 cursor-pointer text-[11px] font-medium transition-colors ${
+                activeTab === "spotify"
+                  ? "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white"
+                  : "bg-transparent text-gray-500 dark:text-gray-400"
+              } border-b-2 ${activeTab === "spotify" ? "border-green-500" : "border-transparent"}`}
+            >
+              <Music size={12} />
+              {" Spotify"}
+            </button>
+          )}
         </div>
       )}
 
       {/* ══ TIMER PANEL ══ */}
-      {(!showTabs || activeTab === "timer") && (
+      {(activeTab === "timer" || !showTabs) && hasTimerTab && (
         <>
-          {/* Progress bar */}
           <div className="h-1 bg-gray-200 dark:bg-gray-700">
             <div
               style={{
@@ -168,9 +279,7 @@ export function PipContent({ onClose }: PipContentProps) {
             />
           </div>
 
-          {/* Content row */}
           <div className="px-4 py-3 flex items-center gap-4">
-            {/* SVG ring */}
             <div className="relative shrink-0 w-12 h-12">
               <svg
                 width="48"
@@ -202,7 +311,6 @@ export function PipContent({ onClose }: PipContentProps) {
               </span>
             </div>
 
-            {/* Task info */}
             <div className="flex-1 min-w-0">
               <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">
                 {modeLabel}
@@ -215,7 +323,6 @@ export function PipContent({ onClose }: PipContentProps) {
               </div>
             </div>
 
-            {/* Controls */}
             <div className="flex gap-2 items-center">
               {mode === "WORK" && !worldOpen && (
                 <button
@@ -234,7 +341,6 @@ export function PipContent({ onClose }: PipContentProps) {
                   status === "paused" ? resumeFocus() : pauseFocus()
                 }
                 className={`${btnCls} ${status === "paused" ? "text-yellow-500 dark:text-yellow-400" : ""}`}
-                title={status === "paused" ? "Tiếp tục" : "Tạm dừng"}
               >
                 {status === "paused" ? (
                   <Play size={16} fill="currentColor" />
@@ -252,13 +358,30 @@ export function PipContent({ onClose }: PipContentProps) {
               >
                 <Maximize2 size={16} />
               </button>
+              {full && mode === "WORK" && (
+                <>
+                  <button
+                    onClick={skipWorkSession}
+                    className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-red-400 transition-colors"
+                    title="Bỏ qua"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                  <button
+                    onClick={markWorkDone}
+                    className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-green-500/20 hover:bg-green-500/30 text-green-500 dark:text-green-400 transition-colors"
+                    title="Hoàn thành"
+                  >
+                    <CheckCircle2 size={16} />
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => {
                   stopFocus();
                   onClose();
                 }}
                 className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
-                title="Dừng"
               >
                 <X size={16} />
               </button>
@@ -275,9 +398,8 @@ export function PipContent({ onClose }: PipContentProps) {
       )}
 
       {/* ══ WORLD PANEL ══ */}
-      {showTabs && activeTab === "world" && (
+      {activeTab === "world" && hasWorldTab && (
         <div className="px-4 py-3 flex items-center gap-3">
-          {/* Icon */}
           <div className="relative shrink-0">
             <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
               <Users size={20} color="#818cf8" />
@@ -287,7 +409,6 @@ export function PipContent({ onClose }: PipContentProps) {
             )}
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <div
               className={`text-[10px] flex items-center gap-1 mb-0.5 ${isWorldConnected ? "text-green-500 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}
@@ -309,7 +430,6 @@ export function PipContent({ onClose }: PipContentProps) {
             </div>
           </div>
 
-          {/* Controls */}
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -322,17 +442,288 @@ export function PipContent({ onClose }: PipContentProps) {
               <Maximize2 size={16} />
             </button>
             <button
-              onClick={() => {
-                closeWorld();
-              }}
+              onClick={() => closeWorld()}
               className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
-              title="Đóng"
             >
               <X size={16} />
             </button>
           </div>
         </div>
       )}
+
+      {/* ══ SPOTIFY PANEL ══ */}
+      {(activeTab === "spotify" ||
+        (!showTabs && hasSpotifyTab && !hasTimerTab)) &&
+        hasSpotifyTab && (
+          <>
+            {/* Not connected */}
+            {!spotifyConnected && !spotifyLoading && (
+              <div className="px-4 py-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#1DB954]/20 flex items-center justify-center shrink-0">
+                  <Music size={20} className="text-[#1DB954]" />
+                </div>
+                <span className="text-[13px] text-gray-500 dark:text-gray-400 flex-1">
+                  Kết nối Spotify để nghe nhạc
+                </span>
+                <a
+                  href="/api/spotify/connect"
+                  className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-[11px] font-medium transition-colors flex items-center gap-1.5"
+                >
+                  <ExternalLink size={12} />
+                  Kết Nối
+                </a>
+                <button
+                  onClick={() => spotifyCloseWidget()}
+                  className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Loading */}
+            {spotifyLoading && (
+              <div className="px-4 py-3 flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
+                <span className="text-[13px] text-gray-500 dark:text-gray-400">
+                  Đang kết nối Spotify...
+                </span>
+              </div>
+            )}
+
+            {/* Not premium */}
+            {spotifyConnected && spotifyPremium === false && (
+              <div className="px-4 py-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                  <Music size={20} className="text-yellow-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] text-yellow-600 dark:text-yellow-300 font-medium">
+                    Cần Spotify Premium
+                  </p>
+                  <p className="text-[10px] text-gray-500">
+                    Web Playback SDK yêu cầu Premium
+                  </p>
+                </div>
+                <button
+                  onClick={() => spotifyDisconnect()}
+                  className="p-1.5 rounded-full border-0 cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 text-gray-500"
+                >
+                  <Unplug size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* Connected + premium → playback */}
+            {spotifyConnected &&
+              spotifyPremium !== false &&
+              !spotifyLoading && (
+                <>
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    {/* Album art */}
+                    <div className="w-10 h-10 rounded-md bg-white/10 overflow-hidden shrink-0 relative">
+                      {currentTrack?.albumArt ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={currentTrack.albumArt}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Music size={20} className="text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Track info */}
+                    <div className="flex-1 min-w-0">
+                      {currentTrack ? (
+                        <>
+                          <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+                            {currentTrack.name}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                            {currentTrack.artists}
+                          </p>
+                        </>
+                      ) : spotifyReady ? (
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400">
+                          Chưa phát nhạc
+                        </p>
+                      ) : (
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400">
+                          Đang kết nối...
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Transfer */}
+                    {spotifyHasPlayer &&
+                      currentTrack &&
+                      !spotifyActiveDevice && (
+                        <button
+                          onClick={() => spotifyActions.transferAndPlay()}
+                          className="shrink-0 px-2 py-1 rounded-full border-0 cursor-pointer bg-green-500/20 text-green-600 dark:text-green-400 text-[11px] font-medium"
+                        >
+                          Phát ở đây
+                        </button>
+                      )}
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => spotifyActions.toggleShuffle()}
+                        disabled={!spotifyReady}
+                        className={`p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 ${spotifyShuffle ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
+                        title={spotifyShuffle ? "Tắt trộn bài" : "Trộn bài"}
+                      >
+                        <Shuffle size={14} />
+                      </button>
+
+                      <button
+                        onClick={() => spotifyActions.previous()}
+                        disabled={!spotifyReady}
+                        className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
+                      >
+                        <SkipBack size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => spotifyActions.togglePlay()}
+                        disabled={!spotifyReady}
+                        className="w-8 h-8 rounded-full border-0 cursor-pointer bg-[#1DB954] hover:bg-[#1ed760] text-white flex items-center justify-center disabled:opacity-30"
+                      >
+                        {spotifyPlaying ? (
+                          <Pause size={16} />
+                        ) : (
+                          <Play size={16} fill="currentColor" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => spotifyActions.next()}
+                        disabled={!spotifyReady}
+                        className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
+                      >
+                        <SkipForward size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => spotifyActions.cycleRepeat()}
+                        disabled={!spotifyReady}
+                        className={`p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 ${spotifyRepeat !== "off" ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
+                        title={
+                          spotifyRepeat === "off"
+                            ? "Lặp lại"
+                            : spotifyRepeat === "context"
+                              ? "Đang lặp playlist"
+                              : "Đang lặp bài"
+                        }
+                      >
+                        {spotifyRepeat === "track" ? (
+                          <Repeat1 size={14} />
+                        ) : (
+                          <Repeat size={14} />
+                        )}
+                      </button>
+
+                      {/* Search → open modal with search */}
+                      <button
+                        onClick={() => {
+                          spotifyOpenSearch();
+                          onClose();
+                        }}
+                        disabled={!spotifyReady}
+                        className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
+                        title="Tìm kiếm"
+                      >
+                        <Search size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => spotifyDisconnect()}
+                        className="p-1.5 rounded-full border-0 cursor-pointer text-gray-500 hover:text-red-500"
+                        title="Ngắt kết nối"
+                      >
+                        <Unplug size={14} />
+                      </button>
+
+                      {/* Close spotify widget */}
+                      <button
+                        onClick={() => spotifyCloseWidget()}
+                        className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-white transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Seek bar */}
+                  {currentTrack && (
+                    <div className="px-4 pb-2 flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 tabular-nums w-8 text-right shrink-0">
+                        {formatMs(localPos)}
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={spotifyDuration || 1}
+                        value={localPos}
+                        onChange={(e) => {
+                          setIsSeeking(true);
+                          setLocalPos(Number(e.target.value));
+                        }}
+                        onMouseUp={(e) => {
+                          spotifyActions.seek(
+                            Number((e.target as HTMLInputElement).value),
+                          );
+                          setIsSeeking(false);
+                        }}
+                        onTouchEnd={(e) => {
+                          spotifyActions.seek(
+                            Number((e.target as HTMLInputElement).value),
+                          );
+                          setIsSeeking(false);
+                        }}
+                        disabled={!spotifyReady}
+                        className="flex-1 h-1 accent-green-500 cursor-pointer disabled:opacity-40"
+                      />
+                      <span className="text-[10px] text-gray-500 tabular-nums w-8 shrink-0">
+                        {formatMs(spotifyDuration)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Volume bar (horizontal, always visible in PIP) */}
+                  <div className="px-4 pb-3 flex items-center gap-2">
+                    <button
+                      onClick={toggleMute}
+                      className="p-1 rounded-full border-0 cursor-pointer text-gray-700 dark:text-white shrink-0"
+                    >
+                      {spotifyVolume === 0 ? (
+                        <VolumeX size={14} />
+                      ) : (
+                        <Volume2 size={14} />
+                      )}
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(spotifyVolume * 100)}
+                      onChange={(e) =>
+                        spotifyActions.changeVolume(
+                          Number(e.target.value) / 100,
+                        )
+                      }
+                      className="flex-1 h-1 accent-green-500 cursor-pointer"
+                    />
+                  </div>
+                </>
+              )}
+          </>
+        )}
     </div>
   );
 }

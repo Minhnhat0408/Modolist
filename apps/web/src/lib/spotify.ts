@@ -3,7 +3,7 @@ export const SPOTIFY_CONFIG = {
   TOKEN_URL: "https://accounts.spotify.com/api/token",
   API_URL: "https://api.spotify.com/v1",
   SCOPES:
-    "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state",
+    "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state user-read-currently-playing user-read-recently-played playlist-read-private playlist-read-collaborative",
 } as const;
 
 export function getSpotifyCredentials() {

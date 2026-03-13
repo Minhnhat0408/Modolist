@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
-import { useSpotifyPlayer } from "@/hooks/useSpotifyPlayer";
+import { spotifyActions } from "@/hooks/useSpotifyPlayer";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { focusWorldSocket } from "@/lib/focusWorldSocket";
 import { useSession } from "next-auth/react";
@@ -21,8 +21,13 @@ import {
   Unplug,
   Radio,
   RadioTower,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  Search,
 } from "lucide-react";
 import Image from "next/image";
+import { SpotifySearchPanel } from "./SpotifySearchModal";
 
 /**
  * Compact Spotify mini-player for the focus timer.
@@ -35,38 +40,55 @@ export function SpotifyWidget() {
     isConnected,
     isPremium,
     isLoading,
-    isHosting,
-    hostPlayback,
-    checkConnection,
-    disconnect,
-    setHosting,
-  } = useSpotifyStore();
-  const {
     isReady,
+    hasPlayer,
     isPlaying,
+    isActiveDevice,
     currentTrack,
     position,
     duration,
     volume,
+    shuffle,
+    repeatMode,
+    isHosting,
+    hostPlayback,
+    disconnect,
+    setHosting,
+    showSearch,
+    setShowSearch,
+  } = useSpotifyStore();
+  const {
     togglePlay,
+    transferAndPlay,
     next,
     previous,
     play,
+    seek,
     changeVolume,
-  } = useSpotifyPlayer();
+    toggleShuffle,
+    cycleRepeat,
+    addToQueue,
+  } = spotifyActions;
   const { isOpen: worldOpen } = useFocusWorldStore();
 
   const [showVolume, setShowVolume] = useState(false);
   const prevVolume = useRef(volume);
-  const [checked, setChecked] = useState(false);
+  const [localPosition, setLocalPosition] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
 
-  // Check connection on mount
+  // Sync localPosition from store when not dragging
   useEffect(() => {
-    if (!checked) {
-      checkConnection();
-      setChecked(true);
-    }
-  }, [checked, checkConnection]);
+    if (!isSeeking) setLocalPosition(position);
+  }, [position, isSeeking]);
+
+  // Tick every second while playing for smooth display
+  useEffect(() => {
+    if (!isPlaying || isSeeking) return;
+    const id = setInterval(() => {
+      setLocalPosition((p) => Math.min(p + 1000, duration));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isPlaying, isSeeking, duration]);
 
   // ── Co-listening: broadcast playback state when hosting ──
   const prevTrackRef = useRef<string | null>(null);
@@ -114,7 +136,10 @@ export function SpotifyWidget() {
     if (hostPlayback.hostUserId === userId) return;
 
     // Auto-sync: play the host's track
-    if (hostPlayback.isPlaying && hostPlayback.trackUri !== lastSyncedTrack.current) {
+    if (
+      hostPlayback.isPlaying &&
+      hostPlayback.trackUri !== lastSyncedTrack.current
+    ) {
       lastSyncedTrack.current = hostPlayback.trackUri;
       play(hostPlayback.trackUri);
     }
@@ -178,9 +203,7 @@ export function SpotifyWidget() {
         className="mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10"
       >
         <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-gray-400">
-          Đang kết nối Spotify...
-        </span>
+        <span className="text-sm text-gray-400">Đang kết nối Spotify...</span>
       </motion.div>
     );
   }
@@ -216,8 +239,6 @@ export function SpotifyWidget() {
   }
 
   // Connected + premium → show player
-  const progressPct = duration > 0 ? (position / duration) * 100 : 0;
-
   const formatMs = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
     const m = Math.floor(totalSec / 60);
@@ -238,16 +259,8 @@ export function SpotifyWidget() {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-6 rounded-xl bg-white/5 border border-white/10 overflow-hidden"
+      className="mt-6 rounded-xl bg-white/5 border border-white/10"
     >
-      {/* Playback progress bar */}
-      <div className="h-0.5 bg-white/5">
-        <div
-          className="h-full bg-green-500 transition-all duration-1000"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
-
       <div className="px-4 py-3 flex items-center gap-3">
         {/* Album art */}
         <div className="w-10 h-10 rounded-md bg-white/10 overflow-hidden shrink-0 relative">
@@ -278,11 +291,31 @@ export function SpotifyWidget() {
               </p>
             </>
           ) : (
-            <p className="text-sm text-gray-400">
-              {isReady ? "Chưa phát nhạc" : "Đang kết nối player..."}
-            </p>
+            <>
+              {isReady ? (
+                <>
+                  <p className="text-sm text-gray-400">Chưa phát nhạc</p>
+                  <p className="text-[10px] text-gray-600">
+                    Mở Spotify chọn bài → bấm ▶ để phát tại đây
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">Đang kết nối player...</p>
+              )}
+            </>
           )}
         </div>
+
+        {/* Transfer button — only when SDK player exists but audio is playing on another device */}
+        {hasPlayer && currentTrack && !isActiveDevice && (
+          <button
+            onClick={transferAndPlay}
+            className="shrink-0 px-2.5 py-1 rounded-full bg-green-500/20 hover:bg-green-500/30 text-green-400 text-[11px] font-medium transition-colors"
+            title="Chuyển phát sang trình duyệt này"
+          >
+            Phát ở đây
+          </button>
+        )}
 
         {/* Controls */}
         <div className="flex items-center gap-1">
@@ -297,6 +330,30 @@ export function SpotifyWidget() {
               <WifiOff className="w-3.5 h-3.5 text-gray-600" />
             )}
           </div>
+
+          {/* Search / browse */}
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            disabled={!isReady}
+            className={`p-1.5 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30 ${showSearch ? "text-green-400 bg-white/10" : ""}`}
+            aria-label="Tìm kiếm"
+            title="Tìm kiếm bài hát, playlist"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          {/* Shuffle */}
+          <button
+            onClick={toggleShuffle}
+            disabled={!isReady}
+            className={`p-1.5 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30 ${
+              shuffle ? "text-green-400" : "text-gray-400"
+            }`}
+            aria-label="Shuffle"
+            title={shuffle ? "Tắt trộn bài" : "Trộn bài"}
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+          </button>
 
           <button
             onClick={previous}
@@ -329,6 +386,29 @@ export function SpotifyWidget() {
             <SkipForward className="w-4 h-4" />
           </button>
 
+          {/* Repeat */}
+          <button
+            onClick={cycleRepeat}
+            disabled={!isReady}
+            className={`p-1.5 rounded-full hover:bg-white/10 transition-colors disabled:opacity-30 ${
+              repeatMode !== "off" ? "text-green-400" : "text-gray-400"
+            }`}
+            aria-label="Repeat"
+            title={
+              repeatMode === "off"
+                ? "Lặp lại"
+                : repeatMode === "context"
+                  ? "Đang lặp playlist"
+                  : "Đang lặp bài"
+            }
+          >
+            {repeatMode === "track" ? (
+              <Repeat1 className="w-3.5 h-3.5" />
+            ) : (
+              <Repeat className="w-3.5 h-3.5" />
+            )}
+          </button>
+
           {/* Volume */}
           <div className="relative">
             <button
@@ -351,7 +431,7 @@ export function SpotifyWidget() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   onMouseLeave={() => setShowVolume(false)}
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-3 rounded-lg bg-gray-800 border border-gray-700 shadow-xl"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-3 rounded-lg bg-gray-800 border border-gray-700 shadow-xl z-50"
                 >
                   <input
                     type="range"
@@ -378,11 +458,46 @@ export function SpotifyWidget() {
         </div>
       </div>
 
-      {/* Time stamps */}
+      {/* Seekable progress bar with timestamps */}
       {currentTrack && (
-        <div className="px-4 pb-2 flex justify-between text-[10px] text-gray-500 tabular-nums">
-          <span>{formatMs(position)}</span>
-          <span>{formatMs(duration)}</span>
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <span className="text-[10px] text-gray-500 tabular-nums w-8 text-right shrink-0">
+            {formatMs(localPosition)}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={duration || 1}
+            value={localPosition}
+            onChange={(e) => {
+              setIsSeeking(true);
+              setLocalPosition(Number(e.target.value));
+            }}
+            onMouseUp={(e) => {
+              seek(Number((e.target as HTMLInputElement).value));
+              setIsSeeking(false);
+            }}
+            onTouchEnd={(e) => {
+              seek(Number((e.target as HTMLInputElement).value));
+              setIsSeeking(false);
+            }}
+            disabled={!isReady}
+            className="flex-1 h-1 accent-green-500 cursor-pointer disabled:opacity-40"
+            aria-label="Seek"
+          />
+          <span className="text-[10px] text-gray-500 tabular-nums w-8 shrink-0">
+            {formatMs(duration)}
+          </span>
+        </div>
+      )}
+
+      {/* Inline search panel */}
+      {showSearch && isReady && (
+        <div className="px-4 pb-3">
+          <SpotifySearchPanel
+            onPlayUri={(uri) => play(uri)}
+            onAddToQueue={(uri) => addToQueue(uri)}
+          />
         </div>
       )}
 

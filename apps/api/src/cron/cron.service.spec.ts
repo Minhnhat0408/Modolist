@@ -45,22 +45,30 @@ describe("CronService", () => {
             expect(mockQueue.add).toHaveBeenCalledWith(
                 SCHEDULED_JOBS.MIDNIGHT_RESET,
                 {},
-                expect.objectContaining({ repeat: expect.objectContaining({ pattern: "0 0 * * *" }) }),
+                expect.objectContaining({
+                    repeat: expect.objectContaining({ pattern: "0 0 * * *" }),
+                }),
             );
             expect(mockQueue.add).toHaveBeenCalledWith(
                 SCHEDULED_JOBS.STALE_SESSIONS,
                 {},
-                expect.objectContaining({ repeat: expect.objectContaining({ every: 10 * 60 * 1000 }) }),
+                expect.objectContaining({
+                    repeat: expect.objectContaining({ every: 10 * 60 * 1000 }),
+                }),
             );
             expect(mockQueue.add).toHaveBeenCalledWith(
                 SCHEDULED_JOBS.DAILY_STATS,
                 {},
-                expect.objectContaining({ repeat: expect.objectContaining({ pattern: "5 0 * * *" }) }),
+                expect.objectContaining({
+                    repeat: expect.objectContaining({ pattern: "5 0 * * *" }),
+                }),
             );
             expect(mockQueue.add).toHaveBeenCalledWith(
                 SCHEDULED_JOBS.STREAK_UPDATE,
                 {},
-                expect.objectContaining({ repeat: expect.objectContaining({ pattern: "10 0 * * *" }) }),
+                expect.objectContaining({
+                    repeat: expect.objectContaining({ pattern: "10 0 * * *" }),
+                }),
             );
         });
 

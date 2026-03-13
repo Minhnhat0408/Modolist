@@ -1,18 +1,19 @@
 "use client";
 
 /**
- * Unified floating widget — replaces both FloatingTimer and FloatingWorldButton.
+ * Floating widget with three tabs: Timer, Focus World, Spotify.
  *
- * Behaviour:
- *  - Renders at bottom-right when the focus timer is minimized.
- *  - If Focus World is also open+minimized: shows a two-tab bar (Timer / World).
- *  - Hides entirely when PiP is active (PipContent takes over).
+ * - Timer & World: ALL original controls always visible.
+ * - Spotify tab: shows when user minimised the Spotify modal.
+ * - Hides when PiP is active.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { spotifyActions } from "@/hooks/useSpotifyPlayer";
 import { useFocusWorld } from "@/hooks/useFocusWorld";
 import { usePipActive, closePip } from "@/hooks/usePictureInPicture";
 import { useSession } from "next-auth/react";
@@ -23,18 +24,29 @@ import {
   Pause,
   Users,
   Timer,
+  Music,
   Wifi,
   WifiOff,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  Volume2,
+  VolumeX,
+  Unplug,
+  Search,
+  ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 
-type Tab = "timer" | "world";
+type Tab = "timer" | "world" | "spotify";
 
 export function FloatingWidget() {
   const { data: session } = useSession();
   const isPip = usePipActive();
 
-  // ── Focus timer state ────────────────────────────────────────────────
+  /* ── Focus timer state ────────────────────────────────────────────── */
   const {
     activeTask,
     status,
@@ -52,7 +64,7 @@ export function FloatingWidget() {
     sessionId,
   } = useFocusStore();
 
-  // ── Focus world state ────────────────────────────────────────────────
+  /* ── Focus world state ────────────────────────────────────────────── */
   const {
     isOpen: worldOpen,
     isMinimized: worldMinimized,
@@ -62,7 +74,29 @@ export function FloatingWidget() {
     setOnlineData,
   } = useFocusWorldStore();
 
-  // ── Socket connection ────────────────────────────────────────────────
+  /* ── Spotify state ────────────────────────────────────────────────── */
+  const {
+    isConnected: spotifyConnected,
+    isPremium: spotifyPremium,
+    isLoading: spotifyLoading,
+    isReady: spotifyReady,
+    hasPlayer: spotifyHasPlayer,
+    isPlaying: spotifyPlaying,
+    isActiveDevice: spotifyActiveDevice,
+    currentTrack,
+    position: spotifyPosition,
+    duration: spotifyDuration,
+    volume: spotifyVolume,
+    shuffle: spotifyShuffle,
+    repeatMode: spotifyRepeat,
+    isWidgetMinimized: spotifyWidgetMinimized,
+    disconnect: spotifyDisconnect,
+    openWidget: spotifyOpenWidget,
+    closeWidget: spotifyCloseWidget,
+    openWidgetWithSearch: spotifyOpenSearch,
+  } = useSpotifyStore();
+
+  /* ── Socket connection (Focus World) ──────────────────────────────── */
   const userId = session?.user?.id || null;
   const taskId = activeTask?.id || null;
   const canConnect =
@@ -80,31 +114,71 @@ export function FloatingWidget() {
 
   const otherUsers = focusUsers.filter((u) => u.userId !== userId);
 
-  // Sync to store for PipContent
   useEffect(() => {
     setOnlineData(otherUsers.length, isConnected);
   }, [otherUsers.length, isConnected, setOnlineData]);
 
-  // ── Tab state ────────────────────────────────────────────────────────
-  const showTabs = timerMinimized && worldOpen && worldMinimized;
+  /* ── Tab logic ────────────────────────────────────────────────────── */
+  const hasTimerTab = !!activeTask && timerMinimized;
+  const hasWorldTab = !!activeTask && worldOpen && worldMinimized;
+  const hasSpotifyTab = spotifyWidgetMinimized;
+
+  const availableTabs: Tab[] = [];
+  if (hasTimerTab) availableTabs.push("timer");
+  if (hasWorldTab) availableTabs.push("world");
+  if (hasSpotifyTab) availableTabs.push("spotify");
+
+  const showTabs = availableTabs.length > 1;
   const [activeTab, setActiveTab] = useState<Tab>("timer");
 
-  // Auto-switch to timer tab when world is closed
+  // Auto-select first available tab when tabs change
   useEffect(() => {
-    if (!worldMinimized) setActiveTab("timer");
-  }, [worldMinimized]);
+    if (availableTabs.length > 0 && !availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0]!);
+    }
+  }, [hasTimerTab, hasWorldTab, hasSpotifyTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Visibility ───────────────────────────────────────────────────────
-  const visible =
-    !isPip && !!activeTask && (timerMinimized || (worldOpen && worldMinimized));
+  /* ── Spotify local seek state ─────────────────────────────────────── */
+  const [localPos, setLocalPos] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const prevVol = useRef(spotifyVolume);
 
+  useEffect(() => {
+    if (!isSeeking) setLocalPos(spotifyPosition);
+  }, [spotifyPosition, isSeeking]);
+  useEffect(() => {
+    if (!spotifyPlaying || isSeeking) return;
+    const id = setInterval(
+      () => setLocalPos((p) => Math.min(p + 1000, spotifyDuration)),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [spotifyPlaying, isSeeking, spotifyDuration]);
+
+  const toggleMute = useCallback(() => {
+    if (spotifyVolume > 0) {
+      prevVol.current = spotifyVolume;
+      spotifyActions.changeVolume(0);
+    } else {
+      spotifyActions.changeVolume(prevVol.current || 0.5);
+    }
+  }, [spotifyVolume]);
+
+  /* ── Visibility ───────────────────────────────────────────────────── */
+  const visible = !isPip && availableTabs.length > 0;
   if (!visible) return null;
 
-  // ── Helpers ──────────────────────────────────────────────────────────
+  /* ── Helpers ──────────────────────────────────────────────────────── */
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+  const formatMs = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   const getMaxDuration = () => {
@@ -128,7 +202,14 @@ export function FloatingWidget() {
   const btnCls =
     "w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 transition-colors flex items-center justify-center text-gray-700 dark:text-white";
 
-  // ── Render ────────────────────────────────────────────────────────────
+  const tabBtnCls = (tab: Tab, color: string) =>
+    `flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
+      activeTab === tab
+        ? `text-gray-900 dark:text-white border-b-2 ${color} bg-black/5 dark:bg-white/5`
+        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+    }`;
+
+  /* ── Render ────────────────────────────────────────────────────────── */
   return (
     <motion.div
       layoutId="floating-widget"
@@ -139,7 +220,7 @@ export function FloatingWidget() {
       drag
       dragConstraints={{
         top: -window.innerHeight + 200,
-        left: -window.innerWidth + 420,
+        left: -window.innerWidth + 500,
         right: 0,
         bottom: 0,
       }}
@@ -148,42 +229,50 @@ export function FloatingWidget() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="bg-white/95 dark:bg-linear-to-br dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden backdrop-blur-lg w-95">
-        {/* ── Tab bar (only when both timer and world are minimized) ── */}
+        {/* ── Tab bar ─────────────────────────────────────────────────── */}
         {showTabs && (
           <div className="flex border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={() => setActiveTab("timer")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                activeTab === "timer"
-                  ? "text-gray-900 dark:text-white border-b-2 border-blue-500 bg-black/5 dark:bg-white/5"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              }`}
-            >
-              <Timer className="w-3.5 h-3.5" />
-              Bộ Đếm
-            </button>
-            <button
-              onClick={() => setActiveTab("world")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors ${
-                activeTab === "world"
-                  ? "text-gray-900 dark:text-white border-b-2 border-indigo-500 bg-black/5 dark:bg-white/5"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              Focus World
-              {otherUsers.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-indigo-500 text-[9px] flex items-center justify-center">
-                  {otherUsers.length}
-                </span>
-              )}
-            </button>
+            {hasTimerTab && (
+              <button
+                onClick={() => setActiveTab("timer")}
+                className={tabBtnCls("timer", "border-blue-500")}
+              >
+                <Timer className="w-3.5 h-3.5" />
+                Bộ Đếm
+              </button>
+            )}
+            {hasWorldTab && (
+              <button
+                onClick={() => setActiveTab("world")}
+                className={tabBtnCls("world", "border-indigo-500")}
+              >
+                <Users className="w-3.5 h-3.5" />
+                Focus World
+                {otherUsers.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-indigo-500 text-[9px] flex items-center justify-center text-white">
+                    {otherUsers.length}
+                  </span>
+                )}
+              </button>
+            )}
+            {hasSpotifyTab && (
+              <button
+                onClick={() => setActiveTab("spotify")}
+                className={tabBtnCls("spotify", "border-green-500")}
+              >
+                <Music className="w-3.5 h-3.5" />
+                Spotify
+                {spotifyPlaying && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
         <AnimatePresence mode="wait">
           {/* ══════════════ TIMER TAB ══════════════ */}
-          {(!showTabs || activeTab === "timer") && timerMinimized && (
+          {(activeTab === "timer" || !showTabs) && hasTimerTab && (
             <motion.div
               key="timer"
               initial={{ opacity: 0, x: -8 }}
@@ -200,7 +289,6 @@ export function FloatingWidget() {
                 />
               </div>
 
-              {/* Content */}
               <div className="px-4 py-3 flex items-center gap-4">
                 {/* Timer ring */}
                 <div className="relative shrink-0">
@@ -239,7 +327,7 @@ export function FloatingWidget() {
                     {modeLabel}
                   </div>
                   <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {activeTask.title}
+                    {activeTask!.title}
                   </div>
                   <div className="text-lg font-mono font-bold text-gray-900 dark:text-white tabular-nums">
                     {formatTime(timeLeft)}
@@ -248,7 +336,6 @@ export function FloatingWidget() {
 
                 {/* Controls */}
                 <div className="flex items-center gap-2">
-                  {/* Open world (if not already open) */}
                   {mode === "WORK" && !worldOpen && (
                     <button
                       onClick={openWorld}
@@ -258,8 +345,6 @@ export function FloatingWidget() {
                       <Users className="w-4 h-4" />
                     </button>
                   )}
-
-                  {/* Pause/Resume */}
                   <button
                     onClick={() =>
                       status === "paused" ? resumeFocus() : pauseFocus()
@@ -273,8 +358,6 @@ export function FloatingWidget() {
                       <Pause className="w-4 h-4" />
                     )}
                   </button>
-
-                  {/* Maximize */}
                   <button
                     onClick={() => {
                       closePip();
@@ -285,8 +368,6 @@ export function FloatingWidget() {
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
-
-                  {/* Stop */}
                   <button
                     onClick={() => {
                       closePip();
@@ -300,7 +381,6 @@ export function FloatingWidget() {
                 </div>
               </div>
 
-              {/* Paused indicator */}
               {status === "paused" && (
                 <div className="px-4 pb-2 pt-1">
                   <div className="text-xs text-yellow-500 dark:text-yellow-400 flex items-center gap-1">
@@ -313,7 +393,7 @@ export function FloatingWidget() {
           )}
 
           {/* ══════════════ WORLD TAB ══════════════ */}
-          {showTabs && activeTab === "world" && (
+          {activeTab === "world" && hasWorldTab && (
             <motion.div
               key="world"
               initial={{ opacity: 0, x: 8 }}
@@ -322,7 +402,6 @@ export function FloatingWidget() {
               transition={{ duration: 0.15 }}
             >
               <div className="px-4 py-3 flex items-center gap-3">
-                {/* Icon */}
                 <div className="relative shrink-0">
                   <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
                     <Users className="w-5 h-5 text-indigo-400" />
@@ -335,7 +414,6 @@ export function FloatingWidget() {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5 flex items-center gap-1.5">
                     {isConnected ? (
@@ -359,9 +437,7 @@ export function FloatingWidget() {
                   </div>
                 </div>
 
-                {/* Controls */}
                 <div className="flex items-center gap-2">
-                  {/* Expand world modal */}
                   <button
                     onClick={() => {
                       closePip();
@@ -372,8 +448,6 @@ export function FloatingWidget() {
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
-
-                  {/* Close world */}
                   <button
                     onClick={() => {
                       closePip();
@@ -387,7 +461,6 @@ export function FloatingWidget() {
                 </div>
               </div>
 
-              {/* Avatar row */}
               {isConnected && otherUsers.length > 0 && (
                 <div className="px-4 pb-3 flex -space-x-2">
                   {otherUsers.slice(0, 6).map((user) => (
@@ -422,6 +495,293 @@ export function FloatingWidget() {
               )}
             </motion.div>
           )}
+
+          {/* ══════════════ SPOTIFY TAB ══════════════ */}
+          {(activeTab === "spotify" ||
+            (!showTabs && hasSpotifyTab && !hasTimerTab)) &&
+            hasSpotifyTab && (
+              <motion.div
+                key="spotify"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+              >
+                {/* Not connected */}
+                {!spotifyConnected && !spotifyLoading && (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#1DB954]/20 flex items-center justify-center shrink-0">
+                      <Music className="w-5 h-5 text-[#1DB954]" />
+                    </div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 flex-1">
+                      Kết nối Spotify để nghe nhạc
+                    </span>
+                    <a
+                      href="/api/spotify/connect"
+                      className="px-3 py-1.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white text-xs font-medium transition-colors flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Kết Nối
+                    </a>
+                    <button
+                      onClick={spotifyCloseWidget}
+                      className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center text-red-500 dark:text-white shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Loading */}
+                {spotifyLoading && (
+                  <div className="px-4 py-3 flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Đang kết nối Spotify...
+                    </span>
+                  </div>
+                )}
+
+                {/* Not premium */}
+                {spotifyConnected && spotifyPremium === false && (
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                      <Music className="w-5 h-5 text-yellow-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-yellow-600 dark:text-yellow-300 font-medium">
+                        Cần Spotify Premium
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Web Playback SDK yêu cầu Premium
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => spotifyDisconnect()}
+                      className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500"
+                    >
+                      <Unplug className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Connected + premium → playback */}
+                {spotifyConnected &&
+                  spotifyPremium !== false &&
+                  !spotifyLoading && (
+                    <>
+                      <div className="px-4 py-3 flex items-center gap-3">
+                        {/* Album art */}
+                        <div className="w-10 h-10 rounded-md bg-black/10 dark:bg-white/10 overflow-hidden shrink-0 relative">
+                          {currentTrack?.albumArt ? (
+                            <Image
+                              src={currentTrack.albumArt}
+                              alt={currentTrack.albumName}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Music className="w-5 h-5 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Track info */}
+                        <div className="flex-1 min-w-0">
+                          {currentTrack ? (
+                            <>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {currentTrack.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {currentTrack.artists}
+                              </p>
+                            </>
+                          ) : spotifyReady ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Chưa phát nhạc
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Đang kết nối...
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Transfer */}
+                        {spotifyHasPlayer &&
+                          currentTrack &&
+                          !spotifyActiveDevice && (
+                            <button
+                              onClick={() => spotifyActions.transferAndPlay()}
+                              className="shrink-0 px-2 py-1 rounded-full bg-green-500/20 hover:bg-green-500/30 text-green-600 dark:text-green-400 text-[11px] font-medium transition-colors"
+                            >
+                              Phát ở đây
+                            </button>
+                          )}
+
+                        {/* Controls */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => spotifyActions.toggleShuffle()}
+                            disabled={!spotifyReady}
+                            className={`p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30 ${spotifyShuffle ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
+                            title={spotifyShuffle ? "Tắt trộn bài" : "Trộn bài"}
+                          >
+                            <Shuffle className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => spotifyActions.previous()}
+                            disabled={!spotifyReady}
+                            className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
+                          >
+                            <SkipBack className="w-4 h-4 text-gray-700 dark:text-white" />
+                          </button>
+
+                          <button
+                            onClick={() => spotifyActions.togglePlay()}
+                            disabled={!spotifyReady}
+                            className="w-8 h-8 rounded-full bg-[#1DB954] hover:bg-[#1ed760] transition-colors flex items-center justify-center disabled:opacity-30 text-white"
+                          >
+                            {spotifyPlaying ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" fill="currentColor" />
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => spotifyActions.next()}
+                            disabled={!spotifyReady}
+                            className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
+                          >
+                            <SkipForward className="w-4 h-4 text-gray-700 dark:text-white" />
+                          </button>
+
+                          <button
+                            onClick={() => spotifyActions.cycleRepeat()}
+                            disabled={!spotifyReady}
+                            className={`p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30 ${spotifyRepeat !== "off" ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
+                            title={
+                              spotifyRepeat === "off"
+                                ? "Lặp lại"
+                                : spotifyRepeat === "context"
+                                  ? "Đang lặp playlist"
+                                  : "Đang lặp bài"
+                            }
+                          >
+                            {spotifyRepeat === "track" ? (
+                              <Repeat1 className="w-3.5 h-3.5" />
+                            ) : (
+                              <Repeat className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {/* Search → open modal with search */}
+                          <button
+                            onClick={spotifyOpenSearch}
+                            disabled={!spotifyReady}
+                            className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
+                            title="Tìm kiếm"
+                          >
+                            <Search className="w-4 h-4 text-gray-700 dark:text-white" />
+                          </button>
+
+                          <button
+                            onClick={() => spotifyDisconnect()}
+                            className="p-1.5 rounded-full hover:bg-red-500/10 transition-colors text-gray-500 hover:text-red-500"
+                            title="Ngắt kết nối"
+                          >
+                            <Unplug className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Expand to modal */}
+                          <button
+                            onClick={spotifyOpenWidget}
+                            className={btnCls}
+                            aria-label="Phóng to"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Close */}
+                          <button
+                            onClick={spotifyCloseWidget}
+                            className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center text-red-500 dark:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Seek bar */}
+                      {currentTrack && (
+                        <div className="px-4 pb-2 flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500 tabular-nums w-8 text-right shrink-0">
+                            {formatMs(localPos)}
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={spotifyDuration || 1}
+                            value={localPos}
+                            onChange={(e) => {
+                              setIsSeeking(true);
+                              setLocalPos(Number(e.target.value));
+                            }}
+                            onMouseUp={(e) => {
+                              spotifyActions.seek(
+                                Number((e.target as HTMLInputElement).value),
+                              );
+                              setIsSeeking(false);
+                            }}
+                            onTouchEnd={(e) => {
+                              spotifyActions.seek(
+                                Number((e.target as HTMLInputElement).value),
+                              );
+                              setIsSeeking(false);
+                            }}
+                            disabled={!spotifyReady}
+                            className="flex-1 h-1 accent-green-500 cursor-pointer disabled:opacity-40"
+                          />
+                          <span className="text-[10px] text-gray-500 tabular-nums w-8 shrink-0">
+                            {formatMs(spotifyDuration)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Volume bar (horizontal, always visible) */}
+                      <div className="px-4 pb-3 flex items-center gap-2">
+                        <button
+                          onClick={toggleMute}
+                          className="p-1 rounded-full text-gray-700 dark:text-white shrink-0"
+                        >
+                          {spotifyVolume === 0 ? (
+                            <VolumeX className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={Math.round(spotifyVolume * 100)}
+                          onChange={(e) =>
+                            spotifyActions.changeVolume(
+                              Number(e.target.value) / 100,
+                            )
+                          }
+                          className="flex-1 h-1 accent-green-500 cursor-pointer"
+                        />
+                      </div>
+                    </>
+                  )}
+              </motion.div>
+            )}
         </AnimatePresence>
       </div>
     </motion.div>

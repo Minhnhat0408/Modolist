@@ -36,16 +36,25 @@ interface SpotifyStore {
 
   // Player
   isReady: boolean;
+  hasPlayer: boolean;
   isPlaying: boolean;
   currentTrack: SpotifyTrack | null;
   position: number;
   duration: number;
   volume: number;
   deviceId: string | null;
+  shuffle: boolean;
+  repeatMode: "off" | "context" | "track";
+  isActiveDevice: boolean;
 
   // Co-listening
   isHosting: boolean;
   hostPlayback: SpotifyHostState | null;
+
+  // Widget (modal/floating) state
+  isWidgetOpen: boolean;
+  isWidgetMinimized: boolean;
+  showSearch: boolean;
 
   // Actions
   checkConnection: () => Promise<void>;
@@ -53,13 +62,25 @@ interface SpotifyStore {
   setPlayerReady: (deviceId: string) => void;
   setPlayerNotReady: () => void;
   updatePlaybackState: (state: Spotify.PlaybackState | null) => void;
+  setExternalPlaybackState: (data: Record<string, unknown>) => void;
   setVolume: (volume: number) => void;
+  setShuffle: (shuffle: boolean) => void;
+  setRepeatMode: (mode: "off" | "context" | "track") => void;
+  setIsActiveDevice: (v: boolean) => void;
+  setHasPlayer: (v: boolean) => void;
   disconnect: () => Promise<void>;
   reset: () => void;
 
   // Co-listening actions
   setHosting: (hosting: boolean) => void;
   setHostPlayback: (state: SpotifyHostState | null) => void;
+
+  // Widget actions
+  openWidget: () => void;
+  closeWidget: () => void;
+  minimizeWidget: () => void;
+  openWidgetWithSearch: () => void;
+  setShowSearch: (v: boolean) => void;
 }
 
 const initialState = {
@@ -69,14 +90,21 @@ const initialState = {
   accessToken: null,
   tokenExpiresAt: null,
   isReady: false,
+  hasPlayer: false,
   isPlaying: false,
   currentTrack: null,
   position: 0,
   duration: 0,
   volume: 0.5,
   deviceId: null,
+  shuffle: false,
+  repeatMode: "off" as const,
+  isActiveDevice: false,
   isHosting: false,
   hostPlayback: null,
+  isWidgetOpen: false,
+  isWidgetMinimized: false,
+  showSearch: false,
 };
 
 export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
@@ -95,7 +123,6 @@ export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
           tokenExpiresAt: data.expiresAt,
         });
 
-        // Check premium status via Spotify API
         const profileRes = await fetch("https://api.spotify.com/v1/me", {
           headers: { Authorization: `Bearer ${data.accessToken}` },
         });
@@ -149,15 +176,50 @@ export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
     set({ isReady: false, deviceId: null });
   },
 
+  // Parse playback state from the Web API (/me/player) — used when the SDK
+  // player is not the active device yet (i.e. playing on phone/desktop).
+  setExternalPlaybackState: (data: Record<string, unknown>) => {
+    const item = data.item as Record<string, unknown> | null;
+    if (!item) return;
+    const artists = (item.artists as Array<{ name: string }>) ?? [];
+    const album = item.album as Record<string, unknown>;
+    const images = (album?.images as Array<{ url: string }>) ?? [];
+    const repeatState = (data.repeat_state as string) ?? "off";
+    set({
+      isPlaying: data.is_playing as boolean,
+      position: data.progress_ms as number,
+      duration: item.duration_ms as number,
+      shuffle: (data.shuffle_state as boolean) ?? false,
+      repeatMode: (repeatState === "track" || repeatState === "context"
+        ? repeatState
+        : "off") as "off" | "context" | "track",
+      currentTrack: {
+        id: item.id as string,
+        uri: item.uri as string,
+        name: item.name as string,
+        artists: artists.map((a) => a.name).join(", "),
+        albumName: album?.name as string,
+        albumArt: images[0]?.url ?? "",
+        durationMs: item.duration_ms as number,
+      },
+    });
+  },
+
   updatePlaybackState: (state: Spotify.PlaybackState | null) => {
     if (!state) {
-      set({ isPlaying: false, currentTrack: null, position: 0, duration: 0 });
+      // SDK fires null when it has no loaded track (e.g. just connected, idle).
+      // Only mark as not playing — preserve currentTrack from external /me/player fetch
+      // so the UI keeps showing what was paused on another device.
+      set({ isPlaying: false });
       return;
     }
 
     const track = state.track_window.current_track;
     set({
       isPlaying: !state.paused,
+      // NOTE: do NOT set isActiveDevice here. The SDK fires player_state_changed
+      // (with paused:true) even when another device takes over — that does NOT mean
+      // the browser is the active audio source. isActiveDevice is set by polling only.
       position: state.position,
       duration: track.duration_ms,
       currentTrack: {
@@ -174,6 +236,22 @@ export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
 
   setVolume: (volume: number) => {
     set({ volume: Math.max(0, Math.min(1, volume)) });
+  },
+
+  setShuffle: (shuffle: boolean) => {
+    set({ shuffle });
+  },
+
+  setRepeatMode: (mode: "off" | "context" | "track") => {
+    set({ repeatMode: mode });
+  },
+
+  setIsActiveDevice: (v: boolean) => {
+    set({ isActiveDevice: v });
+  },
+
+  setHasPlayer: (v: boolean) => {
+    set({ hasPlayer: v });
   },
 
   disconnect: async () => {
@@ -195,5 +273,25 @@ export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
 
   setHostPlayback: (state: SpotifyHostState | null) => {
     set({ hostPlayback: state });
+  },
+
+  openWidget: () => {
+    set({ isWidgetOpen: true, isWidgetMinimized: false });
+  },
+
+  closeWidget: () => {
+    set({ isWidgetOpen: false, isWidgetMinimized: false, showSearch: false });
+  },
+
+  minimizeWidget: () => {
+    set({ isWidgetOpen: true, isWidgetMinimized: true, showSearch: false });
+  },
+
+  openWidgetWithSearch: () => {
+    set({ isWidgetOpen: true, isWidgetMinimized: false, showSearch: true });
+  },
+
+  setShowSearch: (v: boolean) => {
+    set({ showSearch: v });
   },
 }));

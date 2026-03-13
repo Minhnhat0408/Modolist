@@ -49,3 +49,4 @@ next-env.d.ts
 .pnp.js
 .yarn/install-state.gz
 *.pem
+official-spotify-open-api.yml

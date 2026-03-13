@@ -17,7 +17,6 @@ import {
   Users,
   Sparkles,
 } from "lucide-react";
-import { SpotifyWidget } from "./SpotifyWidget";
 
 export function FocusTimerModal() {
   const {
@@ -359,9 +358,6 @@ export function FocusTimerModal() {
               <X className="w-8 h-8" />
             </button>
           </motion.div>
-
-          {/* Spotify Mini Player */}
-          <SpotifyWidget />
 
           {/* Status indicator when paused */}
           {status === "paused" && (

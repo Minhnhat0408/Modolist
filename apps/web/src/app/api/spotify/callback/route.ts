@@ -27,8 +27,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/?spotify_error=state_mismatch`);
   }
 
-  // Exchange code for tokens
-  const redirectUri = `${origin}/api/spotify/callback`;
+  // Must match exactly what was sent in /connect
+  const redirectUri =
+    process.env.SPOTIFY_REDIRECT_URI ?? `${origin}/api/spotify/callback`;
   const tokenResponse = await fetch(SPOTIFY_CONFIG.TOKEN_URL, {
     method: "POST",
     headers: {
@@ -91,9 +92,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const response = NextResponse.redirect(
-    `${origin}/?spotify_connected=true`,
-  );
+  const response = NextResponse.redirect(`${origin}/?spotify_connected=true`);
   response.cookies.delete("spotify_oauth_state");
   return response;
 }

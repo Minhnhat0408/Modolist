@@ -1,34 +1,62 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
 
 const SDK_URL = "https://sdk.scdn.co/spotify-player.js";
 const PLAYER_NAME = "Todolist Focus Player";
+const SPOTIFY_API = "https://api.spotify.com/v1";
 
-let sdkLoaded = false;
+// Singleton promise — ensures onSpotifyWebPlaybackSDKReady is set BEFORE the
+// script tag is appended, which is required by the Spotify SDK.
+let sdkReadyPromise: Promise<void> | null = null;
 
 function loadSpotifySDK(): Promise<void> {
-  if (sdkLoaded || typeof window === "undefined") return Promise.resolve();
-  if (document.querySelector(`script[src="${SDK_URL}"]`)) {
-    sdkLoaded = true;
-    return Promise.resolve();
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.Spotify) return Promise.resolve();
+
+  if (!sdkReadyPromise) {
+    sdkReadyPromise = new Promise((resolve) => {
+      window.onSpotifyWebPlaybackSDKReady = () => resolve();
+      if (!document.querySelector(`script[src="${SDK_URL}"]`)) {
+        const script = document.createElement("script");
+        script.src = SDK_URL;
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    });
   }
 
-  return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = SDK_URL;
-    script.async = true;
-    script.onload = () => {
-      sdkLoaded = true;
-      resolve();
-    };
-    document.body.appendChild(script);
-  });
+  return sdkReadyPromise;
 }
+
+/* ─── Global actions reference ─────────────────────────────────────────
+ * Populated by the single component that calls useSpotifyPlayer().
+ * Other components import this to call player controls without re-initializing.
+ */
+const noopAsync = async () => {};
+
+export const spotifyActions = {
+  togglePlay: noopAsync as () => Promise<void>,
+  next: noopAsync as () => Promise<void>,
+  previous: noopAsync as () => Promise<void>,
+  seek: noopAsync as (positionMs: number) => Promise<void>,
+  play: noopAsync as (uriOrContext?: string) => Promise<void>,
+  transferAndPlay: noopAsync as () => Promise<void>,
+  toggleShuffle: noopAsync as () => Promise<void>,
+  cycleRepeat: noopAsync as () => Promise<void>,
+  addToQueue: noopAsync as (uri: string) => Promise<void>,
+  changeVolume: (() => {}) as (v: number) => void,
+};
 
 export function useSpotifyPlayer() {
   const playerRef = useRef<Spotify.Player | null>(null);
+  const apiDeviceIdRef = useRef<string | null>(null);
+  // fetchPlaybackStateRef lets SDK listener callbacks always call the latest
+  // version of fetchPlaybackState without stale closure issues.
+  const fetchPlaybackStateRef = useRef<() => void>(() => {});
+  const fetchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [hasPlayer, setHasPlayer] = useState(false);
   const {
     isConnected,
     isPremium,
@@ -39,34 +67,28 @@ export function useSpotifyPlayer() {
     duration,
     volume,
     deviceId,
+    shuffle,
+    repeatMode,
+    isActiveDevice,
     getAccessToken,
     setPlayerReady,
     setPlayerNotReady,
     updatePlaybackState,
+    setExternalPlaybackState,
     setVolume: setStoreVolume,
+    setShuffle: setStoreShuffle,
+    setRepeatMode: setStoreRepeat,
+    setIsActiveDevice,
+    setHasPlayer: setStoreHasPlayer,
   } = useSpotifyStore();
 
   // Initialize player when connected + premium
   useEffect(() => {
     if (!isConnected || isPremium === false) return;
-
     let cancelled = false;
 
     async function init() {
       await loadSpotifySDK();
-      if (cancelled) return;
-
-      // Wait for SDK ready callback
-      const waitForSDK = (): Promise<void> =>
-        new Promise((resolve) => {
-          if (window.Spotify) {
-            resolve();
-          } else {
-            window.onSpotifyWebPlaybackSDKReady = () => resolve();
-          }
-        });
-
-      await waitForSDK();
       if (cancelled || playerRef.current) return;
 
       const player = new window.Spotify.Player({
@@ -79,25 +101,38 @@ export function useSpotifyPlayer() {
       });
 
       player.addListener("ready", ({ device_id }) => {
-        if (!cancelled) setPlayerReady(device_id);
+        if (!cancelled) {
+          setPlayerReady(device_id);
+          setHasPlayer(true);
+          setStoreHasPlayer(true);
+        }
       });
-
       player.addListener("not_ready", () => {
-        if (!cancelled) setPlayerNotReady();
+        if (!cancelled) {
+          setPlayerNotReady();
+          // Another device likely took over — fetch true state immediately
+          fetchPlaybackStateRef.current();
+        }
       });
-
       player.addListener("player_state_changed", (state) => {
-        if (!cancelled) updatePlaybackState(state);
+        if (cancelled) return;
+        updatePlaybackState(state);
+        // Debounce: SDK can fire multiple times in quick succession.
+        // Wait 400ms then fetch /me/player to confirm active device + full state.
+        clearTimeout(fetchDebounceRef.current);
+        fetchDebounceRef.current = setTimeout(
+          () => fetchPlaybackStateRef.current(),
+          400,
+        );
       });
-
       player.addListener("initialization_error", (e) =>
-        console.error("Spotify init error:", e.message),
+        console.error("[Spotify] init error:", e.message),
       );
       player.addListener("authentication_error", (e) =>
-        console.error("Spotify auth error:", e.message),
+        console.error("[Spotify] auth error:", e.message),
       );
       player.addListener("account_error", (e) =>
-        console.error("Spotify account error:", e.message),
+        console.error("[Spotify] account error:", e.message),
       );
 
       await player.connect();
@@ -112,9 +147,19 @@ export function useSpotifyPlayer() {
         playerRef.current.disconnect();
         playerRef.current = null;
         setPlayerNotReady();
+        setHasPlayer(false);
+        setStoreHasPlayer(false);
       }
     };
-  }, [isConnected, isPremium, getAccessToken, setPlayerReady, setPlayerNotReady, updatePlaybackState]);
+  }, [
+    isConnected,
+    isPremium,
+    getAccessToken,
+    setPlayerReady,
+    setPlayerNotReady,
+    updatePlaybackState,
+    setStoreHasPlayer,
+  ]);
 
   // Sync volume to player
   useEffect(() => {
@@ -123,14 +168,114 @@ export function useSpotifyPlayer() {
     }
   }, [volume, isReady]);
 
+  // Helper: find our device ID from API (SDK id may differ)
+  const findApiDeviceId = useCallback(
+    async (token: string): Promise<string | null> => {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const res = await fetch(`${SPOTIFY_API}/me/player/devices`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const { devices } = (await res.json()) as {
+            devices: Array<{ id: string; name: string }>;
+          };
+          const ours = devices.find((d) => d.name === PLAYER_NAME);
+          if (ours?.id) return ours.id;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      return null;
+    },
+    [],
+  );
+
+  // Helper: fetch current playback state and update store + isActiveDevice
+  const fetchPlaybackState = useCallback(async () => {
+    const token = await getAccessToken();
+    if (!token) return;
+
+    // Ensure API device ID is cached
+    if (!apiDeviceIdRef.current) {
+      const apiId = await findApiDeviceId(token);
+      if (apiId) apiDeviceIdRef.current = apiId;
+    }
+
+    const res = await fetch(`${SPOTIFY_API}/me/player`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 200) {
+      const data = await res.json();
+      setExternalPlaybackState(data);
+      const activeDeviceId = (data.device as { id?: string } | null)?.id;
+      setIsActiveDevice(
+        !!(apiDeviceIdRef.current && activeDeviceId === apiDeviceIdRef.current),
+      );
+    } else if (res.status === 204) {
+      setIsActiveDevice(false);
+    }
+  }, [
+    getAccessToken,
+    findApiDeviceId,
+    setExternalPlaybackState,
+    setIsActiveDevice,
+  ]);
+
+  // Keep fetchPlaybackStateRef pointing at the latest fetchPlaybackState
+  useEffect(() => {
+    fetchPlaybackStateRef.current = fetchPlaybackState;
+  });
+
+  // Remove dealer (subscription endpoint is 410 Gone).
+  // Primary real-time mechanism: SDK player_state_changed + not_ready (above) →
+  // debounced fetchPlaybackState. Fallback: poll every 10s + visibilitychange.
+
+  // Initial fetch when player becomes ready
+  useEffect(() => {
+    if (hasPlayer) fetchPlaybackState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPlayer]);
+
+  // Re-fetch when tab becomes visible again
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && hasPlayer)
+        fetchPlaybackState();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [hasPlayer, fetchPlaybackState]);
+
+  // Fallback poll every 10s to catch any missed events
+  useEffect(() => {
+    if (!hasPlayer) return;
+    const id = setInterval(fetchPlaybackState, 10_000);
+    return () => clearInterval(id);
+  }, [hasPlayer, fetchPlaybackState]);
+
   const play = useCallback(
     async (uriOrContext?: string) => {
+      if (!playerRef.current) return;
+
+      // activateElement must come first (synchronous in gesture)
+      const activatePromise = playerRef.current.activateElement();
       const token = await getAccessToken();
-      if (!token || !deviceId) return;
+      await activatePromise;
+      if (!token) return;
+
+      // Ensure we have correct API device id
+      let targetDevice = deviceId;
+      const apiId = await findApiDeviceId(token);
+      if (apiId) targetDevice = apiId;
+      if (!targetDevice) return;
 
       const body: Record<string, unknown> = {};
       if (uriOrContext) {
-        if (uriOrContext.includes("playlist") || uriOrContext.includes("album") || uriOrContext.includes("artist")) {
+        if (
+          uriOrContext.includes("playlist") ||
+          uriOrContext.includes("album") ||
+          uriOrContext.includes("artist")
+        ) {
           body.context_uri = uriOrContext;
         } else {
           body.uris = [uriOrContext];
@@ -138,7 +283,7 @@ export function useSpotifyPlayer() {
       }
 
       await fetch(
-        `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
+        `${SPOTIFY_API}/me/player/play?device_id=${encodeURIComponent(targetDevice)}`,
         {
           method: "PUT",
           headers: {
@@ -149,55 +294,184 @@ export function useSpotifyPlayer() {
         },
       );
     },
-    [getAccessToken, deviceId],
+    [getAccessToken, deviceId, findApiDeviceId],
   );
 
-  const pause = useCallback(async () => {
-    playerRef.current?.pause();
-  }, []);
+  // Transfer playback to this web player and start playing
+  const transferAndPlay = useCallback(async () => {
+    if (!playerRef.current) return;
+    const activatePromise = playerRef.current.activateElement();
+    const token = await getAccessToken();
+    await activatePromise;
+    if (!token) return;
 
-  const resume = useCallback(async () => {
-    playerRef.current?.resume();
-  }, []);
+    let apiDeviceId = apiDeviceIdRef.current;
+    if (!apiDeviceId) {
+      apiDeviceId = await findApiDeviceId(token);
+      if (apiDeviceId) apiDeviceIdRef.current = apiDeviceId;
+    }
+    if (!apiDeviceId) return;
 
+    const res = await fetch(`${SPOTIFY_API}/me/player`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ device_ids: [apiDeviceId], play: true }),
+    });
+    if (res.status === 204) {
+      setIsActiveDevice(true);
+      // Fetch fresh state after a short delay so SDK can initialize
+      setTimeout(fetchPlaybackState, 1000);
+    }
+  }, [getAccessToken, findApiDeviceId, setIsActiveDevice, fetchPlaybackState]);
+
+  // Use Web API for all transport controls — works regardless of which device is active
   const togglePlay = useCallback(async () => {
-    playerRef.current?.togglePlay();
-  }, []);
+    if (!playerRef.current) return;
+    // activateElement must be called synchronously first (browser autoplay policy)
+    const activatePromise = playerRef.current.activateElement();
+    const token = await getAccessToken();
+    await activatePromise;
+    if (!token) return;
+    if (useSpotifyStore.getState().isPlaying) {
+      await fetch(`${SPOTIFY_API}/me/player/pause`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } else {
+      await fetch(`${SPOTIFY_API}/me/player/play`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+    setTimeout(() => fetchPlaybackStateRef.current(), 600);
+  }, [getAccessToken]);
 
   const next = useCallback(async () => {
-    playerRef.current?.nextTrack();
-  }, []);
+    const token = await getAccessToken();
+    if (!token) return;
+    await fetch(`${SPOTIFY_API}/me/player/next`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setTimeout(() => fetchPlaybackStateRef.current(), 600);
+  }, [getAccessToken]);
 
   const previous = useCallback(async () => {
-    playerRef.current?.previousTrack();
-  }, []);
+    const token = await getAccessToken();
+    if (!token) return;
+    await fetch(`${SPOTIFY_API}/me/player/previous`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setTimeout(() => fetchPlaybackStateRef.current(), 600);
+  }, [getAccessToken]);
 
-  const seek = useCallback(async (positionMs: number) => {
-    playerRef.current?.seek(positionMs);
-  }, []);
+  const seek = useCallback(
+    async (positionMs: number) => {
+      const token = await getAccessToken();
+      if (!token) return;
+      await fetch(
+        `${SPOTIFY_API}/me/player/seek?position_ms=${Math.round(positionMs)}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+    },
+    [getAccessToken],
+  );
 
   const changeVolume = useCallback(
-    (v: number) => {
-      setStoreVolume(v);
-    },
+    (v: number) => setStoreVolume(v),
     [setStoreVolume],
   );
 
+  // Shuffle toggle via Web API
+  const toggleShuffle = useCallback(async () => {
+    const token = await getAccessToken();
+    if (!token) return;
+    const newState = !shuffle;
+    const res = await fetch(
+      `${SPOTIFY_API}/me/player/shuffle?state=${newState}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    if (res.status === 204) setStoreShuffle(newState);
+  }, [getAccessToken, shuffle, setStoreShuffle]);
+
+  // Repeat cycle: off → context → track → off
+  const cycleRepeat = useCallback(async () => {
+    const token = await getAccessToken();
+    if (!token) return;
+    const cycle = ["off", "context", "track"] as const;
+    const idx = cycle.indexOf(repeatMode);
+    const nextMode = cycle[(idx + 1) % cycle.length]!;
+    const res = await fetch(
+      `${SPOTIFY_API}/me/player/repeat?state=${nextMode}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+    if (res.status === 204) setStoreRepeat(nextMode);
+  }, [getAccessToken, repeatMode, setStoreRepeat]);
+
+  // Add to queue
+  const addToQueue = useCallback(
+    async (uri: string) => {
+      const token = await getAccessToken();
+      if (!token) return;
+      await fetch(
+        `${SPOTIFY_API}/me/player/queue?uri=${encodeURIComponent(uri)}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+    },
+    [getAccessToken],
+  );
+
+  // ── Sync control functions to module-level ref for global access ──
+  useEffect(() => {
+    spotifyActions.togglePlay = togglePlay;
+    spotifyActions.next = next;
+    spotifyActions.previous = previous;
+    spotifyActions.seek = seek;
+    spotifyActions.play = play;
+    spotifyActions.transferAndPlay = transferAndPlay;
+    spotifyActions.toggleShuffle = toggleShuffle;
+    spotifyActions.cycleRepeat = cycleRepeat;
+    spotifyActions.addToQueue = addToQueue;
+    spotifyActions.changeVolume = changeVolume;
+  });
+
   return {
     isReady,
+    hasPlayer,
     isPlaying,
+    isActiveDevice,
     currentTrack,
     position,
     duration,
     volume,
     deviceId,
+    shuffle,
+    repeatMode,
     play,
-    pause,
-    resume,
     togglePlay,
+    transferAndPlay,
     next,
     previous,
     seek,
     changeVolume,
+    toggleShuffle,
+    cycleRepeat,
+    addToQueue,
   };
 }
