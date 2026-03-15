@@ -11,8 +11,12 @@ import {
   CheckCircle2,
   Zap,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import { api } from "@/lib/api-client";
 import {
   ResponsiveModal,
@@ -21,6 +25,8 @@ import {
   ResponsiveModalTitle,
   ResponsiveModalBody,
 } from "@/components/ui/responsive-modal";
+
+const HeatMap = dynamic(() => import("@uiw/react-heat-map"), { ssr: false });
 
 interface WeeklyDataPoint {
   label: string;
@@ -50,6 +56,7 @@ interface DashboardStats {
     sessions: number;
     tasks: number;
   };
+  heatmap?: { date: string; count: number }[];
 }
 
 function formatTime(seconds: number): string {
@@ -146,6 +153,26 @@ function StatCard({
       </div>
     </motion.div>
   );
+}
+
+// ─── Activity Data Transform ─────────────────────────────────────
+const MONTHS_VI = ["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
+
+function toHeatmapValue(raw: { date: string; count: number }[]) {
+  // @uiw/react-heat-map needs yyyy/MM/dd format
+  return raw.map((d) => ({ date: d.date.replace(/-/g, "/"), count: d.count }));
+}
+
+// Each page = 10 full calendar months, aligned to month boundaries → no overlap
+function getHeatmapWindow(pageOffset: number) {
+  const today = new Date();
+  const refYear = today.getFullYear();
+  const refMonth = today.getMonth() + pageOffset * 10; // JS Date handles under/overflow
+  // end = last day of refMonth
+  const end = new Date(refYear, refMonth + 1, 0);
+  // start = 1st day of (refMonth - 9)
+  const start = new Date(refYear, refMonth - 9, 1);
+  return { start, end };
 }
 
 // ─── Bar Chart ────────────────────────────────────────────────────
@@ -267,8 +294,13 @@ function StreakFlame({ streak }: { streak: number }) {
 
 // ─── Modal Content ────────────────────────────────────────────────
 function StatsContent({ stats }: { stats: DashboardStats }) {
+  const { resolvedTheme } = useTheme();
+  const [heatmapPage, setHeatmapPage] = useState(0);
   const maxFocus = Math.max(...stats.week.data.map((d) => d.focusTime), 1);
-  const maxPomodoros = Math.max(...stats.week.data.map((d) => d.pomodoros), 1);
+
+  const rawHeatmap = stats.heatmap ?? stats.week.data.map((d) => ({ date: d.date, count: d.pomodoros }));
+  const { start: heatStart, end: heatEnd } = getHeatmapWindow(heatmapPage);
+  const heatmapLabel = `${MONTHS_VI[heatStart.getMonth()]} ${heatStart.getFullYear()} – ${MONTHS_VI[heatEnd.getMonth()]} ${heatEnd.getFullYear()}`;
 
   return (
     <div className="space-y-5">
@@ -364,30 +396,63 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
         </motion.div>
       </div>
 
-      {/* Pomodoro chart */}
+      {/* Pomodoro heatmap */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
         className="rounded-2xl border border-border bg-card p-5"
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-chart-2" />
-            <h3 className="font-semibold">Pomodoro tuần này</h3>
+            <h3 className="font-semibold">Pomodoro</h3>
+            <span className="text-xs text-muted-foreground">{heatmapLabel}</span>
           </div>
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Target className="h-3.5 w-3.5 text-chart-2" />
-            {stats.week.pomodoros} pomodoro
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Target className="h-3.5 w-3.5 text-chart-2" />
+              {stats.week.pomodoros} tuần này
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setHeatmapPage((p) => p - 1)}
+                className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors"
+                title="Tuần trước"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setHeatmapPage((p) => p + 1)}
+                disabled={heatmapPage >= 1}
+                className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Tuần sau"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
-        <WeeklyBarChart
-          data={stats.week.data}
-          dataKey="pomodoros"
-          maxVal={maxPomodoros}
-          formatLabel={(v) => `${v}`}
-          colorClass="bg-chart-2"
-        />
+        <div className="overflow-x-auto">
+          <HeatMap
+            value={toHeatmapValue(rawHeatmap)}
+            startDate={heatStart}
+            // endDate={heatEnd}
+            weekLabels={["", "T2", "", "T4", "", "T6", ""]}
+            monthLabels={MONTHS_VI}
+            rectSize={12}
+            space={2}
+        
+            rectProps={{ rx: 2 }}
+            panelColors={
+              resolvedTheme === "dark"
+                ? { 0: "#374151", 1: "#7c2d12", 3: "#c2410c", 5: "#f97316", 8: "#fdba74" }
+                : { 0: "#e5e7eb", 1: "#fed7aa", 3: "#fb923c", 5: "#f97316", 8: "#c2410c" }
+            }
+            style={{ width: "100%" }}
+            
+          />
+        </div>
       </motion.div>
 
       {/* All-time totals */}

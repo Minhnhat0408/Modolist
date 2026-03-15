@@ -341,6 +341,28 @@ export class FocusSessionsService {
         const weekFocusTime = weeklyData.reduce((acc, d) => acc + d.focusTime, 0);
         const weekPomodoros = weeklyData.reduce((acc, d) => acc + d.pomodoros, 0);
 
+        // Heatmap: last 182 days (26 weeks) of daily pomodoro counts
+        const heatmapDays = 182;
+        const heatmapStart = new Date();
+        heatmapStart.setDate(heatmapStart.getDate() - heatmapDays + 1);
+        heatmapStart.setHours(0, 0, 0, 0);
+
+        const heatmapRaw = await this.prisma.dailyStats.findMany({
+            where: { userId, date: { gte: heatmapStart } },
+            select: { date: true, completedPomodoros: true },
+            orderBy: { date: "asc" },
+        });
+        const heatmapMap = new Map(
+            heatmapRaw.map((s) => [s.date.toISOString().split("T")[0], s.completedPomodoros]),
+        );
+        const heatmap: { date: string; count: number }[] = [];
+        for (let i = heatmapDays - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().split("T")[0];
+            heatmap.push({ date: key, count: heatmapMap.get(key) ?? 0 });
+        }
+
         return {
             user: {
                 totalFocusTime: user?.totalFocusTime || 0,
@@ -361,6 +383,7 @@ export class FocusSessionsService {
                 sessions: totalSessions,
                 tasks: totalTasksCompleted,
             },
+            heatmap,
         };
     }
 

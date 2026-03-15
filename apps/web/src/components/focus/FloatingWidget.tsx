@@ -45,6 +45,11 @@ type Tab = "timer" | "world" | "spotify";
 export function FloatingWidget() {
   const { data: session } = useSession();
   const isPip = usePipActive();
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const [widgetWidth, setWidgetWidth] = useState(380);
+  useEffect(() => {
+    if (widgetRef.current) setWidgetWidth(widgetRef.current.offsetWidth);
+  }, []);
 
   /* ── Focus timer state ────────────────────────────────────────────── */
   const {
@@ -212,6 +217,7 @@ export function FloatingWidget() {
   /* ── Render ────────────────────────────────────────────────────────── */
   return (
     <motion.div
+      ref={widgetRef}
       layoutId="floating-widget"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -220,7 +226,8 @@ export function FloatingWidget() {
       drag
       dragConstraints={{
         top: -window.innerHeight + 200,
-        left: -window.innerWidth + 500,
+        // Allow dragging flush to the left edge: offset = initial right-6 position minus widget width
+        left: -(window.innerWidth - widgetWidth - 24),
         right: 0,
         bottom: 0,
       }}
