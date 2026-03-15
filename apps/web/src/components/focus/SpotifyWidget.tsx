@@ -50,10 +50,12 @@ export function SpotifyWidget() {
     volume,
     shuffle,
     repeatMode,
-    isHosting,
-    hostPlayback,
+    isDJ,
+    djState,
+    isListening,
     disconnect,
-    setHosting,
+    setDJ,
+    setListening,
     showSearch,
     setShowSearch,
   } = useSpotifyStore();
@@ -90,15 +92,58 @@ export function SpotifyWidget() {
     return () => clearInterval(id);
   }, [isPlaying, isSeeking, duration]);
 
-  // ── Co-listening: broadcast playback state when hosting ──
-  const prevTrackRef = useRef<string | null>(null);
-  const broadcastInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ── Co-listening: broadcast only on genuine state changes (event-driven) ──
+  const djPrevTrackRef = useRef<string | null>(null);
+  const djPrevIsPlayingRef = useRef<boolean | null>(null);
 
-  const emitHostUpdate = useCallback(() => {
+  const emitDjUpdate = useCallback(() => {
     const socket = focusWorldSocket.get();
-    if (!socket || !userId || !currentTrack) return;
-    socket.emit("spotify:host_update", {
-      userId,
+    const track = useSpotifyStore.getState().currentTrack;
+    const { position: pos, isPlaying: playing } = useSpotifyStore.getState();
+    if (!socket || !track) return;
+    socket.emit("spotify:dj_update", {
+      trackUri: track.uri,
+      trackName: track.name,
+      artistName: track.artists,
+      albumArt: track.albumArt,
+      positionMs: pos,
+      isPlaying: playing,
+    });
+  }, []);
+
+  // Track change → emit once
+  useEffect(() => {
+    if (!isDJ || !currentTrack) return;
+    if (djPrevTrackRef.current !== currentTrack.uri) {
+      djPrevTrackRef.current = currentTrack.uri;
+      emitDjUpdate();
+    }
+  }, [isDJ, currentTrack, emitDjUpdate]);
+
+  // Play/Pause toggle → emit once (only on actual change)
+  useEffect(() => {
+    if (!isDJ) return;
+    if (djPrevIsPlayingRef.current === null) {
+      djPrevIsPlayingRef.current = isPlaying;
+      return; // skip initial mount
+    }
+    if (djPrevIsPlayingRef.current !== isPlaying) {
+      djPrevIsPlayingRef.current = isPlaying;
+      emitDjUpdate();
+    }
+  }, [isDJ, isPlaying, emitDjUpdate]);
+
+  // Safety net: heartbeat every 30s so late-joiners get a reasonably fresh state
+  useEffect(() => {
+    if (!isDJ) return;
+    const id = setInterval(emitDjUpdate, 30_000);
+    return () => clearInterval(id);
+  }, [isDJ, emitDjUpdate]);
+
+  const handleClaimDJ = () => {
+    const socket = focusWorldSocket.get();
+    if (!socket || !currentTrack) return;
+    socket.emit("spotify:dj_claim", {
       trackUri: currentTrack.uri,
       trackName: currentTrack.name,
       artistName: currentTrack.artists,
@@ -106,67 +151,20 @@ export function SpotifyWidget() {
       positionMs: position,
       isPlaying,
     });
-  }, [userId, currentTrack, position, isPlaying]);
-
-  useEffect(() => {
-    if (!isHosting || !currentTrack) return;
-
-    // When track changes, emit update immediately
-    if (prevTrackRef.current !== currentTrack.uri) {
-      prevTrackRef.current = currentTrack.uri;
-      emitHostUpdate();
-    }
-
-    // Periodic updates every 5 seconds
-    broadcastInterval.current = setInterval(emitHostUpdate, 5000);
-    return () => {
-      if (broadcastInterval.current) clearInterval(broadcastInterval.current);
-    };
-  }, [isHosting, currentTrack, emitHostUpdate]);
-
-  // When play/pause changes while hosting, emit immediately
-  useEffect(() => {
-    if (isHosting) emitHostUpdate();
-  }, [isPlaying, isHosting, emitHostUpdate]);
-
-  // ── Co-listening: listener auto-sync ──
-  const lastSyncedTrack = useRef<string | null>(null);
-  useEffect(() => {
-    if (!hostPlayback || !isReady || isHosting) return;
-    if (hostPlayback.hostUserId === userId) return;
-
-    // Auto-sync: play the host's track
-    if (
-      hostPlayback.isPlaying &&
-      hostPlayback.trackUri !== lastSyncedTrack.current
-    ) {
-      lastSyncedTrack.current = hostPlayback.trackUri;
-      play(hostPlayback.trackUri);
-    }
-  }, [hostPlayback, isReady, isHosting, userId, play]);
-
-  const handleStartBroadcasting = () => {
-    const socket = focusWorldSocket.get();
-    if (!socket || !userId || !currentTrack) return;
-    socket.emit("spotify:host_start", {
-      userId,
-      trackUri: currentTrack.uri,
-      trackName: currentTrack.name,
-      artistName: currentTrack.artists,
-      albumArt: currentTrack.albumArt,
-      positionMs: position,
-      isPlaying,
-    });
-    setHosting(true);
+    setDJ(true);
   };
 
-  const handleStopBroadcasting = () => {
+  const handleReleaseDJ = () => {
     const socket = focusWorldSocket.get();
-    if (!socket || !userId) return;
-    socket.emit("spotify:host_stop", { userId });
-    setHosting(false);
-    prevTrackRef.current = null;
-    if (broadcastInterval.current) clearInterval(broadcastInterval.current);
+    if (!socket) return;
+    socket.emit("spotify:dj_release", {});
+    setDJ(false);
+    djPrevTrackRef.current = null;
+    djPrevIsPlayingRef.current = null;
+  };
+
+  const handleToggleListening = () => {
+    setListening(!isListening);
   };
 
   // Not connected → show connect button
@@ -504,35 +502,66 @@ export function SpotifyWidget() {
       {/* Co-listening bar */}
       {worldOpen && isReady && (
         <div className="px-4 pb-3 border-t border-white/5 pt-2">
-          {isHosting ? (
+          {isDJ ? (
+            /* I am the DJ */
             <div className="flex items-center gap-2">
               <RadioTower className="w-3.5 h-3.5 text-green-400 animate-pulse" />
               <span className="text-xs text-green-400 flex-1">
-                Đang phát cho Focus World
+                Đang là DJ — mọi người đang nghe theo bạn
               </span>
               <button
-                onClick={handleStopBroadcasting}
+                onClick={handleReleaseDJ}
                 className="text-xs px-2 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
               >
-                Dừng
+                Dừng DJ
               </button>
             </div>
-          ) : hostPlayback && hostPlayback.hostUserId !== userId ? (
+          ) : djState && djState.hostUserId !== userId ? (
+            /* Someone else is DJ */
             <div className="flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 text-indigo-400" />
+              <Radio className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
               <span className="text-xs text-indigo-400 flex-1 truncate">
-                {hostPlayback.hostName || "Host"}: {hostPlayback.trackName}
+                🎧 {djState.hostName || "Ai đó"} đang là DJ
               </span>
+              <button
+                onClick={handleToggleListening}
+                className={`text-xs px-2 py-1 rounded-full transition-colors whitespace-nowrap ${
+                  isListening
+                    ? "bg-indigo-500/30 text-indigo-300 ring-1 ring-indigo-500/50"
+                    : "bg-white/10 text-gray-400 hover:text-indigo-400"
+                }`}
+                title={isListening ? "Nhấn để ngha nhạc riêng" : "Đồng bộ nhạc với DJ"}
+              >
+                {isListening ? "✓ Đang nghe cùng" : "Nghe cùng"}
+              </button>
+              {/* Mic-steal: take over DJ */}
+              {currentTrack && (
+                <button
+                  onClick={handleClaimDJ}
+                  className="text-xs px-2 py-1 rounded-full bg-white/10 hover:bg-green-500/20 text-gray-400 hover:text-green-400 transition-colors"
+                  title="Cướp micro — bạn trở thành DJ mới"
+                >
+                  <RadioTower className="w-3 h-3" />
+                </button>
+              )}
             </div>
           ) : currentTrack ? (
+            /* No DJ yet — offer to claim */
             <button
-              onClick={handleStartBroadcasting}
-              className="flex items-center gap-2 w-full text-xs text-gray-400 hover:text-green-400 transition-colors"
+              onClick={handleClaimDJ}
+              className="flex items-center gap-2 w-full text-xs text-gray-400 hover:text-green-400 transition-colors group"
+              title="Chia sẻ nhạc của bạn cho mọi người trong Focus World"
             >
-              <RadioTower className="w-3.5 h-3.5" />
-              <span>Phát cho Focus World</span>
+              <RadioTower className="w-3.5 h-3.5 group-hover:animate-pulse" />
+              <span>Trở thành DJ — chia sẻ nhạc cho Focus World</span>
             </button>
-          ) : null}
+          ) : (
+            /* No track & no DJ */
+            <p className="text-[11px] text-gray-600 flex items-center gap-1.5">
+              <Radio className="w-3 h-3 shrink-0" />
+              Phát nhạc trên Spotify để trở thành DJ hoặc nghe cùng người khác
+            </p>
+          )}
         </div>
       )}
     </motion.div>

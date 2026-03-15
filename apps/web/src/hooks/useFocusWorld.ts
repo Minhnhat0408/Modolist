@@ -168,21 +168,26 @@ export function useFocusWorld({
       console.error("Focus World error:", error.message);
     });
 
-    // ── Spotify co-listening events ──
-    socket.on("spotify:host_started", (state: SpotifyHostState) => {
-      useSpotifyStore.getState().setHostPlayback(state);
+    // ── Spotify DJ co-listening events ──
+    socket.on("spotify:dj_changed", (state: SpotifyHostState | null) => {
+      const store = useSpotifyStore.getState();
+      store.setDjState(state);
+      // If I was the DJ but someone else claimed → auto-release
+      if (store.isDJ && state && state.hostUserId !== userId) {
+        store.setDJ(false);
+      }
+      // If DJ was released (null) and I was the DJ → release
+      if (!state && store.isDJ) {
+        store.setDJ(false);
+      }
     });
 
-    socket.on("spotify:host_updated", (state: SpotifyHostState) => {
-      useSpotifyStore.getState().setHostPlayback(state);
-    });
-
-    socket.on("spotify:host_stopped", () => {
-      useSpotifyStore.getState().setHostPlayback(null);
+    socket.on("spotify:dj_update", (state: SpotifyHostState) => {
+      useSpotifyStore.getState().setDjState(state);
     });
 
     socket.on("spotify:sync_response", (state: SpotifyHostState | null) => {
-      useSpotifyStore.getState().setHostPlayback(state);
+      useSpotifyStore.getState().setDjState(state);
     });
 
     return socket;
@@ -267,15 +272,12 @@ export function useFocusWorld({
       positionMs: number;
       isPlaying: boolean;
     }) => {
-      if (socketRef.current && userId) {
-        socketRef.current.emit("spotify:host_start", {
-          userId,
-          ...data,
-        });
-        useSpotifyStore.getState().setHosting(true);
+      if (socketRef.current) {
+        socketRef.current.emit("spotify:dj_claim", data);
+        useSpotifyStore.getState().setDJ(true);
       }
     },
-    [userId],
+    [],
   );
 
   const updateBroadcast = useCallback(
@@ -287,28 +289,25 @@ export function useFocusWorld({
       positionMs?: number;
       isPlaying?: boolean;
     }) => {
-      if (socketRef.current && userId) {
-        socketRef.current.emit("spotify:host_update", {
-          userId,
-          ...data,
-        });
+      if (socketRef.current) {
+        socketRef.current.emit("spotify:dj_update", data);
       }
     },
-    [userId],
+    [],
   );
 
   const stopBroadcasting = useCallback(() => {
-    if (socketRef.current && userId) {
-      socketRef.current.emit("spotify:host_stop", { userId });
-      useSpotifyStore.getState().setHosting(false);
+    if (socketRef.current) {
+      socketRef.current.emit("spotify:dj_release", {});
+      useSpotifyStore.getState().setDJ(false);
     }
-  }, [userId]);
+  }, []);
 
   const requestSync = useCallback(() => {
-    if (socketRef.current && userId) {
-      socketRef.current.emit("spotify:sync_request", { userId });
+    if (socketRef.current) {
+      socketRef.current.emit("spotify:sync_request", {});
     }
-  }, [userId]);
+  }, []);
 
   return {
     isConnected,

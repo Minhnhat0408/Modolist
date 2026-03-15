@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { SPOTIFY_CONFIG, getSpotifyCredentials } from "@/lib/spotify";
-import { randomBytes } from "crypto";
+import { createHmac } from "crypto";
 
 /**
  * Derive the public-facing origin of this request.
@@ -30,7 +30,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { clientId } = getSpotifyCredentials();
-    const state = randomBytes(16).toString("hex");
+
+    // HMAC-signed state: avoids cookie/domain issues when localhost ↔ 127.0.0.1
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const payload = `${session.user.id}:${timestamp}`;
+    const sig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 32);
+    const state = `${Buffer.from(payload).toString("base64url")}.${sig}`;
 
     const redirectUri =
       process.env.SPOTIFY_REDIRECT_URI ?? `${origin}/api/spotify/callback`;
@@ -41,20 +47,10 @@ export async function GET(request: NextRequest) {
       redirect_uri: redirectUri,
       scope: SPOTIFY_CONFIG.SCOPES,
       state,
+      show_dialog: "true",
     });
 
-    const response = NextResponse.redirect(
-      `${SPOTIFY_CONFIG.AUTH_URL}?${params}`,
-    );
-    response.cookies.set("spotify_oauth_state", state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 300,
-      path: "/",
-    });
-
-    return response;
+    return NextResponse.redirect(`${SPOTIFY_CONFIG.AUTH_URL}?${params}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown_error";
     console.error("[spotify/connect] error:", message);

@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@repo/database";
 import { SPOTIFY_CONFIG, getSpotifyBasicAuth } from "@/lib/spotify";
+import { createHmac } from "crypto";
+
+function verifyOAuthState(state: string, userId: string): boolean {
+  try {
+    const dotIdx = state.lastIndexOf(".");
+    if (dotIdx === -1) return false;
+    const encodedPayload = state.slice(0, dotIdx);
+    const sig = state.slice(dotIdx + 1);
+    const payload = Buffer.from(encodedPayload, "base64url").toString();
+    const [payloadUserId, timestamp] = payload.split(":");
+    if (payloadUserId !== userId || !timestamp) return false;
+    // Reject states older than 10 minutes
+    if (Math.floor(Date.now() / 1000) - parseInt(timestamp, 10) > 600) return false;
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
+    const expectedSig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 32);
+    return sig === expectedSig;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Derive the public-facing origin of this request.
@@ -31,7 +51,6 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
-  const storedState = request.cookies.get("spotify_oauth_state")?.value;
 
   if (error) {
     return NextResponse.redirect(
@@ -39,7 +58,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!code || !state || state !== storedState) {
+  if (!code || !state || !verifyOAuthState(state, session.user.id)) {
     return NextResponse.redirect(`${origin}/dashboard?spotify_error=state_mismatch`);
   }
 
@@ -108,7 +127,5 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const response = NextResponse.redirect(`${origin}/dashboard?spotify_connected=true`);
-  response.cookies.delete("spotify_oauth_state");
-  return response;
+  return NextResponse.redirect(`${origin}/dashboard?spotify_connected=true`);
 }
