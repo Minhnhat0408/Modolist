@@ -452,16 +452,20 @@ export function useSpotifyPlayer() {
   // rebuffering. We never fire play()/seek()/togglePlay() unless strictly
   // required.
 
-  const DESYNC_TOLERANCE_MS = 3000;
+  const DESYNC_TOLERANCE_MS = 5000;
 
   const syncTrackRef = useRef<string | null>(null);
   const syncPlayingRef = useRef<boolean | null>(null);
   const prevDjStateRef = useRef<ReturnType<typeof useSpotifyStore.getState>["djState"]>(null);
+  const prevIsListeningRef = useRef(false);
 
   useEffect(() => {
     const unsub = useSpotifyStore.subscribe((state) => {
-      // Only act when djState reference actually changed
-      if (state.djState === prevDjStateRef.current) return;
+      const justStartedListening = state.isListening && !prevIsListeningRef.current;
+      prevIsListeningRef.current = state.isListening;
+
+      // Skip if neither djState nor isListening changed
+      if (state.djState === prevDjStateRef.current && !justStartedListening) return;
       prevDjStateRef.current = state.djState;
 
       const { isListening, isDJ, isReady, djState } = state;
@@ -525,6 +529,7 @@ export function useSpotifyPlayer() {
         syncTrackRef.current = null;
         syncPlayingRef.current = null;
         isSyncingRef.current = false;
+        // Don't reset prevIsListeningRef here — it's updated in the main subscriber
       }
     });
     return unsub;
