@@ -47,9 +47,10 @@ interface SpotifyStore {
   repeatMode: "off" | "context" | "track";
   isActiveDevice: boolean;
 
-  // Co-listening
-  isHosting: boolean;
-  hostPlayback: SpotifyHostState | null;
+  // DJ / Co-listening
+  isDJ: boolean;
+  djState: SpotifyHostState | null;
+  isListening: boolean;
 
   // Widget (modal/floating) state
   isWidgetOpen: boolean;
@@ -71,9 +72,10 @@ interface SpotifyStore {
   disconnect: () => Promise<void>;
   reset: () => void;
 
-  // Co-listening actions
-  setHosting: (hosting: boolean) => void;
-  setHostPlayback: (state: SpotifyHostState | null) => void;
+  // DJ / Co-listening actions
+  setDJ: (v: boolean) => void;
+  setDjState: (state: SpotifyHostState | null) => void;
+  setListening: (v: boolean) => void;
 
   // Widget actions
   openWidget: () => void;
@@ -100,8 +102,9 @@ const initialState = {
   shuffle: false,
   repeatMode: "off" as const,
   isActiveDevice: false,
-  isHosting: false,
-  hostPlayback: null,
+  isDJ: false,
+  djState: null,
+  isListening: false,
   isWidgetOpen: false,
   isWidgetMinimized: false,
   showSearch: false,
@@ -267,12 +270,16 @@ export const useSpotifyStore = create<SpotifyStore>((set, get) => ({
     set({ ...initialState });
   },
 
-  setHosting: (hosting: boolean) => {
-    set({ isHosting: hosting });
+  setDJ: (v: boolean) => {
+    set({ isDJ: v });
   },
 
-  setHostPlayback: (state: SpotifyHostState | null) => {
-    set({ hostPlayback: state });
+  setDjState: (state: SpotifyHostState | null) => {
+    set({ djState: state });
+  },
+
+  setListening: (v: boolean) => {
+    set({ isListening: v });
   },
 
   openWidget: () => {

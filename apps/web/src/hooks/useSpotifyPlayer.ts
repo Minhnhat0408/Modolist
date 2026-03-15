@@ -56,6 +56,8 @@ export function useSpotifyPlayer() {
   // version of fetchPlaybackState without stale closure issues.
   const fetchPlaybackStateRef = useRef<() => void>(() => {});
   const fetchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // When true, SDK state_changed events are from listen-along sync → skip re-fetch
+  const isSyncingRef = useRef(false);
   const [hasPlayer, setHasPlayer] = useState(false);
   const {
     isConnected,
@@ -117,6 +119,8 @@ export function useSpotifyPlayer() {
       player.addListener("player_state_changed", (state) => {
         if (cancelled) return;
         updatePlaybackState(state);
+        // If this event is from a listen-along sync, don't re-fetch (avoids echo)
+        if (isSyncingRef.current) return;
         // Debounce: SDK can fire multiple times in quick succession.
         // Wait 400ms then fetch /me/player to confirm active device + full state.
         clearTimeout(fetchDebounceRef.current);
@@ -436,6 +440,95 @@ export function useSpotifyPlayer() {
     },
     [getAccessToken],
   );
+
+  // ── Listen-along sync: threshold-based "Desync Tolerance" ──────────────
+  //
+  // Rules:
+  //  1. Track change  → play() only if DJ trackUri !== local trackUri
+  //  2. Play/Pause    → toggle only when DJ state actually differs from local
+  //  3. Position drift → seek() only when |expected − local| > DESYNC_TOLERANCE_MS
+  //
+  // Everything below is intentionally conservative to avoid Spotify SDK
+  // rebuffering. We never fire play()/seek()/togglePlay() unless strictly
+  // required.
+
+  const DESYNC_TOLERANCE_MS = 3000;
+
+  const syncTrackRef = useRef<string | null>(null);
+  const syncPlayingRef = useRef<boolean | null>(null);
+  const prevDjStateRef = useRef<ReturnType<typeof useSpotifyStore.getState>["djState"]>(null);
+
+  useEffect(() => {
+    const unsub = useSpotifyStore.subscribe((state) => {
+      // Only act when djState reference actually changed
+      if (state.djState === prevDjStateRef.current) return;
+      prevDjStateRef.current = state.djState;
+
+      const { isListening, isDJ, isReady, djState } = state;
+      if (!isListening || isDJ || !djState || !isReady) return;
+
+      // ── 1. Track change ──
+      if (djState.trackUri !== syncTrackRef.current) {
+        syncTrackRef.current = djState.trackUri;
+        syncPlayingRef.current = djState.isPlaying;
+        isSyncingRef.current = true;
+
+        const elapsed = Date.now() - djState.updatedAt;
+        const startPos = djState.positionMs + (djState.isPlaying ? elapsed : 0);
+
+        spotifyActions.play(djState.trackUri).then(() => {
+          // Small delay for SDK to start the new track before seeking
+          setTimeout(async () => {
+            await spotifyActions.seek(startPos);
+            setTimeout(() => { isSyncingRef.current = false; }, 2000);
+          }, 600);
+        });
+        return; // track change handled — skip drift & play/pause checks
+      }
+
+      // ── 2. Play / Pause toggle ──
+      if (djState.isPlaying !== syncPlayingRef.current) {
+        syncPlayingRef.current = djState.isPlaying;
+        // Only send command if local state actually disagrees
+        if (djState.isPlaying !== state.isPlaying) {
+          isSyncingRef.current = true;
+          spotifyActions.togglePlay().then(() => {
+            setTimeout(() => { isSyncingRef.current = false; }, 1500);
+          });
+        }
+        // When DJ pauses, no drift correction needed
+        if (!djState.isPlaying) return;
+      }
+
+      // ── 3. Position drift (only while both are playing) ──
+      if (djState.isPlaying && state.isPlaying) {
+        const elapsed = Date.now() - djState.updatedAt;
+        const expectedPosition = djState.positionMs + elapsed;
+        const drift = Math.abs(state.position - expectedPosition);
+
+        if (drift > DESYNC_TOLERANCE_MS) {
+          isSyncingRef.current = true;
+          spotifyActions.seek(expectedPosition).then(() => {
+            setTimeout(() => { isSyncingRef.current = false; }, 1500);
+          });
+        }
+        // drift ≤ 3s → do nothing, let SDK play smoothly
+      }
+    });
+    return unsub;
+  }, []);
+
+  // When listener stops listening, reset sync state
+  useEffect(() => {
+    const unsub = useSpotifyStore.subscribe((state) => {
+      if (!state.isListening && syncTrackRef.current) {
+        syncTrackRef.current = null;
+        syncPlayingRef.current = null;
+        isSyncingRef.current = false;
+      }
+    });
+    return unsub;
+  }, []);
 
   // ── Sync control functions to module-level ref for global access ──
   useEffect(() => {

@@ -17,9 +17,9 @@ import {
     PauseFocusDto,
     FocusUser,
     ActiveUser,
-    SpotifyHostStartDto,
-    SpotifyHostUpdateDto,
-    SpotifyHostStopDto,
+    SpotifyDjClaimDto,
+    SpotifyDjUpdateDto,
+    SpotifyDjReleaseDto,
     SpotifySyncRequestDto,
     SpotifyPlaybackState,
 } from "./dto/focus-world.dto";
@@ -37,7 +37,7 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
 
     private readonly logger = new Logger(FocusWorldGateway.name);
     private activeUsers: Map<string, ActiveUser> = new Map();
-    private hostPlayback: SpotifyPlaybackState | null = null;
+    private djPlayback: SpotifyPlaybackState | null = null;
 
     constructor(private readonly focusWorldService: FocusWorldService) {}
 
@@ -54,10 +54,10 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
         // Remove from active users immediately
         this.activeUsers.delete(client.id);
 
-        // If the disconnecting user was the Spotify host, stop broadcasting
-        if (this.hostPlayback && this.hostPlayback.hostUserId === user.userId) {
-            this.hostPlayback = null;
-            this.server.to("focus-world").emit("spotify:host_stopped");
+        // If the disconnecting user was the DJ, release
+        if (this.djPlayback && this.djPlayback.hostUserId === user.userId) {
+            this.djPlayback = null;
+            this.server.to("focus-world").emit("spotify:dj_changed", null);
         }
 
         // Notify others → user left
@@ -153,6 +153,19 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             const worldState = this.getWorldState(data.userId);
             client.emit("world_state", worldState);
 
+            // Send current DJ state to the joining user (late-joiner support)
+            if (this.djPlayback) {
+                // Compensate position for elapsed time since last update
+                const elapsed = Date.now() - this.djPlayback.updatedAt;
+                const compensated = {
+                    ...this.djPlayback,
+                    positionMs: this.djPlayback.isPlaying
+                        ? this.djPlayback.positionMs + elapsed
+                        : this.djPlayback.positionMs,
+                };
+                client.emit("spotify:dj_changed", compensated);
+            }
+
             // Notify others
             const focusUser = this.toFocusUser(activeUser);
             client.to("focus-world").emit("user_joined", focusUser);
@@ -227,10 +240,10 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             this.activeUsers.delete(client.id);
             void client.leave("focus-world");
 
-            // If the leaving user was the Spotify host, stop broadcasting
-            if (this.hostPlayback && this.hostPlayback.hostUserId === data.userId) {
-                this.hostPlayback = null;
-                this.server.to("focus-world").emit("spotify:host_stopped");
+            // If the leaving user was the DJ, release
+            if (this.djPlayback && this.djPlayback.hostUserId === data.userId) {
+                this.djPlayback = null;
+                this.server.to("focus-world").emit("spotify:dj_changed", null);
             }
 
             this.server.to("focus-world").emit("user_left", {
@@ -245,19 +258,17 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
         }
     }
 
-    // ── Spotify Co-listening Events ────────────────────────────────────
+    // ── Spotify DJ (Co-listening) Events ────────────────────────────────
 
-    @SubscribeMessage("spotify:host_start")
-    handleSpotifyHostStart(
-        @MessageBody() data: SpotifyHostStartDto,
-        @ConnectedSocket() client: Socket,
-    ) {
+    @SubscribeMessage("spotify:dj_claim")
+    handleDjClaim(@MessageBody() data: SpotifyDjClaimDto, @ConnectedSocket() client: Socket) {
         try {
             const activeUser = this.activeUsers.get(client.id);
             if (!activeUser) return;
 
-            this.hostPlayback = {
-                hostUserId: data.userId,
+            // Mic-steal: always overwrite, even if another user is DJ
+            this.djPlayback = {
+                hostUserId: activeUser.userId,
                 hostName: activeUser.userName,
                 trackUri: data.trackUri,
                 trackName: data.trackName,
@@ -268,52 +279,53 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
                 updatedAt: Date.now(),
             };
 
-            client.to("focus-world").emit("spotify:host_started", this.hostPlayback);
-            this.logger.log(`Spotify host started by ${data.userId}`);
+            // Broadcast to EVERYONE (including the claimer for confirmation,
+            // and the old DJ so they know they were overridden)
+            this.server.to("focus-world").emit("spotify:dj_changed", this.djPlayback);
+            this.logger.log(`DJ claimed by ${activeUser.userId}`);
         } catch (error: unknown) {
-            this.logger.error(`Error in spotify:host_start: ${(error as Error).message}`);
+            this.logger.error(`Error in spotify:dj_claim: ${(error as Error).message}`);
         }
     }
 
-    @SubscribeMessage("spotify:host_update")
-    handleSpotifyHostUpdate(
-        @MessageBody() data: SpotifyHostUpdateDto,
-        @ConnectedSocket() client: Socket,
-    ) {
+    @SubscribeMessage("spotify:dj_update")
+    handleDjUpdate(@MessageBody() data: SpotifyDjUpdateDto, @ConnectedSocket() client: Socket) {
         try {
-            if (!this.hostPlayback || this.hostPlayback.hostUserId !== data.userId) return;
-
             const activeUser = this.activeUsers.get(client.id);
             if (!activeUser) return;
 
-            // Merge partial update
-            if (data.trackUri !== undefined) this.hostPlayback.trackUri = data.trackUri;
-            if (data.trackName !== undefined) this.hostPlayback.trackName = data.trackName;
-            if (data.artistName !== undefined) this.hostPlayback.artistName = data.artistName;
-            if (data.albumArt !== undefined) this.hostPlayback.albumArt = data.albumArt;
-            if (data.positionMs !== undefined) this.hostPlayback.positionMs = data.positionMs;
-            if (data.isPlaying !== undefined) this.hostPlayback.isPlaying = data.isPlaying;
-            this.hostPlayback.updatedAt = Date.now();
+            // Only the current DJ can send updates
+            if (!this.djPlayback || this.djPlayback.hostUserId !== activeUser.userId) return;
 
-            client.to("focus-world").emit("spotify:host_updated", this.hostPlayback);
+            // Merge partial update
+            if (data.trackUri !== undefined) this.djPlayback.trackUri = data.trackUri;
+            if (data.trackName !== undefined) this.djPlayback.trackName = data.trackName;
+            if (data.artistName !== undefined) this.djPlayback.artistName = data.artistName;
+            if (data.albumArt !== undefined) this.djPlayback.albumArt = data.albumArt;
+            if (data.positionMs !== undefined) this.djPlayback.positionMs = data.positionMs;
+            if (data.isPlaying !== undefined) this.djPlayback.isPlaying = data.isPlaying;
+            this.djPlayback.updatedAt = Date.now();
+
+            client.to("focus-world").emit("spotify:dj_update", this.djPlayback);
         } catch (error: unknown) {
-            this.logger.error(`Error in spotify:host_update: ${(error as Error).message}`);
+            this.logger.error(`Error in spotify:dj_update: ${(error as Error).message}`);
         }
     }
 
-    @SubscribeMessage("spotify:host_stop")
-    handleSpotifyHostStop(
-        @MessageBody() data: SpotifyHostStopDto,
-        @ConnectedSocket() client: Socket,
-    ) {
+    @SubscribeMessage("spotify:dj_release")
+    handleDjRelease(@MessageBody() _data: SpotifyDjReleaseDto, @ConnectedSocket() client: Socket) {
         try {
-            if (!this.hostPlayback || this.hostPlayback.hostUserId !== data.userId) return;
+            const activeUser = this.activeUsers.get(client.id);
+            if (!activeUser) return;
 
-            this.hostPlayback = null;
-            client.to("focus-world").emit("spotify:host_stopped");
-            this.logger.log(`Spotify host stopped by ${data.userId}`);
+            // Only the current DJ can release
+            if (!this.djPlayback || this.djPlayback.hostUserId !== activeUser.userId) return;
+
+            this.djPlayback = null;
+            this.server.to("focus-world").emit("spotify:dj_changed", null);
+            this.logger.log(`DJ released by ${activeUser.userId}`);
         } catch (error: unknown) {
-            this.logger.error(`Error in spotify:host_stop: ${(error as Error).message}`);
+            this.logger.error(`Error in spotify:dj_release: ${(error as Error).message}`);
         }
     }
 
@@ -323,14 +335,14 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
         @ConnectedSocket() client: Socket,
     ) {
         try {
-            if (this.hostPlayback) {
+            if (this.djPlayback) {
                 // Compensate position for elapsed time since last update
-                const elapsed = Date.now() - this.hostPlayback.updatedAt;
+                const elapsed = Date.now() - this.djPlayback.updatedAt;
                 const compensatedState = {
-                    ...this.hostPlayback,
-                    positionMs: this.hostPlayback.isPlaying
-                        ? this.hostPlayback.positionMs + elapsed
-                        : this.hostPlayback.positionMs,
+                    ...this.djPlayback,
+                    positionMs: this.djPlayback.isPlaying
+                        ? this.djPlayback.positionMs + elapsed
+                        : this.djPlayback.positionMs,
                 };
                 client.emit("spotify:sync_response", compensatedState);
             } else {

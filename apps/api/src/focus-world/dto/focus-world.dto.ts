@@ -67,13 +67,9 @@ export interface ActiveUser {
     elapsedTime: number; // Track elapsed time for disconnect handling
 }
 
-// ── Spotify Co-listening DTOs ──────────────────────────────────────
+// ── Spotify DJ (Co-listening) DTOs ─────────────────────────────────
 
-export class SpotifyHostStartDto {
-    @IsString()
-    @IsNotEmpty()
-    userId: string;
-
+export class SpotifyDjClaimDto {
     @IsString()
     @IsNotEmpty()
     trackUri: string;
@@ -97,11 +93,7 @@ export class SpotifyHostStartDto {
     isPlaying: boolean;
 }
 
-export class SpotifyHostUpdateDto {
-    @IsString()
-    @IsNotEmpty()
-    userId: string;
-
+export class SpotifyDjUpdateDto {
     @IsString()
     @IsOptional()
     trackUri?: string;
@@ -127,17 +119,9 @@ export class SpotifyHostUpdateDto {
     isPlaying?: boolean;
 }
 
-export class SpotifyHostStopDto {
-    @IsString()
-    @IsNotEmpty()
-    userId: string;
-}
+export class SpotifyDjReleaseDto {}
 
-export class SpotifySyncRequestDto {
-    @IsString()
-    @IsNotEmpty()
-    userId: string;
-}
+export class SpotifySyncRequestDto {}
 
 export interface SpotifyPlaybackState {
     hostUserId: string;
