@@ -20,12 +20,16 @@ import { SpotifyPlayerInit } from "@/components/spotify/SpotifyPlayerInit";
 import { SpotifyHeaderButton } from "@/components/spotify/SpotifyHeaderButton";
 import { SpotifyModal } from "@/components/spotify/SpotifyModal";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { signOut } from "next-auth/react";
+import { AlertCircle, X } from "lucide-react";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkConnection = useSpotifyStore((s) => s.checkConnection);
+  const [spotifyErrorMsg, setSpotifyErrorMsg] = useState<string | null>(null);
+  const [spotifyErrorCode, setSpotifyErrorCode] = useState<string | null>(null);
 
   // Re-check Spotify connection after OAuth callback redirect
   useEffect(() => {
@@ -38,9 +42,17 @@ export default function DashboardPage() {
     }
     const spotifyError = searchParams.get("spotify_error");
     if (spotifyError) {
-      console.error("[Spotify OAuth error]", decodeURIComponent(spotifyError));
-      // Show error as alert so it's visible immediately for debugging
-      alert(`Spotify kết nối thất bại: ${decodeURIComponent(spotifyError)}`);
+      const code = decodeURIComponent(spotifyError);
+      console.error("[Spotify OAuth error]", code);
+      const messages: Record<string, string> = {
+        state_mismatch: "Phiên kết nối hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
+        token_exchange_failed: "Không thể lấy token từ Spotify. Kiểm tra Client ID/Secret và Redirect URI trong Spotify Dashboard.",
+        profile_fetch_failed: "Kết nối thành công nhưng không lấy được thông tin tài khoản Spotify.",
+        user_not_found: "Không tìm thấy tài khoản của bạn trong hệ thống. Vui lòng đăng xuất và đăng nhập lại.",
+        access_denied: "Bạn đã từ chối quyền truy cập Spotify.",
+      };
+      setSpotifyErrorMsg(messages[code] ?? `Lỗi không xác định: ${code}`);
+      setSpotifyErrorCode(code);
       const url = new URL(window.location.href);
       url.searchParams.delete("spotify_error");
       window.history.replaceState({}, "", url.pathname + url.search);
@@ -280,6 +292,39 @@ export default function DashboardPage() {
         height={1080}
       />
       <div className="container relative  mx-auto p-6">
+        {/* Spotify OAuth error banner */}
+        {spotifyErrorMsg && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <div className="flex-1">
+              <p className="font-medium text-red-200">Kết nối Spotify thất bại</p>
+              <p className="mt-0.5 text-red-300/80">{spotifyErrorMsg}</p>
+              {spotifyErrorCode === "user_not_found" && (
+                <button
+                  onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+                  className="mt-2 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-200 hover:bg-red-500/30 transition-colors"
+                >
+                  Đăng xuất và đăng nhập lại
+                </button>
+              )}
+              {spotifyErrorCode !== "user_not_found" && (
+                <a
+                  href="/api/spotify/connect"
+                  className="mt-2 inline-block rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300 hover:bg-green-500/30 transition-colors"
+                >
+                  Thử kết nối lại
+                </a>
+              )}
+            </div>
+            <button
+              onClick={() => { setSpotifyErrorMsg(null); setSpotifyErrorCode(null); }}
+              className="shrink-0 rounded p-0.5 hover:bg-white/10 transition-colors"
+              aria-label="Đóng"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <div className="flex items-center  justify-between mb-5">
           <div>
             <h1 className="text-3xl font-bold">Danh sách công việc</h1>

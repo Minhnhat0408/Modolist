@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
   // Must match exactly what was sent in /connect
   const redirectUri =
     process.env.SPOTIFY_REDIRECT_URI ?? `${origin}/api/spotify/callback`;
+  console.log("[spotify/callback] redirectUri:", redirectUri);
   const tokenResponse = await fetch(SPOTIFY_CONFIG.TOKEN_URL, {
     method: "POST",
     headers: {
@@ -79,6 +80,8 @@ export async function GET(request: NextRequest) {
   });
 
   if (!tokenResponse.ok) {
+    const errBody = await tokenResponse.text();
+    console.error("[spotify/callback] token exchange failed:", tokenResponse.status, errBody);
     return NextResponse.redirect(
       `${origin}/dashboard?spotify_error=token_exchange_failed`,
     );
@@ -98,6 +101,13 @@ export async function GET(request: NextRequest) {
   }
 
   const profile = await profileResponse.json();
+
+  // Verify the session user actually exists in our DB before upserting
+  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!dbUser) {
+    console.error("[spotify/callback] session userId not found in DB:", session.user.id, "— session may be stale, user must re-login");
+    return NextResponse.redirect(`${origin}/dashboard?spotify_error=user_not_found`);
+  }
 
   // Upsert Account row — store tokens in existing Account table
   await prisma.account.upsert({
