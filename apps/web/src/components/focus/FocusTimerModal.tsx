@@ -41,19 +41,30 @@ export function FocusTimerModal() {
     markWorkDone,
   } = useFocusStore();
 
-  const { openWorld, isOpen: worldOpen, isMinimized: worldMinimized } = useFocusWorldStore();
+  const {
+    openWorld,
+    isOpen: worldOpen,
+    isMinimized: worldMinimized,
+  } = useFocusWorldStore();
   const spotifyWidgetMinimized = useSpotifyStore((s) => s.isWidgetMinimized);
   const { play, stop } = useSoundEffects();
 
   const handleMinimize = async () => {
-    console.log("reạsiopjeifoas")
+    console.log("reạsiopjeifoas");
     await openPip(140, 460);
     // Check which tabs are already in PiP before this action
     const worldInPip = worldOpen && worldMinimized;
     const spotifyInPip = spotifyWidgetMinimized;
     // If other tabs exist → tab bar will appear → resize
     if (worldInPip || spotifyInPip) {
-      resizePIP(calcPIPHeight({ timer: true, world: worldInPip, spotify: spotifyInPip, target: "timer" }));
+      resizePIP(
+        calcPIPHeight({
+          timer: true,
+          world: worldInPip,
+          spotify: spotifyInPip,
+          target: "timer",
+        }),
+      );
     }
     toggleMinimize();
   };
@@ -205,7 +216,7 @@ export function FocusTimerModal() {
                   </span>
                 </div>
                 {/* Session Progress Bar */}
-                <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="w-64 mx-auto h-2 bg-gray-700 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-linear-to-r from-green-500 to-emerald-500"
                     initial={{ width: 0 }}

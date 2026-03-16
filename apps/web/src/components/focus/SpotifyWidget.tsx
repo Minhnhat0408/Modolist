@@ -530,7 +530,11 @@ export function SpotifyWidget() {
                     ? "bg-indigo-500/30 text-indigo-300 ring-1 ring-indigo-500/50"
                     : "bg-white/10 text-gray-400 hover:text-indigo-400"
                 }`}
-                title={isListening ? "Nhấn để ngha nhạc riêng" : "Đồng bộ nhạc với DJ"}
+                title={
+                  isListening
+                    ? "Nhấn để ngha nhạc riêng"
+                    : "Đồng bộ nhạc với DJ"
+                }
               >
                 {isListening ? "✓ Đang nghe cùng" : "Nghe cùng"}
               </button>

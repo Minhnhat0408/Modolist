@@ -170,7 +170,10 @@ function ResponsiveModalBody({
 }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex-1 overflow-y-auto px-5 py-4", className)}
+      className={cn(
+        "flex-1 overflow-y-auto px-5 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none",
+        className,
+      )}
       {...props}
     />
   );

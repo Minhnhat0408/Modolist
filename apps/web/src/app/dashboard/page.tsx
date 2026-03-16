@@ -45,10 +45,14 @@ export default function DashboardPage() {
       const code = decodeURIComponent(spotifyError);
       console.error("[Spotify OAuth error]", code);
       const messages: Record<string, string> = {
-        state_mismatch: "Phiên kết nối hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
-        token_exchange_failed: "Không thể lấy token từ Spotify. Kiểm tra Client ID/Secret và Redirect URI trong Spotify Dashboard.",
-        profile_fetch_failed: "Kết nối thành công nhưng không lấy được thông tin tài khoản Spotify.",
-        user_not_found: "Không tìm thấy tài khoản của bạn trong hệ thống. Vui lòng đăng xuất và đăng nhập lại.",
+        state_mismatch:
+          "Phiên kết nối hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
+        token_exchange_failed:
+          "Không thể lấy token từ Spotify. Kiểm tra Client ID/Secret và Redirect URI trong Spotify Dashboard.",
+        profile_fetch_failed:
+          "Kết nối thành công nhưng không lấy được thông tin tài khoản Spotify.",
+        user_not_found:
+          "Không tìm thấy tài khoản của bạn trong hệ thống. Vui lòng đăng xuất và đăng nhập lại.",
         access_denied: "Bạn đã từ chối quyền truy cập Spotify.",
       };
       setSpotifyErrorMsg(messages[code] ?? `Lỗi không xác định: ${code}`);
@@ -297,7 +301,9 @@ export default function DashboardPage() {
           <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
             <div className="flex-1">
-              <p className="font-medium text-red-200">Kết nối Spotify thất bại</p>
+              <p className="font-medium text-red-200">
+                Kết nối Spotify thất bại
+              </p>
               <p className="mt-0.5 text-red-300/80">{spotifyErrorMsg}</p>
               {spotifyErrorCode === "user_not_found" && (
                 <button
@@ -317,7 +323,10 @@ export default function DashboardPage() {
               )}
             </div>
             <button
-              onClick={() => { setSpotifyErrorMsg(null); setSpotifyErrorCode(null); }}
+              onClick={() => {
+                setSpotifyErrorMsg(null);
+                setSpotifyErrorCode(null);
+              }}
               className="shrink-0 rounded p-0.5 hover:bg-white/10 transition-colors"
               aria-label="Đóng"
             >

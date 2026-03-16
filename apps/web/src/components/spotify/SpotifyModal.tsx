@@ -18,7 +18,8 @@ export function SpotifyModal() {
   const { isWidgetOpen, isWidgetMinimized, minimizeWidget, closeWidget } =
     useSpotifyStore();
   const { activeTask } = useFocusStore();
-  const { isOpen: worldOpen, isMinimized: worldMinimized } = useFocusWorldStore();
+  const { isOpen: worldOpen, isMinimized: worldMinimized } =
+    useFocusWorldStore();
 
   const visible = isWidgetOpen && !isWidgetMinimized;
 
@@ -29,7 +30,14 @@ export function SpotifyModal() {
     const worldInPip = worldOpen && worldMinimized;
     // Always resize: Spotify alone = 220, with others = tab bar + 220
     if (worldInPip || timerInPip) {
-      resizePIP(calcPIPHeight({ timer: timerInPip, world: worldInPip, spotify: true, target: "spotify" }));
+      resizePIP(
+        calcPIPHeight({
+          timer: timerInPip,
+          world: worldInPip,
+          spotify: true,
+          target: "spotify",
+        }),
+      );
     }
     minimizeWidget();
   };

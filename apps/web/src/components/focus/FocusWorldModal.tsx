@@ -154,7 +154,14 @@ export function FocusWorldModal() {
     const spotifyInPip = spotifyWidgetMinimized;
     // If other tabs exist → tab bar will appear → resize
     if (timerInPip || spotifyInPip) {
-      resizePIP(calcPIPHeight({ timer: timerInPip, world: true, spotify: spotifyInPip, target: "world" }));
+      resizePIP(
+        calcPIPHeight({
+          timer: timerInPip,
+          world: true,
+          spotify: spotifyInPip,
+          target: "world",
+        }),
+      );
     }
     toggleMinimize();
   };

@@ -180,7 +180,10 @@ export function calcPIPHeight(tabs: {
   spotify: boolean;
   target: "timer" | "world" | "spotify";
 }): number {
-  const contentH = tabs.spotify && tabs.target != "spotify" ? PIP_CONTENT_H.spotify : PIP_CONTENT_H.timer;
+  const contentH =
+    tabs.spotify && tabs.target != "spotify"
+      ? PIP_CONTENT_H.spotify
+      : PIP_CONTENT_H.timer;
 
   return PIP_TAB_BAR_H + contentH;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api-client";
-import { Sparkles, Loader2, Clock, Zap, Brain } from "lucide-react";
+import { Sparkles, Loader2, Clock, Zap, Brain, X } from "lucide-react";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống").max(200),
@@ -65,6 +65,8 @@ interface TaskFormDialogProps {
   defaultStatus?: TaskStatus;
 }
 
+const DRAFT_KEY = "task-form-draft";
+
 export function TaskFormDialog({
   open,
   onOpenChange,
@@ -78,6 +80,8 @@ export function TaskFormDialog({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [draftBanner, setDraftBanner] = useState<"show" | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const {
     register,
@@ -117,8 +121,63 @@ export function TaskFormDialog({
       });
       setAiSuggestion(null);
       setAiError(null);
+      if (!isEditing) {
+        try {
+          const saved = localStorage.getItem(DRAFT_KEY);
+          const draft = saved
+            ? (JSON.parse(saved) as Partial<TaskFormData>)
+            : null;
+          setDraftBanner(draft?.title ? "show" : null);
+        } catch {
+          setDraftBanner(null);
+        }
+      } else {
+        setDraftBanner(null);
+      }
     }
-  }, [open, task, defaultStatus, reset]);
+  }, [open, task, defaultStatus, reset, isEditing]);
+
+  // Auto-save draft while typing (create only)
+  useEffect(() => {
+    if (!open || isEditing) return;
+    const subscription = watch((values) => {
+      clearTimeout(draftTimerRef.current);
+      if (!values.title) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      draftTimerRef.current = setTimeout(() => {
+        localStorage.setItem(
+          DRAFT_KEY,
+          JSON.stringify({
+            title: values.title,
+            description: values.description,
+            status: values.status,
+            priority: values.priority,
+            dueDate: values.dueDate,
+            tags: values.tags,
+          }),
+        );
+      }, 600);
+    });
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(draftTimerRef.current);
+    };
+  }, [open, isEditing, watch]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) reset({ ...JSON.parse(saved) } as TaskFormData);
+    } catch {}
+    setDraftBanner(null);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftBanner(null);
+  };
 
   const handleFormSubmit = (data: TaskFormData) => {
     const submitData: Partial<Task> & {
@@ -143,6 +202,10 @@ export function TaskFormDialog({
       suggestedTotalMinutes: data.suggestedTotalMinutes,
     };
 
+    if (!isEditing) {
+      localStorage.removeItem(DRAFT_KEY);
+      clearTimeout(draftTimerRef.current);
+    }
     onSubmit(submitData);
     onOpenChange(false);
   };
@@ -215,6 +278,32 @@ export function TaskFormDialog({
                   onSubmit={handleSubmit(handleFormSubmit)}
                   className="space-y-5"
                 >
+                  {/* Draft restore banner — create mode only */}
+                  {!isEditing && draftBanner === "show" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs"
+                    >
+                      <span className="flex-1">
+                        📝 Bạn có bản nháp chưa lưu
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRestoreDraft}
+                        className="font-semibold underline hover:text-amber-300 shrink-0"
+                      >
+                        Khôi phục
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDiscardDraft}
+                        className="hover:text-amber-300 shrink-0 ml-1"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </motion.div>
+                  )}
                   {/* Title */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}

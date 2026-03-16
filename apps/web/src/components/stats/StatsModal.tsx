@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import {
   Flame,
@@ -73,7 +73,6 @@ function formatTimeShort(seconds: number): string {
   return `${mins}m`;
 }
 
-// ─── Animated Counter ─────────────────────────────────────────────
 function AnimatedNumber({
   value,
   duration = 1.2,
@@ -156,11 +155,25 @@ function StatCard({
 }
 
 // ─── Activity Data Transform ─────────────────────────────────────
-const MONTHS_VI = ["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
+const MONTHS_VI = [
+  "Th1",
+  "Th2",
+  "Th3",
+  "Th4",
+  "Th5",
+  "Th6",
+  "Th7",
+  "Th8",
+  "Th9",
+  "Th10",
+  "Th11",
+  "Th12",
+];
 
 function toHeatmapValue(raw: { date: string; count: number }[]) {
-  // @uiw/react-heat-map needs yyyy/MM/dd format
-  return raw.map((d) => ({ date: d.date.replace(/-/g, "/"), count: d.count }));
+  return raw
+    .filter((d) => d.count > 0)
+    .map((d) => ({ date: d.date.replace(/-/g, "/"), count: d.count }));
 }
 
 // Each page = 10 full calendar months, aligned to month boundaries → no overlap
@@ -168,9 +181,7 @@ function getHeatmapWindow(pageOffset: number) {
   const today = new Date();
   const refYear = today.getFullYear();
   const refMonth = today.getMonth() + pageOffset * 10; // JS Date handles under/overflow
-  // end = last day of refMonth
   const end = new Date(refYear, refMonth + 1, 0);
-  // start = 1st day of (refMonth - 9)
   const start = new Date(refYear, refMonth - 9, 1);
   return { start, end };
 }
@@ -298,7 +309,9 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
   const [heatmapPage, setHeatmapPage] = useState(0);
   const maxFocus = Math.max(...stats.week.data.map((d) => d.focusTime), 1);
 
-  const rawHeatmap = stats.heatmap ?? stats.week.data.map((d) => ({ date: d.date, count: d.pomodoros }));
+  const rawHeatmap =
+    stats.heatmap ??
+    stats.week.data.map((d) => ({ date: d.date, count: d.pomodoros }));
   const { start: heatStart, end: heatEnd } = getHeatmapWindow(heatmapPage);
   const heatmapLabel = `${MONTHS_VI[heatStart.getMonth()]} ${heatStart.getFullYear()} – ${MONTHS_VI[heatEnd.getMonth()]} ${heatEnd.getFullYear()}`;
 
@@ -407,7 +420,9 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-chart-2" />
             <h3 className="font-semibold">Pomodoro</h3>
-            <span className="text-xs text-muted-foreground">{heatmapLabel}</span>
+            <span className="text-xs text-muted-foreground">
+              {heatmapLabel}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -437,25 +452,47 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
           <HeatMap
             value={toHeatmapValue(rawHeatmap)}
             startDate={heatStart}
-            // endDate={heatEnd}
+            endDate={heatEnd}
             weekLabels={["", "T2", "", "T4", "", "T6", ""]}
             monthLabels={MONTHS_VI}
             rectSize={12}
             space={2}
-        
             rectProps={{ rx: 2 }}
             panelColors={
               resolvedTheme === "dark"
-                ? { 0: "#374151", 1: "#7c2d12", 3: "#c2410c", 5: "#f97316", 8: "#fdba74" }
-                : { 0: "#e5e7eb", 1: "#fed7aa", 3: "#fb923c", 5: "#f97316", 8: "#c2410c" }
+                ? {
+                    1: "#374151",
+                    3: "#7c2d12",
+                    5: "#c2410c",
+                    7: "#f97316",
+                    9: "#fdba74",
+                  }
+                : {
+                    1: "#e5e7eb",
+                    3: "#fed7aa",
+                    5: "#fb923c",
+                    7: "#f97316",
+                    9: "#c2410c",
+                  }
             }
-            style={{ width: "100%" }}
-            
+            rectRender={(props, data) => (
+              <g>
+                {data.count != null && data.count > 0 && (
+                  <title>{`${data.count} 🍅 • ${data.date}`}</title>
+                )}
+                <rect {...props} />
+              </g>
+            )}
+            style={
+              {
+                "--rhm-rect": resolvedTheme === "dark" ? "#374151" : "#e5e7eb",
+                width: "100%",
+              } as CSSProperties
+            }
           />
         </div>
       </motion.div>
 
-      {/* All-time totals */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           icon={Timer}
@@ -524,7 +561,7 @@ export function StatsModal({
   return (
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <ResponsiveModalContent
-        dialogClassName="sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl"
+        dialogClassName="sm:max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none"
         className="p-0 gap-0"
         showCloseButton={false}
       >
@@ -549,7 +586,7 @@ export function StatsModal({
         {/* Body */}
         <ResponsiveModalBody>
           {loading && (
-            <div className="flex items-center justify-center py-16">
+            <div className="flex items-center justify-center py-16 ">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
