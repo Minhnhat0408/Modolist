@@ -146,6 +146,25 @@ export class TasksService {
         return task;
     }
 
+    // Batch create tasks (guest migration)
+    async createBatch(userId: string, tasks: CreateTaskDto[]) {
+        const created = await this.prisma.$transaction(
+            tasks.map((dto) =>
+                this.prisma.task.create({
+                    data: {
+                        ...dto,
+                        userId,
+                        order: 0,
+                        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+                    },
+                }),
+            ),
+        );
+
+        await this.invalidateUserCache(userId);
+        return { created: created.length };
+    }
+
     // Cập nhật task
     async update(id: string, userId: string, updateTaskDto: UpdateTaskDto) {
         // Kiểm tra task tồn tại — throws NotFoundException nếu không tìm thấy

@@ -107,6 +107,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
         plannedDuration: duration,
       })
       .then((data) => {
+        if (!data) return; // guest no-op
         const { status } = get();
         if (
           status === "focusing" ||
@@ -207,6 +208,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
             plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
+            if (!data) return; // guest no-op
             set({ sessionId: (data as SessionResponse).id });
           })
           .catch((fallbackError) => {
@@ -410,6 +412,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
             plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
+            if (!data) return; // guest no-op
             set({ sessionId: (data as SessionResponse).id });
           })
           .catch((error) => {
@@ -510,6 +513,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
             plannedDuration: FOCUS_DURATIONS.WORK,
           })
           .then((data) => {
+            if (!data) return; // guest no-op
             set({ sessionId: (data as SessionResponse).id });
           })
           .catch((error) => {
@@ -675,6 +679,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           plannedDuration: duration,
         })
         .then((data) => {
+          if (!data) return; // guest no-op
           const { status } = get();
           if (
             status === "focusing" ||
@@ -726,6 +731,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           plannedDuration: FOCUS_DURATIONS.WORK,
         })
         .then((data) => {
+          if (!data) return; // guest no-op
           set({ sessionId: (data as SessionResponse).id });
         })
         .catch((error) => {

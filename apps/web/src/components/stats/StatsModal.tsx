@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import { api } from "@/lib/api-client";
+import { useStatsSource } from "@/hooks/useStatsSource";
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -538,21 +538,20 @@ export function StatsModal({
 }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const { fetchStats: fetchStatsSource } = useStatsSource();
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setStats(null);
     try {
-      const data = await api.get<DashboardStats>(
-        "/focus-sessions/stats/dashboard",
-      );
+      const data = await fetchStatsSource();
       setStats(data);
     } catch (error) {
       console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchStatsSource]);
 
   useEffect(() => {
     if (open) fetchStats();
