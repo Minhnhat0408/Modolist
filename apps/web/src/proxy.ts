@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
+  const isGuest = req.cookies.get("guestMode")?.value === "1";
 
   const isAuthPage = nextUrl.pathname.startsWith("/auth");
   const isDashboard = nextUrl.pathname.startsWith("/dashboard");
@@ -12,7 +13,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
-  if (isDashboard && !isLoggedIn) {
+  if (isDashboard && !isLoggedIn && !isGuest) {
     return NextResponse.redirect(new URL("/auth/signin", nextUrl));
   }
 

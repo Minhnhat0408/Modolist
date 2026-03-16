@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api-client";
+import { useIsGuest } from "@/hooks/useIsGuest";
 import { Sparkles, Loader2, Clock, Zap, Brain, X } from "lucide-react";
 
 const taskFormSchema = z.object({
@@ -76,12 +77,13 @@ export function TaskFormDialog({
   defaultStatus = TaskStatus.BACKLOG,
 }: TaskFormDialogProps) {
   const isEditing = !!task;
+  const isGuest = useIsGuest();
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [draftBanner, setDraftBanner] = useState<"show" | null>(null);
-  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const {
     register,
@@ -170,7 +172,9 @@ export function TaskFormDialog({
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) reset({ ...JSON.parse(saved) } as TaskFormData);
-    } catch {}
+    } catch {
+      // Ignore corrupt draft data
+    }
     setDraftBanner(null);
   };
 
@@ -372,13 +376,19 @@ export function TaskFormDialog({
                       type="button"
                       variant="outline"
                       onClick={handleAiAutoComplete}
-                      disabled={aiLoading}
+                      disabled={aiLoading || isGuest}
                       className="w-full bg-linear-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30 hover:border-purple-500/50 hover:from-purple-500/20 hover:to-blue-500/20 transition-all duration-300"
+                      title={isGuest ? "Đăng ký để dùng AI" : undefined}
                     >
                       {aiLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           AI đang phân tích...
+                        </>
+                      ) : isGuest ? (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2 opacity-50" />
+                          Đăng ký để dùng AI
                         </>
                       ) : (
                         <>

@@ -11,7 +11,8 @@ import { useFocusStore } from "@/stores/useFocusStore";
 import { KanbanTask } from "@/types/kanban";
 import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
-import { api } from "@/lib/api-client";
+import { useTaskManager } from "@/hooks/useTaskManager";
+import { useIsGuest } from "@/hooks/useIsGuest";
 import Image from "next/image";
 import { StatsModal } from "@/components/stats/StatsModal";
 import { AITaskGenerator } from "@/components/ai/AITaskGenerator";
@@ -20,11 +21,14 @@ import { SpotifyPlayerInit } from "@/components/spotify/SpotifyPlayerInit";
 import { SpotifyHeaderButton } from "@/components/spotify/SpotifyHeaderButton";
 import { SpotifyModal } from "@/components/spotify/SpotifyModal";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { useGuestStore } from "@/stores/useGuestStore";
+import { MigrateModal } from "@/components/guest/MigrateModal";
 import { signOut } from "next-auth/react";
 import { AlertCircle, X } from "lucide-react";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const isGuest = useIsGuest();
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkConnection = useSpotifyStore((s) => s.checkConnection);
@@ -63,8 +67,17 @@ export default function DashboardPage() {
     }
   }, [searchParams, checkConnection]);
 
-  const [tasks, setTasks] = useState<KanbanTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    tasks,
+    setTasks,
+    loading,
+    fetchTasks,
+    addTask: tmAddTask,
+    updateTask: tmUpdateTask,
+    deleteTask: tmDeleteTask,
+    moveTask: tmMoveTask,
+    reorderTask: tmReorderTask,
+  } = useTaskManager();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>(
@@ -76,40 +89,42 @@ export default function DashboardPage() {
   const [detailTask, setDetailTask] = useState<Task | undefined>(undefined);
   const todayScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Guest migration detection
+  const guestTasks = useGuestStore((s) => s.tasks);
+  const guestId = useGuestStore((s) => s.guestId);
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const migrateCheckedRef = useRef(false);
+
   useEffect(() => {
-    if (status === "unauthenticated") {
+    // Only show migrate modal for authenticated users who have leftover guest data
+    if (
+      !isGuest &&
+      status === "authenticated" &&
+      guestId &&
+      guestTasks.length > 0 &&
+      !migrateCheckedRef.current
+    ) {
+      migrateCheckedRef.current = true;
+      setMigrateOpen(true);
+    }
+  }, [isGuest, status, guestId, guestTasks]);
+
+  useEffect(() => {
+    if (!isGuest && status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status, router]);
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      const data = await api.get<KanbanTask[]>("/tasks");
-      setTasks(data);
-      console.log(data);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-    }
-  }, []);
+  }, [status, isGuest, router]);
 
   // Restore any interrupted/paused focus session on mount
   const restoreSession = useFocusStore((s) => s.restoreSession);
   useEffect(() => {
-    if (status === "authenticated") {
+    if (!isGuest && status === "authenticated") {
       restoreSession();
     }
-  }, [status, restoreSession]);
+  }, [status, isGuest, restoreSession]);
 
   useEffect(() => {
-    async function loadTasks() {
-      if (status !== "authenticated") return;
-
-      setLoading(true);
-      await fetchTasks();
-      setLoading(false);
-    }
-
-    loadTasks();
+    if (isGuest) return; // Guest tasks loaded via useTaskManager
 
     const handleTaskCompleted = () => {
       fetchTasks();
@@ -126,28 +141,10 @@ export default function DashboardPage() {
       window.removeEventListener("taskCompleted", handleTaskCompleted);
       window.removeEventListener("sessionCompleted", handleSessionCompleted);
     };
-  }, [status, fetchTasks]);
+  }, [isGuest, fetchTasks]);
 
   const handleTaskMove = async (taskId: string, newStatus: TaskStatus) => {
-    console.log("🚀 handleTaskMove called:", { taskId, newStatus });
-    const previousTasks = [...tasks];
-
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task,
-      ),
-    );
-
-    try {
-      console.log("📡 Calling API PATCH /tasks/" + taskId, {
-        status: newStatus,
-      });
-      await api.patch(`/tasks/${taskId}`, { status: newStatus });
-      console.log("✅ Task moved successfully");
-    } catch (error) {
-      console.error("❌ Error updating task:", error);
-      setTasks(previousTasks);
-    }
+    await tmMoveTask(taskId, newStatus);
   };
 
   const handleTaskReorder = async (
@@ -155,17 +152,7 @@ export default function DashboardPage() {
     newOrder: number,
     status: TaskStatus,
   ) => {
-    // API call to persist order (already updated optimistically in KanbanBoard)
-    try {
-      await api.patch(`/tasks/${taskId}/order`, {
-        newOrder,
-        status,
-      });
-    } catch (error) {
-      console.error("Failed to update task order:", error);
-      // Optionally refetch to revert
-      await fetchTasks();
-    }
+    await tmReorderTask(taskId, newOrder, status);
   };
 
   const handleAddTask = (status: TaskStatus) => {
@@ -190,67 +177,40 @@ export default function DashboardPage() {
         prev?.id === taskId ? ({ ...prev, ...data } as Task) : prev,
       );
     },
-    [],
+    [setTasks],
   );
 
-  const handleDetailTaskDelete = useCallback((taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-  }, []);
+  const handleDetailTaskDelete = useCallback(
+    (taskId: string) => {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    },
+    [setTasks],
+  );
 
   const handleTaskSubmit = async (data: Partial<Task>) => {
     if (editingTask) {
-      const previousTasks = [...tasks];
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === editingTask.id ? { ...task, ...data } : task,
-        ),
-      );
-      api.patch(`/tasks/${editingTask.id}`, data).catch((error) => {
-        console.error("Error updating task:", error);
-        setTasks(previousTasks);
-      });
+      await tmUpdateTask(editingTask.id, data);
     } else {
-      try {
-        const newTask = await api.post<Task>("/tasks", data);
-        // Prepend so new task appears first in its column
-        setTasks((prev) => [newTask as KanbanTask, ...prev]);
-        // Scroll TODAY column to top so user sees the new task
-        if ((newTask as KanbanTask).status === TaskStatus.TODAY) {
-          requestAnimationFrame(() => {
-            if (todayScrollRef.current) todayScrollRef.current.scrollTop = 0;
-          });
-        }
-      } catch (error) {
-        console.error("Error creating task:", error);
+      const newTask = await tmAddTask(data);
+      if (newTask && newTask.status === TaskStatus.TODAY) {
+        requestAnimationFrame(() => {
+          if (todayScrollRef.current) todayScrollRef.current.scrollTop = 0;
+        });
       }
     }
   };
 
   const handleDeleteTask = async () => {
     if (!editingTask) return;
-
-    try {
-      await api.delete(`/tasks/${editingTask.id}`);
-      setDialogOpen(false);
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error deleting task:", error);
-    }
+    await tmDeleteTask(editingTask.id);
+    setDialogOpen(false);
   };
 
   const handleDeleteTaskById = async (taskId: string) => {
-    const previousTasks = [...tasks];
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-
-    try {
-      await api.delete(`/tasks/${taskId}`);
-    } catch (error) {
-      setTasks(previousTasks);
-      console.error("Error deleting task:", error);
-    }
+    await tmDeleteTask(taskId);
   };
 
-  if (status === "loading" || loading) {
+  if ((!isGuest && status === "loading") || loading) {
     return (
       <div className="flex items-center bg-background justify-center min-h-screen">
         <Image
@@ -275,9 +235,11 @@ export default function DashboardPage() {
     );
   }
 
-  if (status === "unauthenticated") {
+  if (!isGuest && status === "unauthenticated") {
     return null;
   }
+
+  const displayName = isGuest ? "Khách" : session?.user?.name;
 
   return (
     <div className="min-h-screen bg-background">
@@ -338,7 +300,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold">Danh sách công việc</h1>
             <p className="text-muted-foreground">
-              Xin chào, <strong>{session?.user?.name}</strong>
+              Xin chào, <strong>{displayName}</strong>
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -397,6 +359,17 @@ export default function DashboardPage() {
           open={aiOpen}
           onOpenChange={setAIOpen}
           onTasksCreated={fetchTasks}
+        />
+
+        {/* Guest → Authenticated migration modal */}
+        <MigrateModal
+          open={migrateOpen}
+          onOpenChange={setMigrateOpen}
+          tasks={guestTasks}
+          onComplete={() => {
+            setMigrateOpen(false);
+            fetchTasks();
+          }}
         />
       </div>
     </div>

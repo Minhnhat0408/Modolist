@@ -2,7 +2,8 @@
 
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { Mail, Lock, ChromeIcon } from "lucide-react";
+import { Mail, Lock, ChromeIcon, UserCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,6 +15,8 @@ import {
 import { authenticate, authenticateWithGoogle } from "./actions";
 import { useActionState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useGuestStore } from "@/stores/useGuestStore";
+import { setGuestCookie } from "@/hooks/useIsGuest";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -27,6 +30,14 @@ function SubmitButton() {
 
 export default function SignInPage() {
   const [errorMessage, dispatch] = useActionState(authenticate, undefined);
+  const router = useRouter();
+  const initGuest = useGuestStore((s) => s.initGuest);
+
+  const handleGuestMode = () => {
+    initGuest();
+    setGuestCookie();
+    router.push("/dashboard");
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center">
@@ -116,6 +127,27 @@ export default function SignInPage() {
               Đăng ký ngay
             </Link>
           </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Hoặc
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={handleGuestMode}
+          >
+            <UserCircle className="mr-2 h-4 w-4" />
+            Dùng thử không cần đăng ký →
+          </Button>
 
           <div className="text-center text-sm text-muted-foreground">
             Bằng việc đăng nhập, bạn đồng ý với{" "}

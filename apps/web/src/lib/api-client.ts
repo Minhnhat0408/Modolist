@@ -7,16 +7,17 @@ const API_BASE_URL = "/api";
 
 let cachedToken: string | null = null;
 
-async function getToken(): Promise<string> {
+async function getToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
 
   const response = await fetch("/api/auth/token");
   if (!response.ok) {
-    throw new Error("Failed to get authentication token");
+    // Unauthenticated (e.g. guest mode) — return null instead of throwing
+    return null;
   }
   const data = await response.json();
   cachedToken = data.token;
-  return cachedToken!;
+  return cachedToken ?? null;
 }
 
 export function clearTokenCache() {
@@ -40,6 +41,11 @@ async function request<T = unknown>(
   options: ApiOptions = {},
 ): Promise<T> {
   const token = options.token || (await getToken());
+
+  if (!token) {
+    // No auth token — silently skip (guest mode or unauthenticated)
+    return undefined as unknown as T;
+  }
 
   const headers: HeadersInit = {
     Authorization: `Bearer ${token}`,
@@ -82,6 +88,6 @@ export const api = {
     request<T>(endpoint, "DELETE", undefined, options),
 };
 
-export async function getClientToken(): Promise<string> {
+export async function getClientToken(): Promise<string | null> {
   return getToken();
 }

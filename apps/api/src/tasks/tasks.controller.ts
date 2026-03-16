@@ -12,6 +12,7 @@ import {
 import { TasksService } from "./tasks.service";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
+import { BatchCreateTasksDto } from "./dto/batch-create-tasks.dto";
 import { TaskStatus } from "@repo/database";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, CurrentUserData } from "../decorators/current-user.decorator";
@@ -52,6 +53,12 @@ export class TasksController {
     @Post()
     create(@Body() createTaskDto: CreateTaskDto, @CurrentUser() user: CurrentUserData) {
         return this.tasksService.create(user.id, createTaskDto);
+    }
+
+    // POST /tasks/batch - Batch create tasks (guest migration)
+    @Post("batch")
+    createBatch(@Body() dto: BatchCreateTasksDto, @CurrentUser() user: CurrentUserData) {
+        return this.tasksService.createBatch(user.id, dto.tasks);
     }
 
     // PATCH /tasks/:id - Cập nhật task
