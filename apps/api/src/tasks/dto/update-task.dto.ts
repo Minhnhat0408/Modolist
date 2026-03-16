@@ -4,11 +4,12 @@ import {
     IsEnum,
     IsInt,
     Min,
+    Max,
     IsDateString,
     IsArray,
     IsBoolean,
 } from "class-validator";
-import { TaskStatus, TaskPriority } from "@repo/database";
+import { TaskStatus, TaskPriority, RecurrenceRule } from "@repo/database";
 
 export class UpdateTaskDto {
     @IsOptional()
@@ -68,4 +69,21 @@ export class UpdateTaskDto {
     @IsInt()
     @Min(0)
     estimatedPomodoros?: number;
+
+    @IsOptional()
+    @IsEnum(RecurrenceRule)
+    recurrence?: RecurrenceRule;
+
+    @IsOptional()
+    @IsArray()
+    @IsInt({ each: true })
+    @Min(0, { each: true })
+    @Max(6, { each: true })
+    recurrenceDaysOfWeek?: number[];
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(31)
+    recurrenceDayOfMonth?: number;
 }

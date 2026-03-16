@@ -52,6 +52,7 @@ import {
   CalendarCheck,
   Flag,
   Clock,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -66,6 +67,7 @@ interface ColumnOverflowDrawerProps {
   tasks: KanbanTask[];
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
+  onDuplicate?: (task: KanbanTask) => void;
   /** Move a task to a different status column */
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   /** Move a task to the top of its column (order=0) */
@@ -132,6 +134,7 @@ function TaskGroupedList({
   accent,
   groupBy = "date",
   onTaskMove,
+  onDuplicate,
   onTaskMoveToTop,
 }: {
   tasks: KanbanTask[];
@@ -140,6 +143,7 @@ function TaskGroupedList({
   onStartFocus?: (task: KanbanTask) => void;
   accent: (typeof KANBAN_COLUMNS)[TaskStatus]["accent"];
   groupBy?: "date" | "priority";
+  onDuplicate?: (task: KanbanTask) => void;
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
 }) {
@@ -240,6 +244,21 @@ function TaskGroupedList({
                       <ArrowUpToLine className="h-3.5 w-3.5" />
                     </Button>
                   )}
+                   {onDuplicate && task.status !== TaskStatus.TODAY && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-secondary/30 hover:border-secondary/40 hover:text-secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(task);
+                    
+                  }}
+                  title="Tạo lại task này"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              )}
                   {status !== TaskStatus.TODAY && onTaskMove && (
                     <Button
                       variant="ghost"
@@ -341,6 +360,7 @@ export function ColumnOverflowDrawer({
   tasks,
   onEditTask,
   onStartFocus,
+  onDuplicate,
   onTaskMove,
   onTaskMoveToTop,
 }: ColumnOverflowDrawerProps) {
@@ -514,6 +534,7 @@ export function ColumnOverflowDrawer({
         onEditTask={handleEditTask}
         onStartFocus={onStartFocus}
         onTaskMove={onTaskMove}
+        onDuplicate={onDuplicate}
         onTaskMoveToTop={onTaskMoveToTop}
         groupBy={
           isBacklog

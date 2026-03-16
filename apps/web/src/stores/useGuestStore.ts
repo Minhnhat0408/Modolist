@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { TaskStatus, TaskPriority } from "@/types/database";
+import { TaskStatus, TaskPriority, RecurrenceRule } from "@/types/database";
 import type { KanbanTask } from "@/types/kanban";
 
 const GUEST_EXPIRY_DAYS = 30;
@@ -74,6 +74,9 @@ export const useGuestStore = create<GuestStore>()(
           dueDate: data.dueDate ?? null,
           completedAt: data.status === TaskStatus.DONE ? now : null,
           isArchived: false,
+          recurrence: data.recurrence ?? RecurrenceRule.NONE,
+          recurrenceDaysOfWeek: data.recurrenceDaysOfWeek ?? [],
+          recurrenceDayOfMonth: data.recurrenceDayOfMonth ?? null,
           userId: "guest",
           createdAt: now,
           updatedAt: now,

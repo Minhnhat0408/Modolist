@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { KanbanTask } from "@/types/kanban";
 import { api } from "@/lib/api-client";
 
@@ -64,7 +65,9 @@ interface FocusStore {
   restoreSession: () => Promise<void>;
 }
 
-export const useFocusStore = create<FocusStore>((set, get) => ({
+export const useFocusStore = create<FocusStore>()(
+  persist(
+    (set, get) => ({
   // Initial state
   activeTask: null,
   status: "idle",
@@ -220,15 +223,18 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   },
 
   pauseFocus: () => {
-    const { status, sessionId, timeLeft, mode } = get();
+    const { status, sessionId, timeLeft, mode, focusType, shortFocusDuration } = get();
     if (status === "focusing" || status === "break") {
       // Calculate how much time has been used
+      // SHORT sessions use shortFocusDuration (5 or 15 min), not FOCUS_DURATIONS.WORK (25 min)
       const maxDuration =
-        mode === "WORK"
-          ? FOCUS_DURATIONS.WORK
-          : mode === "SHORT_BREAK"
-            ? FOCUS_DURATIONS.SHORT_BREAK
-            : FOCUS_DURATIONS.LONG_BREAK;
+        focusType === "SHORT" && mode === "WORK"
+          ? shortFocusDuration
+          : mode === "WORK"
+            ? FOCUS_DURATIONS.WORK
+            : mode === "SHORT_BREAK"
+              ? FOCUS_DURATIONS.SHORT_BREAK
+              : FOCUS_DURATIONS.LONG_BREAK;
       const elapsedTime = maxDuration - timeLeft;
 
       set({ status: "paused", targetEndTime: null });
@@ -263,10 +269,11 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
   },
 
   stopFocus: () => {
-    const { sessionId, mode, activeTask, timeLeft } = get();
+    const { sessionId, mode, focusType, shortFocusDuration, activeTask, timeLeft } = get();
 
     if (sessionId && mode === "WORK") {
-      const elapsedTime = FOCUS_DURATIONS.WORK - timeLeft;
+      const maxDuration = focusType === "SHORT" ? shortFocusDuration : FOCUS_DURATIONS.WORK;
+      const elapsedTime = maxDuration - timeLeft;
       api
         .patch(`/focus-sessions/${sessionId}/pause`, { elapsedTime })
         .then(() => {
@@ -776,6 +783,47 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
   // Restore session from backend (e.g. on page reload)
   restoreSession: async () => {
+    const currentState = get();
+
+    // If localStorage already has an active session, always restore as PAUSED.
+    if (currentState.status !== "idle" && currentState.activeTask) {
+      const isRunningLocal =
+        currentState.status === "focusing" || currentState.status === "break";
+
+      const localTimeLeft =
+        isRunningLocal && currentState.targetEndTime
+          ? Math.max(
+              0,
+              Math.ceil((currentState.targetEndTime - Date.now()) / 1000),
+            )
+          : Math.max(0, currentState.timeLeft);
+
+      set({
+        status: "paused",
+        timeLeft: localTimeLeft,
+        targetEndTime: null,
+      });
+
+      // Keep backend in sync: if it was running, mark it PAUSED too.
+      if (isRunningLocal && currentState.sessionId && currentState.mode === "WORK") {
+        const localMaxDuration =
+          currentState.focusType === "SHORT"
+            ? currentState.shortFocusDuration
+            : FOCUS_DURATIONS.WORK;
+        const elapsedTime = Math.min(
+          localMaxDuration,
+          Math.max(0, localMaxDuration - localTimeLeft),
+        );
+
+        api
+          .patch(`/focus-sessions/${currentState.sessionId}/pause`, { elapsedTime })
+          .catch(() => {});
+      }
+
+      return;
+    }
+
+    // No active local session → fetch from backend
     try {
       const response = (await api.get("/focus-sessions/current")) as {
         session?: {
@@ -817,8 +865,7 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
 
       if (timeLeft <= 0) return;
 
-      const focusStatus: FocusStatus = isInProgress ? "focusing" : "paused";
-      const targetEndTime = isInProgress ? Date.now() + timeLeft * 1000 : null;
+      const isShort = session.plannedDuration < FOCUS_DURATIONS.WORK;
 
       set({
         activeTask: {
@@ -827,21 +874,49 @@ export const useFocusStore = create<FocusStore>((set, get) => ({
           status: task.status as "TODO" | "IN_PROGRESS" | "DONE",
           focusTotalSessions: task.focusTotalSessions ?? 1,
         } as unknown as KanbanTask,
-        status: focusStatus,
+        status: "paused",
         timeLeft,
         mode: "WORK",
         isMinimized: false,
         sessionId: session.id,
-        focusType:
-          session.plannedDuration < FOCUS_DURATIONS.WORK ? "SHORT" : "STANDARD",
-        targetEndTime,
+        focusType: isShort ? "SHORT" : "STANDARD",
+        shortFocusDuration: isShort ? session.plannedDuration : FOCUS_DURATIONS.WORK,
+        targetEndTime: null,
         totalSessions: task.focusTotalSessions ?? 1,
         currentSession: (task.completedPomodoros ?? 0) + 1,
         completedSessions: task.completedPomodoros ?? 0,
         showCompletionModal: false,
       });
+
+      // If DB reports IN_PROGRESS on reload, pause it immediately for consistency.
+      if (isInProgress) {
+        const elapsedTime = Math.min(
+          session.plannedDuration,
+          Math.max(0, session.plannedDuration - timeLeft),
+        );
+        api
+          .patch(`/focus-sessions/${session.id}/pause`, { elapsedTime })
+          .catch(() => {});
+      }
     } catch (error) {
       console.error("Failed to restore session:", error);
     }
   },
-}));
+}),
+    {
+      name: "focus-session-storage",
+      partialize: (state) => ({
+        activeTask: state.activeTask,
+        status: state.status,
+        timeLeft: state.timeLeft,
+        mode: state.mode,
+        sessionId: state.sessionId,
+        focusType: state.focusType,
+        shortFocusDuration: state.shortFocusDuration,
+        totalSessions: state.totalSessions,
+        currentSession: state.currentSession,
+        completedSessions: state.completedSessions,
+      }),
+    },
+  ),
+);

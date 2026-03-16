@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { KanbanTask } from "@/types/kanban";
 import { TaskPriority, TaskStatus } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Play, Clock, Zap, AlertTriangle } from "lucide-react";
+import { CalendarDays, Play, Clock, Zap, AlertTriangle, Copy } from "lucide-react";
 import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -67,6 +67,7 @@ interface TaskCardProps {
   task: KanbanTask;
   onEdit?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
+  onDuplicate?: (task: KanbanTask) => void;
   showCreatedDate?: boolean;
   /** Set to false to disable drag-and-drop (e.g. inside a modal/drawer) */
   draggable?: boolean;
@@ -76,6 +77,7 @@ export function TaskCard({
   task,
   onEdit,
   onStartFocus,
+  onDuplicate,
   showCreatedDate,
   draggable = true,
 }: TaskCardProps) {
@@ -219,6 +221,13 @@ export function TaskCard({
     }
   };
 
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDuplicate) {
+      onDuplicate(task);
+    }
+  };
+
   const handleClick = () => {
     if (onEdit && !isDragging) {
       play("task-click-drag");
@@ -287,6 +296,17 @@ export function TaskCard({
               {task.title}
             </h4>
             <div className="flex items-center gap-1 shrink-0">
+              {!isFocusing && onDuplicate && task.status !== TaskStatus.TODAY && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
+                  onClick={handleDuplicate}
+                  title="Tạo lại task này"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              )}
               {isToday && !isFocusing && (
                 <Button
                   variant="ghost"

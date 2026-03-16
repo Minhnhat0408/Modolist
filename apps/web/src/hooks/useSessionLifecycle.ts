@@ -21,24 +21,46 @@ export function useSessionLifecycle() {
   const sessionId = useFocusStore((s) => s.sessionId);
   const status = useFocusStore((s) => s.status);
   const mode = useFocusStore((s) => s.mode);
+  const focusType = useFocusStore((s) => s.focusType);
+  const shortFocusDuration = useFocusStore((s) => s.shortFocusDuration);
   const timeLeft = useFocusStore((s) => s.timeLeft);
   const pauseFocus = useFocusStore((s) => s.pauseFocus);
 
-  const stateRef = useRef({ sessionId, status, mode, timeLeft });
+  const stateRef = useRef({
+    sessionId,
+    status,
+    mode,
+    focusType,
+    shortFocusDuration,
+    timeLeft,
+  });
   useEffect(() => {
-    stateRef.current = { sessionId, status, mode, timeLeft };
+    stateRef.current = {
+      sessionId,
+      status,
+      mode,
+      focusType,
+      shortFocusDuration,
+      timeLeft,
+    };
   });
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const { sessionId, status, mode, timeLeft } = stateRef.current;
+      const { sessionId, status, mode, focusType, shortFocusDuration, timeLeft } =
+        stateRef.current;
       const token = getCachedToken();
 
       if (!sessionId || !token || status !== "focusing" || mode !== "WORK") {
         return;
       }
 
-      const elapsedTime = FOCUS_DURATIONS.WORK - timeLeft;
+      const maxDuration =
+        focusType === "SHORT" ? shortFocusDuration : FOCUS_DURATIONS.WORK;
+      const elapsedTime = Math.min(
+        maxDuration,
+        Math.max(0, maxDuration - timeLeft),
+      );
       void fetch(`${API_BASE_URL}/focus-sessions/${sessionId}/pause`, {
         method: "PATCH",
         keepalive: true,

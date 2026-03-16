@@ -21,6 +21,9 @@ export interface Task {
   dueDate: Date | null;
   completedAt: Date | null;
   isArchived: boolean;
+  recurrence: RecurrenceRule;
+  recurrenceDaysOfWeek: number[];
+  recurrenceDayOfMonth: number | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -39,4 +42,13 @@ export enum TaskPriority {
   MEDIUM = "MEDIUM",
   HIGH = "HIGH",
   URGENT = "URGENT",
+}
+
+// RecurrenceRule enum - MUST match database schema exactly
+export enum RecurrenceRule {
+  NONE = "NONE",
+  DAILY = "DAILY",
+  WEEKDAY = "WEEKDAY",
+  WEEKLY = "WEEKLY",
+  MONTHLY = "MONTHLY",
 }

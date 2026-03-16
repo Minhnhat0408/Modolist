@@ -144,6 +144,38 @@ export function useTaskManager() {
     [isGuest, guestStore, fetchTasks],
   );
 
+  const duplicateToToday = useCallback(
+    async (taskId: string): Promise<KanbanTask | null> => {
+      if (isGuest) {
+        const original = guestStore.tasks.find((t) => t.id === taskId);
+        if (!original) return null;
+        const dup = guestStore.addTask({
+          title: original.title,
+          description: original.description,
+          priority: original.priority,
+          tags: original.tags,
+          estimatedPomodoros: original.estimatedPomodoros,
+          recurrence: original.recurrence,
+          recurrenceDaysOfWeek: original.recurrenceDaysOfWeek,
+          recurrenceDayOfMonth: original.recurrenceDayOfMonth,
+          status: TaskStatus.TODAY,
+        });
+        return dup;
+      }
+      try {
+        const newTask = await api.post<KanbanTask>(`/tasks/${taskId}/duplicate`);
+        if (newTask) {
+          setTasks((prev) => [newTask, ...prev]);
+        }
+        return newTask ?? null;
+      } catch (error) {
+        console.error("Error duplicating task:", error);
+        return null;
+      }
+    },
+    [isGuest, guestStore, setTasks],
+  );
+
   return {
     tasks,
     setTasks,
@@ -154,5 +186,6 @@ export function useTaskManager() {
     deleteTask,
     moveTask,
     reorderTask,
+    duplicateToToday,
   };
 }

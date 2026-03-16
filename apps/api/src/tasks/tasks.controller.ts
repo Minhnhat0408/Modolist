@@ -61,6 +61,12 @@ export class TasksController {
         return this.tasksService.createBatch(user.id, dto.tasks);
     }
 
+    // POST /tasks/:id/duplicate - Nhân bản task vào TODAY
+    @Post(":id/duplicate")
+    duplicate(@Param("id") id: string, @CurrentUser() user: CurrentUserData) {
+        return this.tasksService.duplicate(id, user.id);
+    }
+
     // PATCH /tasks/:id - Cập nhật task
     @Patch(":id")
     update(

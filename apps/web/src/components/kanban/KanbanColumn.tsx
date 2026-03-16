@@ -29,6 +29,7 @@ interface KanbanColumnProps {
   onStartFocus?: (task: KanbanTask) => void;
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
+  onDuplicate?: (task: KanbanTask) => void;
   onTodayScrollRef?: (el: HTMLDivElement | null) => void;
 }
 
@@ -44,6 +45,7 @@ export function KanbanColumn({
   onStartFocus,
   onTaskMove,
   onTaskMoveToTop,
+  onDuplicate,
   onTodayScrollRef,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -170,6 +172,7 @@ export function KanbanColumn({
                 task={task}
                 onEdit={onEditTask}
                 onStartFocus={onStartFocus}
+                onDuplicate={onDuplicate}
                 showCreatedDate={status === TaskStatus.BACKLOG}
               />
             </motion.div>
@@ -228,6 +231,7 @@ export function KanbanColumn({
             onStartFocus={onStartFocus}
             onTaskMove={onTaskMove}
             onTaskMoveToTop={onTaskMoveToTop}
+            onDuplicate={onDuplicate}
           />
         )}
       </div>
