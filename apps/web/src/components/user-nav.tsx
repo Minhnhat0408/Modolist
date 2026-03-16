@@ -92,10 +92,10 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuItem className="cursor-pointer">
+        {/* <DropdownMenuItem className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />
           Cài đặt
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
         <DropdownMenuItem className="cursor-pointer" onClick={onStatsClick}>
           <BarChart3 className="mr-2 h-4 w-4" />
           Thống kê

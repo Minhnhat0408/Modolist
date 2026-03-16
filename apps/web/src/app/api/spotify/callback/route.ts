@@ -14,9 +14,14 @@ function verifyOAuthState(state: string, userId: string): boolean {
     const [payloadUserId, timestamp] = payload.split(":");
     if (payloadUserId !== userId || !timestamp) return false;
     // Reject states older than 10 minutes
-    if (Math.floor(Date.now() / 1000) - parseInt(timestamp, 10) > 600) return false;
-    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
-    const expectedSig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 32);
+    if (Math.floor(Date.now() / 1000) - parseInt(timestamp, 10) > 600)
+      return false;
+    const secret =
+      process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
+    const expectedSig = createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex")
+      .slice(0, 32);
     return sig === expectedSig;
   } catch {
     return false;
@@ -34,7 +39,11 @@ function getPublicOrigin(request: NextRequest): string {
     return new URL(process.env.AUTH_URL).origin;
   }
   const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host"))?.split(",")[0]?.trim();
+  const host = (
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  )
+    ?.split(",")[0]
+    ?.trim();
   if (proto && host) return `${proto}://${host}`;
   return new URL(request.url).origin;
 }
@@ -59,7 +68,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code || !state || !verifyOAuthState(state, session.user.id)) {
-    return NextResponse.redirect(`${origin}/dashboard?spotify_error=state_mismatch`);
+    return NextResponse.redirect(
+      `${origin}/dashboard?spotify_error=state_mismatch`,
+    );
   }
 
   // Must match exactly what was sent in /connect
@@ -81,7 +92,11 @@ export async function GET(request: NextRequest) {
 
   if (!tokenResponse.ok) {
     const errBody = await tokenResponse.text();
-    console.error("[spotify/callback] token exchange failed:", tokenResponse.status, errBody);
+    console.error(
+      "[spotify/callback] token exchange failed:",
+      tokenResponse.status,
+      errBody,
+    );
     return NextResponse.redirect(
       `${origin}/dashboard?spotify_error=token_exchange_failed`,
     );
@@ -103,10 +118,18 @@ export async function GET(request: NextRequest) {
   const profile = await profileResponse.json();
 
   // Verify the session user actually exists in our DB before upserting
-  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+  });
   if (!dbUser) {
-    console.error("[spotify/callback] session userId not found in DB:", session.user.id, "— session may be stale, user must re-login");
-    return NextResponse.redirect(`${origin}/dashboard?spotify_error=user_not_found`);
+    console.error(
+      "[spotify/callback] session userId not found in DB:",
+      session.user.id,
+      "— session may be stale, user must re-login",
+    );
+    return NextResponse.redirect(
+      `${origin}/dashboard?spotify_error=user_not_found`,
+    );
   }
 
   // Upsert Account row — store tokens in existing Account table

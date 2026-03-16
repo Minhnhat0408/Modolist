@@ -456,16 +456,19 @@ export function useSpotifyPlayer() {
 
   const syncTrackRef = useRef<string | null>(null);
   const syncPlayingRef = useRef<boolean | null>(null);
-  const prevDjStateRef = useRef<ReturnType<typeof useSpotifyStore.getState>["djState"]>(null);
+  const prevDjStateRef =
+    useRef<ReturnType<typeof useSpotifyStore.getState>["djState"]>(null);
   const prevIsListeningRef = useRef(false);
 
   useEffect(() => {
     const unsub = useSpotifyStore.subscribe((state) => {
-      const justStartedListening = state.isListening && !prevIsListeningRef.current;
+      const justStartedListening =
+        state.isListening && !prevIsListeningRef.current;
       prevIsListeningRef.current = state.isListening;
 
       // Skip if neither djState nor isListening changed
-      if (state.djState === prevDjStateRef.current && !justStartedListening) return;
+      if (state.djState === prevDjStateRef.current && !justStartedListening)
+        return;
       prevDjStateRef.current = state.djState;
 
       const { isListening, isDJ, isReady, djState } = state;
@@ -484,7 +487,9 @@ export function useSpotifyPlayer() {
           // Small delay for SDK to start the new track before seeking
           setTimeout(async () => {
             await spotifyActions.seek(startPos);
-            setTimeout(() => { isSyncingRef.current = false; }, 2000);
+            setTimeout(() => {
+              isSyncingRef.current = false;
+            }, 2000);
           }, 600);
         });
         return; // track change handled — skip drift & play/pause checks
@@ -497,7 +502,9 @@ export function useSpotifyPlayer() {
         if (djState.isPlaying !== state.isPlaying) {
           isSyncingRef.current = true;
           spotifyActions.togglePlay().then(() => {
-            setTimeout(() => { isSyncingRef.current = false; }, 1500);
+            setTimeout(() => {
+              isSyncingRef.current = false;
+            }, 1500);
           });
         }
         // When DJ pauses, no drift correction needed
@@ -513,7 +520,9 @@ export function useSpotifyPlayer() {
         if (drift > DESYNC_TOLERANCE_MS) {
           isSyncingRef.current = true;
           spotifyActions.seek(expectedPosition).then(() => {
-            setTimeout(() => { isSyncingRef.current = false; }, 1500);
+            setTimeout(() => {
+              isSyncingRef.current = false;
+            }, 1500);
           });
         }
         // drift ≤ 3s → do nothing, let SDK play smoothly

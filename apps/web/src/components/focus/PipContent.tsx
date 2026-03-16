@@ -15,7 +15,11 @@ import { useFocusStore, FOCUS_DURATIONS } from "@/stores/useFocusStore";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import { spotifyActions } from "@/hooks/useSpotifyPlayer";
-import { resizePIP, PIP_CONTENT_H, PIP_TAB_BAR_H } from "@/hooks/usePictureInPicture";
+import {
+  resizePIP,
+  PIP_CONTENT_H,
+  PIP_TAB_BAR_H,
+} from "@/hooks/usePictureInPicture";
 import {
   Play,
   Pause,
@@ -146,7 +150,9 @@ export function PipContent({ onClose }: PipContentProps) {
    */
   const resizeAfterRemove = useCallback(
     (remainTimer: boolean, remainWorld: boolean, remainSpotify: boolean) => {
-      const remaining = [remainTimer, remainWorld, remainSpotify].filter(Boolean);
+      const remaining = [remainTimer, remainWorld, remainSpotify].filter(
+        Boolean,
+      );
       if (remaining.length === 0) return; // PiP will close, no resize needed
       if (remaining.length === 1) {
         // Single tab left → no tab bar
@@ -155,7 +161,7 @@ export function PipContent({ onClose }: PipContentProps) {
           : remainWorld
             ? PIP_CONTENT_H.world
             : PIP_CONTENT_H.timer;
-        console.log(h)
+        console.log(h);
         resizePIP(h);
       } else {
         // Multiple tabs remain → keep tab bar, show tallest content
@@ -690,7 +696,7 @@ export function PipContent({ onClose }: PipContentProps) {
                         )}
                       </button>
 
-                       {/* Close spotify widget */}
+                      {/* Close spotify widget */}
                       <button
                         onClick={() => {
                           spotifyCloseWidget();
@@ -704,11 +710,9 @@ export function PipContent({ onClose }: PipContentProps) {
                   </div>
 
                   {/* Seek bar */}
-                  
 
                   {/* Volume bar (horizontal, always visible in PIP) */}
                   <div className="px-5 pb-2 flex items-center gap-2">
-                 
                     <button
                       onClick={toggleMute}
                       className="p-1 rounded-full border-0 cursor-pointer text-gray-700 dark:text-white shrink-0"
@@ -732,26 +736,24 @@ export function PipContent({ onClose }: PipContentProps) {
                       className="flex-1 h-1 accent-green-500 cursor-pointer"
                     />
                     <button
-                        onClick={() => {
-                          spotifyOpenSearch();
-                          onClose();
-                        }}
-                        disabled={!spotifyReady}
-                        className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
-                        title="Tìm kiếm"
-                      >
-                        <Search size={16} />
-                      </button>
+                      onClick={() => {
+                        spotifyOpenSearch();
+                        onClose();
+                      }}
+                      disabled={!spotifyReady}
+                      className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
+                      title="Tìm kiếm"
+                    >
+                      <Search size={16} />
+                    </button>
 
-                      <button
-                        onClick={() => spotifyDisconnect()}
-                        className="p-1.5 rounded-full border-0 cursor-pointer text-gray-500 hover:text-red-500"
-                        title="Ngắt kết nối"
-                      >
-                        <Unplug size={14} />
-                      </button>
-
-                     
+                    <button
+                      onClick={() => spotifyDisconnect()}
+                      className="p-1.5 rounded-full border-0 cursor-pointer text-gray-500 hover:text-red-500"
+                      title="Ngắt kết nối"
+                    >
+                      <Unplug size={14} />
+                    </button>
                   </div>
                   {currentTrack && (
                     <div className="px-2 pb-4 flex items-center gap-2">
@@ -789,7 +791,6 @@ export function PipContent({ onClose }: PipContentProps) {
                   )}
                 </>
               )}
-
           </>
         )}
     </div>

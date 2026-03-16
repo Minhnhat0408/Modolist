@@ -14,7 +14,11 @@ function getPublicOrigin(request: NextRequest): string {
     return new URL(process.env.AUTH_URL).origin;
   }
   const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host"))?.split(",")[0]?.trim();
+  const host = (
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  )
+    ?.split(",")[0]
+    ?.trim();
   if (proto && host) return `${proto}://${host}`;
   return new URL(request.url).origin;
 }
@@ -32,10 +36,14 @@ export async function GET(request: NextRequest) {
     const { clientId } = getSpotifyCredentials();
 
     // HMAC-signed state: avoids cookie/domain issues when localhost ↔ 127.0.0.1
-    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
+    const secret =
+      process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-fallback";
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const payload = `${session.user.id}:${timestamp}`;
-    const sig = createHmac("sha256", secret).update(payload).digest("hex").slice(0, 32);
+    const sig = createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex")
+      .slice(0, 32);
     const state = `${Buffer.from(payload).toString("base64url")}.${sig}`;
 
     const redirectUri =

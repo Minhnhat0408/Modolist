@@ -154,7 +154,7 @@ export function KanbanColumn({
           className={clsx(
             "px-4 mb-4 pt-0 space-y-3 min-h-50",
             isToday &&
-              "max-h-[58vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+              "max-h-[58vh] pt-2 pb-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
           )}
         >
           {(isToday ? tasks : visibleTasks).map((task, index) => (
