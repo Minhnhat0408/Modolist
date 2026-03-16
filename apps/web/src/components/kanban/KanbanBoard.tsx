@@ -74,6 +74,7 @@ interface KanbanBoardProps {
   ) => void;
   onAddTask?: (status: TaskStatus) => void;
   onEditTask?: (task: KanbanTask) => void;
+  onDuplicate?: (task: KanbanTask) => void;
   onTodayScrollRef?: (el: HTMLDivElement | null) => void;
 }
 
@@ -84,6 +85,7 @@ export function KanbanBoard({
   onTaskReorder,
   onAddTask,
   onEditTask,
+  onDuplicate,
   onTodayScrollRef,
 }: KanbanBoardProps) {
   // ✅ State nội bộ để render UI mượt mà (Optimistic UI)
@@ -393,6 +395,7 @@ export function KanbanBoard({
                   onStartFocus={handleStartFocus}
                   onTaskMove={handleMoveTask}
                   onTaskMoveToTop={handleMoveToTop}
+                  onDuplicate={onDuplicate}
                   onTodayScrollRef={
                     status === TaskStatus.TODAY ? onTodayScrollRef : undefined
                   }
@@ -470,6 +473,7 @@ export function KanbanBoard({
                     onStartFocus={handleStartFocus}
                     onTaskMove={handleMoveTask}
                     onTaskMoveToTop={handleMoveToTop}
+                    onDuplicate={onDuplicate}
                     onTodayScrollRef={
                       status === TaskStatus.TODAY ? onTodayScrollRef : undefined
                     }

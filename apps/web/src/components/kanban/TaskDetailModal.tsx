@@ -14,7 +14,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import type { Task } from "@/types/database";
-import { TaskStatus, TaskPriority } from "@/types/database";
+import { TaskStatus, TaskPriority, RecurrenceRule } from "@/types/database";
 import { api } from "@/lib/api-client";
 import {
   ResponsiveModal,
@@ -33,8 +33,10 @@ import {
   Check,
   ChevronDown,
   Clock,
+  Copy,
   Loader2,
   Pencil,
+  Repeat,
   RotateCcw,
   Sparkles,
   Tag,
@@ -86,6 +88,8 @@ export interface TaskDetailModalProps {
   onTaskUpdated: (taskId: string, data: Partial<Task>) => void;
   /** Called after successful delete — remove from parent list */
   onTaskDeleted: (taskId: string) => void;
+  /** Called to duplicate the current task to Today */
+  onDuplicate?: (task: Task) => void;
 }
 
 // ── Priority config ───────────────────────────────────────────────────
@@ -166,6 +170,26 @@ function SectionLabel({
     </p>
   );
 }
+
+// ── Recurrence labels ─────────────────────────────────────────────────
+
+const RECURRENCE_OPTIONS = [
+  { value: RecurrenceRule.NONE, label: "Không lặp" },
+  { value: RecurrenceRule.DAILY, label: "Hàng ngày" },
+  { value: RecurrenceRule.WEEKDAY, label: "Ngày trong tuần" },
+  { value: RecurrenceRule.WEEKLY, label: "Hàng tuần" },
+  { value: RecurrenceRule.MONTHLY, label: "Hàng tháng" },
+] as const;
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: "T2" },
+  { value: 2, label: "T3" },
+  { value: 3, label: "T4" },
+  { value: 4, label: "T5" },
+  { value: 5, label: "T6" },
+  { value: 6, label: "T7" },
+  { value: 0, label: "CN" },
+] as const;
 
 // ── Inline editable text (single-line or textarea) ────────────────────
 
@@ -275,6 +299,7 @@ export function TaskDetailModal({
   task,
   onTaskUpdated,
   onTaskDeleted,
+  onDuplicate,
 }: TaskDetailModalProps) {
   const [localTask, setLocalTask] = useState<Task | null>(null);
   const [editingPriority, setEditingPriority] = useState(false);
@@ -284,6 +309,7 @@ export function TaskDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [monthlyDayDraft, setMonthlyDayDraft] = useState("");
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>(
     [],
@@ -300,6 +326,7 @@ export function TaskDetailModal({
       setEditingPriority(false);
       setEditingDueDate(false);
       setEditingTags(false);
+      setMonthlyDayDraft(task.recurrenceDayOfMonth?.toString() ?? "");
       if (isNewTask) {
         setAiSuggestion(null);
         setSessionsOpen(false);
@@ -309,6 +336,7 @@ export function TaskDetailModal({
     if (!open) {
       prevTaskIdRef.current = null;
       setLocalTask(null);
+      setMonthlyDayDraft("");
     }
   }, [open, task]);
 
@@ -336,23 +364,77 @@ export function TaskDetailModal({
   }, [sessionsOpen, sessionHistory.length, loadSessionHistory]);
 
   // Optimistic patch + API call
-  const patchField = useCallback(
-    async (field: string, value: unknown) => {
+  const patchFields = useCallback(
+    async (update: Partial<Task>) => {
       if (!localTask) return;
-      const update = { [field]: value } as Partial<Task>;
       setLocalTask((p) => (p ? { ...p, ...update } : p));
       onTaskUpdated(localTask.id, update);
       try {
-        await api.patch(`/tasks/${localTask.id}`, { [field]: value });
+        await api.patch(`/tasks/${localTask.id}`, update);
       } catch (e) {
-        // Revert to original on error
-        const orig = (task as unknown as Record<string, unknown>)[field];
-        setLocalTask((p) => (p ? { ...p, [field]: orig } : p));
-        console.error("Failed to save:", field, e);
+        if (task) {
+          const reverted: Record<string, unknown> = {};
+          for (const key of Object.keys(update) as Array<keyof Task>) {
+            reverted[key] = task[key];
+          }
+          setLocalTask((p) => (p ? { ...p, ...(reverted as Partial<Task>) } : p));
+        }
+        console.error("Failed to save fields:", Object.keys(update), e);
       }
     },
     [localTask, task, onTaskUpdated],
   );
+
+  const patchField = useCallback(
+    async (field: keyof Task, value: unknown) => {
+      await patchFields({ [field]: value } as Partial<Task>);
+    },
+    [patchFields],
+  );
+
+  const handleRecurrenceChange = useCallback(
+    async (rule: RecurrenceRule) => {
+      const update: Partial<Task> = { recurrence: rule };
+      if (rule !== RecurrenceRule.WEEKLY) {
+        update.recurrenceDaysOfWeek = [];
+      }
+      if (rule !== RecurrenceRule.MONTHLY) {
+        update.recurrenceDayOfMonth = null;
+        setMonthlyDayDraft("");
+      }
+      await patchFields(update);
+    },
+    [patchFields],
+  );
+
+  const toggleWeeklyDay = useCallback(
+    async (day: number) => {
+      if (!localTask) return;
+      const current = localTask.recurrenceDaysOfWeek ?? [];
+      const next = current.includes(day)
+        ? current.filter((d) => d !== day)
+        : [...current, day];
+      await patchField(
+        "recurrenceDaysOfWeek",
+        [...next].sort((a, b) => a - b),
+      );
+    },
+    [localTask, patchField],
+  );
+
+  const commitMonthlyDay = useCallback(async () => {
+    const trimmed = monthlyDayDraft.trim();
+    if (trimmed === "") {
+      await patchField("recurrenceDayOfMonth", null);
+      return;
+    }
+    const num = Number(trimmed);
+    if (!Number.isInteger(num) || num < 1 || num > 31) {
+      setMonthlyDayDraft(localTask?.recurrenceDayOfMonth?.toString() ?? "");
+      return;
+    }
+    await patchField("recurrenceDayOfMonth", num);
+  }, [monthlyDayDraft, localTask, patchField]);
 
   const handleDelete = async () => {
     if (!localTask) return;
@@ -619,6 +701,20 @@ export function TaskDetailModal({
               <RotateCcw className="h-4 w-4" />
               Khôi phục về Hôm nay
             </Button>
+            {onDuplicate && localTask && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onDuplicate(localTask);
+                  onOpenChange(false);
+                }}
+                className="gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Tạo lại task này
+              </Button>
+            )}
           </div>
         </ResponsiveModalContent>
       </ResponsiveModal>
@@ -1030,6 +1126,78 @@ export function TaskDetailModal({
               </motion.div>
             )}
           </section>
+
+          {/* Recurrence */}
+          <section>
+            <SectionLabel icon={Repeat}>Lặp lại</SectionLabel>
+            <div className="flex gap-2 flex-wrap">
+              {RECURRENCE_OPTIONS.map((opt) => {
+                const isActive = (localTask.recurrence ?? RecurrenceRule.NONE) === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => handleRecurrenceChange(opt.value)}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                      isActive
+                        ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
+                        : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {localTask.recurrence === RecurrenceRule.WEEKLY && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Chọn 1 hoặc nhiều ngày trong tuần
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {WEEKDAY_OPTIONS.map((day) => {
+                    const active = (localTask.recurrenceDaysOfWeek ?? []).includes(
+                      day.value,
+                    );
+                    return (
+                      <Button
+                        key={day.value}
+                        type="button"
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        onClick={() => toggleWeeklyDay(day.value)}
+                        className="h-8 px-3"
+                      >
+                        {day.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {localTask.recurrence === RecurrenceRule.MONTHLY && (
+              <div className="mt-3 space-y-2">
+                <label
+                  htmlFor="recurrenceDayOfMonth"
+                  className="text-xs text-muted-foreground"
+                >
+                  Ngày lặp trong tháng (1-31)
+                </label>
+                <input
+                  id="recurrenceDayOfMonth"
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={monthlyDayDraft}
+                  onChange={(e) => setMonthlyDayDraft(e.target.value)}
+                  onBlur={commitMonthlyDay}
+                  className="w-28 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-primary/50"
+                />
+              </div>
+            )}
+          </section>
         </ResponsiveModalBody>
 
         {/* ── Footer ── */}
@@ -1048,6 +1216,20 @@ export function TaskDetailModal({
             )}
             Xóa nhiệm vụ
           </Button>
+          {onDuplicate && localTask && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onDuplicate(localTask);
+                onOpenChange(false);
+              }}
+              className="gap-2"
+            >
+              <Copy className="h-4 w-4" />
+              Tạo lại task này
+            </Button>
+          )}
         </div>
       </ResponsiveModalContent>
     </ResponsiveModal>

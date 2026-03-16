@@ -11,7 +11,7 @@
   "scripts": {
     "build": "prisma generate --schema=../../packages/database/prisma/schema.prisma && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "dev": "nest start --tsc --watch",
+    "dev": "prisma generate --schema=../../packages/database/prisma/schema.prisma && nest start --tsc --watch",
     "start:dev": "nest start --tsc --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",

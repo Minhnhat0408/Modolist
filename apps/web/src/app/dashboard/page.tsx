@@ -77,6 +77,7 @@ export default function DashboardPage() {
     deleteTask: tmDeleteTask,
     moveTask: tmMoveTask,
     reorderTask: tmReorderTask,
+    duplicateToToday: tmDuplicateToToday,
   } = useTaskManager();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
@@ -210,6 +211,19 @@ export default function DashboardPage() {
     await tmDeleteTask(taskId);
   };
 
+  const handleDuplicateTask = useCallback(
+    async (task: KanbanTask) => {
+      const newTask = await tmDuplicateToToday(task.id);
+      if (newTask) {
+        fetchTasks();
+        requestAnimationFrame(() => {
+          if (todayScrollRef.current) todayScrollRef.current.scrollTop = 0;
+        });
+      }
+    },
+    [tmDuplicateToToday, fetchTasks],
+  );
+
   if ((!isGuest && status === "loading") || loading) {
     return (
       <div className="flex items-center bg-background justify-center min-h-screen">
@@ -320,6 +334,7 @@ export default function DashboardPage() {
           onTaskReorder={handleTaskReorder}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
+          onDuplicate={handleDuplicateTask}
           onTodayScrollRef={(el) => {
             todayScrollRef.current = el;
           }}
@@ -331,6 +346,7 @@ export default function DashboardPage() {
           task={detailTask ?? null}
           onTaskUpdated={handleTaskFieldUpdate}
           onTaskDeleted={handleDetailTaskDelete}
+          onDuplicate={handleDuplicateTask}
         />
 
         <TaskFormDialog

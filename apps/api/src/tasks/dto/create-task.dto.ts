@@ -1,5 +1,14 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsArray, IsInt, Min } from "class-validator";
-import { TaskStatus, TaskPriority } from "@repo/database";
+import {
+    IsString,
+    IsOptional,
+    IsEnum,
+    IsDateString,
+    IsArray,
+    IsInt,
+    Min,
+    Max,
+} from "class-validator";
+import { TaskStatus, TaskPriority, RecurrenceRule } from "@repo/database";
 
 export class CreateTaskDto {
     @IsString()
@@ -44,4 +53,21 @@ export class CreateTaskDto {
     @IsOptional()
     @IsDateString()
     dueDate?: string;
+
+    @IsOptional()
+    @IsEnum(RecurrenceRule)
+    recurrence?: RecurrenceRule;
+
+    @IsOptional()
+    @IsArray()
+    @IsInt({ each: true })
+    @Min(0, { each: true })
+    @Max(6, { each: true })
+    recurrenceDaysOfWeek?: number[];
+
+    @IsOptional()
+    @IsInt()
+    @Min(1)
+    @Max(31)
+    recurrenceDayOfMonth?: number;
 }

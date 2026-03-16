@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Task } from "@/types/database";
-import { TaskStatus, TaskPriority } from "@/types/database";
+import { TaskStatus, TaskPriority, RecurrenceRule } from "@/types/database";
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api-client";
 import { useIsGuest } from "@/hooks/useIsGuest";
-import { Sparkles, Loader2, Clock, Zap, Brain, X } from "lucide-react";
+import { Sparkles, Loader2, Clock, Zap, Brain, X, Repeat } from "lucide-react";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống").max(200),
@@ -37,6 +37,9 @@ const taskFormSchema = z.object({
   priority: z.nativeEnum(TaskPriority).optional(),
   dueDate: z.string().optional(),
   tags: z.string().optional(),
+  recurrence: z.nativeEnum(RecurrenceRule).optional(),
+  recurrenceDaysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  recurrenceDayOfMonth: z.number().int().min(1).max(31).optional(),
   estimatedPomodoros: z.number().optional(),
   suggestedSessionType: z.string().optional(),
   suggestedSessions: z.number().optional(),
@@ -67,6 +70,15 @@ interface TaskFormDialogProps {
 }
 
 const DRAFT_KEY = "task-form-draft";
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: "T2" },
+  { value: 2, label: "T3" },
+  { value: 3, label: "T4" },
+  { value: 4, label: "T5" },
+  { value: 5, label: "T6" },
+  { value: 6, label: "T7" },
+  { value: 0, label: "CN" },
+] as const;
 
 export function TaskFormDialog({
   open,
@@ -103,11 +115,16 @@ export function TaskFormDialog({
         ? new Date(task.dueDate).toISOString().split("T")[0]
         : "",
       tags: task?.tags?.join(", ") || "",
+      recurrence: task?.recurrence || RecurrenceRule.NONE,
+      recurrenceDaysOfWeek: task?.recurrenceDaysOfWeek || [],
+      recurrenceDayOfMonth: task?.recurrenceDayOfMonth ?? undefined,
     },
   });
 
   const currentStatus = watch("status");
   const currentPriority = watch("priority");
+  const currentRecurrence = watch("recurrence");
+  const currentRecurrenceDays = watch("recurrenceDaysOfWeek") || [];
 
   useEffect(() => {
     if (open) {
@@ -120,6 +137,9 @@ export function TaskFormDialog({
           ? new Date(task.dueDate).toISOString().split("T")[0]
           : "",
         tags: task?.tags?.join(", ") || "",
+        recurrence: task?.recurrence || RecurrenceRule.NONE,
+        recurrenceDaysOfWeek: task?.recurrenceDaysOfWeek || [],
+        recurrenceDayOfMonth: task?.recurrenceDayOfMonth ?? undefined,
       });
       setAiSuggestion(null);
       setAiError(null);
@@ -138,6 +158,15 @@ export function TaskFormDialog({
       }
     }
   }, [open, task, defaultStatus, reset, isEditing]);
+
+  useEffect(() => {
+    if (currentRecurrence !== RecurrenceRule.WEEKLY) {
+      setValue("recurrenceDaysOfWeek", []);
+    }
+    if (currentRecurrence !== RecurrenceRule.MONTHLY) {
+      setValue("recurrenceDayOfMonth", undefined);
+    }
+  }, [currentRecurrence, setValue]);
 
   // Auto-save draft while typing (create only)
   useEffect(() => {
@@ -158,6 +187,9 @@ export function TaskFormDialog({
             priority: values.priority,
             dueDate: values.dueDate,
             tags: values.tags,
+              recurrence: values.recurrence,
+              recurrenceDaysOfWeek: values.recurrenceDaysOfWeek,
+              recurrenceDayOfMonth: values.recurrenceDayOfMonth,
           }),
         );
       }, 600);
@@ -200,6 +232,15 @@ export function TaskFormDialog({
             .filter(Boolean)
         : undefined,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      recurrence: data.recurrence,
+      recurrenceDaysOfWeek:
+        data.recurrence === RecurrenceRule.WEEKLY
+          ? (data.recurrenceDaysOfWeek ?? []).sort((a, b) => a - b)
+          : [],
+      recurrenceDayOfMonth:
+        data.recurrence === RecurrenceRule.MONTHLY
+          ? data.recurrenceDayOfMonth
+          : null,
       estimatedPomodoros: data.estimatedPomodoros,
       suggestedSessionType: data.suggestedSessionType,
       suggestedSessions: data.suggestedSessions,
@@ -619,6 +660,119 @@ export function TaskFormDialog({
                         transition-all duration-200
                       "
                     />
+                  </motion.div>
+
+                  {/* Recurrence */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.32 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Repeat className="h-3.5 w-3.5" />
+                      Lặp lại
+                    </Label>
+                    <Select
+                      value={currentRecurrence ?? RecurrenceRule.NONE}
+                      onValueChange={(value) =>
+                        setValue("recurrence", value as RecurrenceRule)
+                      }
+                    >
+                      <SelectTrigger
+                        className="
+                          bg-white/5 border-white/10
+                          focus:bg-white/10 focus:border-primary/50
+                          transition-all duration-200
+                        "
+                      >
+                        <SelectValue placeholder="Chọn tần suất lặp" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background/95 backdrop-blur-xl border-white/20">
+                        <SelectItem value={RecurrenceRule.NONE}>
+                          Không lặp
+                        </SelectItem>
+                        <SelectItem value={RecurrenceRule.DAILY}>
+                          Hàng ngày
+                        </SelectItem>
+                        <SelectItem value={RecurrenceRule.WEEKDAY}>
+                          Ngày trong tuần (T2-T6)
+                        </SelectItem>
+                        <SelectItem value={RecurrenceRule.WEEKLY}>
+                          Hàng tuần
+                        </SelectItem>
+                        <SelectItem value={RecurrenceRule.MONTHLY}>
+                          Hàng tháng
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {currentRecurrence === RecurrenceRule.WEEKLY && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Chọn 1 hoặc nhiều ngày trong tuần
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {WEEKDAY_OPTIONS.map((day) => {
+                            const active = currentRecurrenceDays.includes(
+                              day.value,
+                            );
+                            return (
+                              <Button
+                                key={day.value}
+                                type="button"
+                                variant={active ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => {
+                                  const next = active
+                                    ? currentRecurrenceDays.filter(
+                                        (d) => d !== day.value,
+                                      )
+                                    : [...currentRecurrenceDays, day.value];
+                                  setValue(
+                                    "recurrenceDaysOfWeek",
+                                    next.sort((a, b) => a - b),
+                                  );
+                                }}
+                                className="h-8 px-3"
+                              >
+                                {day.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {currentRecurrence === RecurrenceRule.MONTHLY && (
+                      <div className="mt-3 space-y-2">
+                        <Label
+                          htmlFor="recurrenceDayOfMonth"
+                          className="text-xs text-muted-foreground"
+                        >
+                          Ngày lặp trong tháng (1-31)
+                        </Label>
+                        <Input
+                          id="recurrenceDayOfMonth"
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={watch("recurrenceDayOfMonth") ?? ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              setValue("recurrenceDayOfMonth", undefined);
+                              return;
+                            }
+                            const num = Number(raw);
+                            if (!Number.isNaN(num)) {
+                              setValue("recurrenceDayOfMonth", num);
+                            }
+                          }}
+                          className="bg-white/5 border-white/10 focus:bg-white/10 focus:border-primary/50 transition-all duration-200"
+                        />
+                      </div>
+                    )}
                   </motion.div>
 
                   {/* Footer */}

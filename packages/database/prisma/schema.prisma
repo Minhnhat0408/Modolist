@@ -92,6 +92,9 @@ model Task {
     suggestedTotalMinutes Int? // Total estimated minutes from AI
     embedding             Unsupported("vector")?
     isArchived            Boolean                @default(false)
+    recurrence            RecurrenceRule         @default(NONE)
+    recurrenceDaysOfWeek  Int[]                  @default([])
+    recurrenceDayOfMonth  Int?
     userId                String
     createdAt             DateTime               @default(now())
     updatedAt             DateTime               @updatedAt
@@ -237,6 +240,14 @@ enum TaskPriority {
     MEDIUM
     HIGH
     URGENT
+}
+
+enum RecurrenceRule {
+    NONE
+    DAILY
+    WEEKDAY
+    WEEKLY
+    MONTHLY
 }
 
 enum FocusSessionStatus {
