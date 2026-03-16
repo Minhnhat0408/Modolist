@@ -8,6 +8,14 @@ import type { KanbanTask } from "@/types/kanban";
 import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
 
+type TaskPatchResponse = Task & { spawnedTask?: Task | null };
+
+function addSpawnedTask(prev: KanbanTask[], spawned: Task | null | undefined) {
+  if (!spawned) return prev;
+  if (prev.some((t) => t.id === spawned.id)) return prev;
+  return [spawned as KanbanTask, ...prev];
+}
+
 export function useTaskManager() {
   const isGuest = useIsGuest();
   const guestStore = useGuestStore();
@@ -79,7 +87,10 @@ export function useTaskManager() {
         ),
       );
       try {
-        await api.patch(`/tasks/${id}`, data);
+        const response = await api.patch<TaskPatchResponse>(`/tasks/${id}`, data);
+        if (response?.spawnedTask) {
+          setTasks((prev) => addSpawnedTask(prev, response.spawnedTask));
+        }
       } catch (error) {
         console.error("Error updating task:", error);
         setTasks(previousTasks);
@@ -119,7 +130,12 @@ export function useTaskManager() {
         ),
       );
       try {
-        await api.patch(`/tasks/${taskId}`, { status: newStatus });
+        const response = await api.patch<TaskPatchResponse>(`/tasks/${taskId}`, {
+          status: newStatus,
+        });
+        if (response?.spawnedTask) {
+          setTasks((prev) => addSpawnedTask(prev, response.spawnedTask));
+        }
       } catch (error) {
         console.error("Error updating task:", error);
         setTasks(previousTasks);

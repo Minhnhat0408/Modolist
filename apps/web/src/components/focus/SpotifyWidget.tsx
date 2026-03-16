@@ -71,7 +71,19 @@ export function SpotifyWidget() {
     cycleRepeat,
     addToQueue,
   } = spotifyActions;
-  const { isOpen: worldOpen } = useFocusWorldStore();
+  const { isOpen: worldOpen, focusUsers } = useFocusWorldStore();
+
+  const listeners = focusUsers.filter(
+    (u) => u.userId !== userId && u.isListeningToDj,
+  );
+
+  const initials = (name: string | null) =>
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
 
   const [showVolume, setShowVolume] = useState(false);
   const prevVolume = useRef(volume);
@@ -164,7 +176,12 @@ export function SpotifyWidget() {
   };
 
   const handleToggleListening = () => {
-    setListening(!isListening);
+    const next = !isListening;
+    const socket = focusWorldSocket.get();
+    if (socket) {
+      socket.emit("spotify:listening_toggle", { isListening: next });
+    }
+    setListening(next);
   };
 
   // Not connected → show connect button
@@ -504,17 +521,54 @@ export function SpotifyWidget() {
         <div className="px-4 pb-3 border-t border-white/5 pt-2">
           {isDJ ? (
             /* I am the DJ */
-            <div className="flex items-center gap-2">
-              <RadioTower className="w-3.5 h-3.5 text-green-400 animate-pulse" />
-              <span className="text-xs text-green-400 flex-1">
-                Đang là DJ — mọi người đang nghe theo bạn
-              </span>
-              <button
-                onClick={handleReleaseDJ}
-                className="text-xs px-2 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
-              >
-                Dừng DJ
-              </button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <RadioTower className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+                <span className="text-xs text-green-400 flex-1">
+                  Đang là DJ • {listeners.length} người đang nghe cùng bạn
+                </span>
+                <button
+                  onClick={handleReleaseDJ}
+                  className="text-xs px-2 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                >
+                  Dừng DJ
+                </button>
+              </div>
+
+              <div className="rounded-lg border border-white/10 bg-black/10 px-2 py-2">
+                {listeners.length > 0 ? (
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                    {listeners.map((u) => (
+                      <div
+                        key={u.userId}
+                        className="shrink-0 flex items-center gap-2 rounded-full bg-white/10 border border-white/10 pl-1 pr-2 py-1"
+                        title={u.name || "Anonymous"}
+                      >
+                        <div className="relative w-6 h-6 rounded-full overflow-hidden bg-white/15 flex items-center justify-center text-[10px] text-white font-semibold">
+                          {u.image ? (
+                            <Image
+                              src={u.image}
+                              alt={u.name || "listener"}
+                              fill
+                              className="object-cover"
+                              sizes="24px"
+                            />
+                          ) : (
+                            initials(u.name)
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-300 max-w-[110px] truncate">
+                          {u.name || "Anonymous"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500">
+                    Chưa có ai nghe cùng. Danh sách listener sẽ hiện tại đây theo thời gian thực.
+                  </p>
+                )}
+              </div>
             </div>
           ) : djState && djState.hostUserId !== userId ? (
             /* Someone else is DJ */

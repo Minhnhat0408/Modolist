@@ -22,6 +22,7 @@ import {
     SpotifyDjReleaseDto,
     SpotifySyncRequestDto,
     SpotifyPlaybackState,
+    SpotifyListeningToggleDto,
 } from "./dto/focus-world.dto";
 
 @WebSocketGateway({
@@ -143,6 +144,7 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
                 sessionId: data.sessionId,
                 socketId: client.id,
                 isPaused: false,
+                isListeningToDj: false,
                 elapsedTime,
             };
 
@@ -322,10 +324,34 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             if (!this.djPlayback || this.djPlayback.hostUserId !== activeUser.userId) return;
 
             this.djPlayback = null;
+            for (const u of this.activeUsers.values()) {
+                u.isListeningToDj = false;
+            }
             this.server.to("focus-world").emit("spotify:dj_changed", null);
+            this.server.to("focus-world").emit("spotify:listeners_reset");
             this.logger.log(`DJ released by ${activeUser.userId}`);
         } catch (error: unknown) {
             this.logger.error(`Error in spotify:dj_release: ${(error as Error).message}`);
+        }
+    }
+
+    @SubscribeMessage("spotify:listening_toggle")
+    handleListeningToggle(
+        @MessageBody() data: SpotifyListeningToggleDto,
+        @ConnectedSocket() client: Socket,
+    ) {
+        try {
+            const activeUser = this.activeUsers.get(client.id);
+            if (!activeUser) return;
+
+            activeUser.isListeningToDj = data.isListening;
+
+            this.server.to("focus-world").emit("spotify:listening_changed", {
+                userId: activeUser.userId,
+                isListening: data.isListening,
+            });
+        } catch (error: unknown) {
+            this.logger.error(`Error in spotify:listening_toggle: ${(error as Error).message}`);
         }
     }
 
@@ -360,6 +386,7 @@ export class FocusWorldGateway implements OnGatewayConnection, OnGatewayDisconne
             image: activeUser.userImage,
             currentTask: activeUser.taskTitle,
             isPaused: activeUser.isPaused,
+            isListeningToDj: activeUser.isListeningToDj,
             focusProps: {
                 startTime: activeUser.startTime.toISOString(),
                 duration: activeUser.duration,

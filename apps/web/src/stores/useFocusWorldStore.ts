@@ -8,11 +8,25 @@ interface FocusWorldStore {
   onlineCount: number;
   /** Whether the WebSocket to Focus World is connected */
   isWorldConnected: boolean;
+  /** Latest users in focus world (excluding or including self based on source hook) */
+  focusUsers: Array<{
+    userId: string;
+    name: string | null;
+    image: string | null;
+    currentTask: string;
+    isPaused: boolean;
+    isListeningToDj: boolean;
+    focusProps: {
+      startTime: string;
+      duration: number;
+    };
+  }>;
   openWorld: () => void;
   closeWorld: () => void;
   toggleMinimize: () => void;
   /** Called by FloatingWorldButton to sync live data into the store for PiP */
   setOnlineData: (count: number, connected: boolean) => void;
+  setFocusUsers: (users: FocusWorldStore["focusUsers"]) => void;
 }
 
 export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
@@ -20,6 +34,7 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
   isMinimized: false,
   onlineCount: 0,
   isWorldConnected: false,
+  focusUsers: [],
 
   openWorld: () => set({ isOpen: true, isMinimized: false }),
   closeWorld: () =>
@@ -30,6 +45,7 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
         isMinimized: false,
         onlineCount: 0,
         isWorldConnected: false,
+        focusUsers: [],
       };
     }),
   toggleMinimize: () =>
@@ -39,6 +55,7 @@ export const useFocusWorldStore = create<FocusWorldStore>((set) => ({
     }),
   setOnlineData: (count, connected) =>
     set({ onlineCount: count, isWorldConnected: connected }),
+  setFocusUsers: (users) => set({ focusUsers: users }),
 }));
 
 // ── Auto-close Focus World when the timer stops ─────────────────────────
