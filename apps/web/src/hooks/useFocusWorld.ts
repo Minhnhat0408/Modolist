@@ -5,6 +5,7 @@ import {
   type SpotifyHostState,
 } from "@/stores/useSpotifyStore";
 import { focusWorldSocket } from "@/lib/focusWorldSocket";
+import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 
 export interface FocusUser {
   userId: string;
@@ -12,6 +13,7 @@ export interface FocusUser {
   image: string | null;
   currentTask: string;
   isPaused: boolean;
+  isListeningToDj: boolean;
   focusProps: {
     startTime: string;
     duration: number;
@@ -55,6 +57,7 @@ export function useFocusWorld({
       focusWorldSocket.set(null);
       setIsConnected(false);
       setFocusUsers([]);
+      useFocusWorldStore.getState().setFocusUsers([]);
     }
   }, [userId]);
 
@@ -123,6 +126,7 @@ export function useFocusWorld({
     socket.on("world_state", (users: FocusUser[]) => {
       console.log("Received world state:", users);
       setFocusUsers(users);
+      useFocusWorldStore.getState().setFocusUsers(users);
     });
 
     socket.on("user_joined", (user: FocusUser) => {
@@ -135,26 +139,58 @@ export function useFocusWorld({
           // Update existing user (handles reconnection with new timeLeft)
           const updated = [...prev];
           updated[existingIndex] = user;
+          useFocusWorldStore.getState().setFocusUsers(updated);
           return updated;
         }
-        return [...prev, user];
+        const next = [...prev, user];
+        useFocusWorldStore.getState().setFocusUsers(next);
+        return next;
       });
     });
 
     socket.on("user_left", ({ userId }: { userId: string }) => {
       console.log("User left:", userId);
-      setFocusUsers((prev) => prev.filter((u) => u.userId !== userId));
+      setFocusUsers((prev) => {
+        const next = prev.filter((u) => u.userId !== userId);
+        useFocusWorldStore.getState().setFocusUsers(next);
+        return next;
+      });
     });
 
     socket.on(
       "user_paused",
       ({ userId, isPaused }: { userId: string; isPaused: boolean }) => {
         console.log("User paused:", userId, isPaused);
-        setFocusUsers((prev) =>
-          prev.map((u) => (u.userId === userId ? { ...u, isPaused } : u)),
-        );
+        setFocusUsers((prev) => {
+          const next = prev.map((u) =>
+            u.userId === userId ? { ...u, isPaused } : u,
+          );
+          useFocusWorldStore.getState().setFocusUsers(next);
+          return next;
+        });
       },
     );
+
+    socket.on(
+      "spotify:listening_changed",
+      ({ userId, isListening }: { userId: string; isListening: boolean }) => {
+        setFocusUsers((prev) => {
+          const next = prev.map((u) =>
+            u.userId === userId ? { ...u, isListeningToDj: isListening } : u,
+          );
+          useFocusWorldStore.getState().setFocusUsers(next);
+          return next;
+        });
+      },
+    );
+
+    socket.on("spotify:listeners_reset", () => {
+      setFocusUsers((prev) => {
+        const next = prev.map((u) => ({ ...u, isListeningToDj: false }));
+        useFocusWorldStore.getState().setFocusUsers(next);
+        return next;
+      });
+    });
 
     socket.on(
       "user_progress_updated",

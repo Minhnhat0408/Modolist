@@ -67,6 +67,8 @@ type SessionHistoryItem = {
   status: string;
 };
 
+type TaskPatchResponse = Task & { spawnedTask?: Task | null };
+
 // ── Session history helpers ─────────────────────────────────
 function sessionTypeInfo(plannedDuration: number) {
   if (plannedDuration <= 300) return { label: "Quick 5p", color: "#f59e0b" };
@@ -370,7 +372,18 @@ export function TaskDetailModal({
       setLocalTask((p) => (p ? { ...p, ...update } : p));
       onTaskUpdated(localTask.id, update);
       try {
-        await api.patch(`/tasks/${localTask.id}`, update);
+        const response = await api.patch<TaskPatchResponse>(
+          `/tasks/${localTask.id}`,
+          update,
+        );
+
+        if (response?.spawnedTask) {
+          window.dispatchEvent(
+            new CustomEvent("taskCompleted", {
+              detail: { taskId: localTask.id, spawnedTaskId: response.spawnedTask.id },
+            }),
+          );
+        }
       } catch (e) {
         if (task) {
           const reverted: Record<string, unknown> = {};

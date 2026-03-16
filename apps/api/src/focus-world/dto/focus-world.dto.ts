@@ -48,6 +48,7 @@ export interface FocusUser {
     image: string | null;
     currentTask: string;
     isPaused: boolean;
+    isListeningToDj: boolean;
     focusProps: {
         startTime: string;
         duration: number;
@@ -64,7 +65,13 @@ export interface ActiveUser {
     sessionId: string;
     socketId: string;
     isPaused: boolean;
+    isListeningToDj: boolean;
     elapsedTime: number; // Track elapsed time for disconnect handling
+}
+
+export class SpotifyListeningToggleDto {
+    @IsBoolean()
+    isListening: boolean;
 }
 
 // ── Spotify DJ (Co-listening) DTOs ─────────────────────────────────
