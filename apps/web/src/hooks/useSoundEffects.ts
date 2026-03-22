@@ -7,7 +7,9 @@ export type SoundName =
   | "session-end"
   | "session-complete"
   | "task-click-drag"
-  | "task-drop";
+  | "task-drop"
+  | "focus-world-update"
+  | "listen-along-update";
 
 // Singleton cache — one Audio instance per sfx, reused across renders
 const audioCache = new Map<SoundName, HTMLAudioElement>();
@@ -23,6 +25,35 @@ function getAudio(name: SoundName): HTMLAudioElement | null {
     audioCache.set(name, audio);
   }
   return audioCache.get(name)!;
+}
+
+/**
+ * Standalone play helper — safe to call outside React components (e.g. in
+ * socket event handlers). Uses the same singleton cache and stops any
+ * currently-playing audio before starting the new one.
+ */
+export function playSfx(name: SoundName, volume = 0.3) {
+  try {
+    const audio = getAudio(name);
+    if (!audio) return;
+    if (currentAudio && currentAudio !== audio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    currentAudio = audio;
+    audio.currentTime = 0;
+    audio.volume = Math.max(0, Math.min(1, volume));
+    audio.play().catch(() => {
+      currentAudio = null;
+    });
+    const onEnd = () => {
+      if (currentAudio === audio) currentAudio = null;
+      audio.removeEventListener("ended", onEnd);
+    };
+    audio.addEventListener("ended", onEnd);
+  } catch {
+    currentAudio = null;
+  }
 }
 
 export function useSoundEffects(volume = 0.5) {

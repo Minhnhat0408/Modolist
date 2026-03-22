@@ -2,7 +2,8 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRef, useState } from "react";
 import { KanbanTask } from "@/types/kanban";
 import { TaskPriority, TaskStatus } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,23 @@ interface TaskCardProps {
   draggable?: boolean;
 }
 
+/** Auto-clears after 1.5s */
+function useBlockedMsg(): [boolean, (v: boolean) => void] {
+  const [show, setShow] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trigger = (v: boolean) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShow(v);
+    if (v) {
+      timerRef.current = setTimeout(() => {
+        setShow(false);
+        timerRef.current = null;
+      }, 1500);
+    }
+  };
+  return [show, trigger];
+}
+
 export function TaskCard({
   task,
   onEdit,
@@ -93,6 +111,9 @@ export function TaskCard({
   });
 
   const { play } = useSoundEffects();
+
+  // ── Blocked-operation feedback ──────────────────────────────────────
+  const [showBlockedMsg, setShowBlockedMsg] = useBlockedMsg();
 
   const {
     activeTask,
@@ -223,12 +244,14 @@ export function TaskCard({
 
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isFocusing) { setShowBlockedMsg(true); return; }
     if (onDuplicate) {
       onDuplicate(task);
     }
   };
 
   const handleClick = () => {
+    if (isFocusing) { setShowBlockedMsg(true); return; }
     if (onEdit && !isDragging) {
       play("task-click-drag");
       onEdit(task);
@@ -245,8 +268,8 @@ export function TaskCard({
     <motion.div
       ref={draggable ? setNodeRef : undefined}
       style={draggable ? style : undefined}
-      {...(draggable ? attributes : {})}
-      {...(draggable ? listeners : {})}
+      {...(draggable && !isFocusing ? attributes : {})}
+      {...(draggable && !isFocusing ? listeners : {})}
       whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       className={`
@@ -283,13 +306,34 @@ export function TaskCard({
           }
           hover:bg-white/10 hover:border-white/20
           hover:shadow-lg hover:shadow-primary/5
-          ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
+          ${isFocusing ? "cursor-not-allowed" : draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
           transition-all duration-200
           group
-          relative
+          relative overflow-hidden
         `}
         onClick={handleClick}
       >
+        {/* ── Focus-locked overlay ── */}
+        <AnimatePresence>
+          {showBlockedMsg && (
+            <motion.div
+              key="blocked"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-black/70 backdrop-blur-sm z-20 gap-1 px-3 pointer-events-none"
+            >
+              <span className="text-base">🎯</span>
+              <span className="text-xs font-semibold text-white text-center leading-snug">
+                Đang trong phiên Focus
+              </span>
+              <span className="text-[10px] text-white/60 text-center">
+                Không thể thao tác với task này
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-sm font-bold line-clamp-2 flex-1 min-w-0">

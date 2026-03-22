@@ -71,7 +71,13 @@ export default function DashboardPage() {
     tasks,
     setTasks,
     loading,
+    doneHistoryCount,
+    backlogCount,
     fetchTasks,
+    fetchDoneHistory,
+    fetchDoneHistoryCount,
+    fetchBacklog,
+    fetchBacklogCount,
     addTask: tmAddTask,
     updateTask: tmUpdateTask,
     deleteTask: tmDeleteTask,
@@ -329,6 +335,12 @@ export default function DashboardPage() {
 
         <KanbanBoard
           tasks={tasks}
+          doneHistoryCount={doneHistoryCount}
+          loadDoneHistory={fetchDoneHistory}
+          refreshDoneHistoryCount={fetchDoneHistoryCount}
+          backlogCount={backlogCount}
+          loadBacklog={fetchBacklog}
+          refreshBacklogCount={fetchBacklogCount}
           onTaskMove={handleTaskMove}
           onTaskDelete={handleDeleteTaskById}
           onTaskReorder={handleTaskReorder}

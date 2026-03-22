@@ -6,6 +6,7 @@ import {
 } from "@/stores/useSpotifyStore";
 import { focusWorldSocket } from "@/lib/focusWorldSocket";
 import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
+import { playSfx } from "@/hooks/useSoundEffects";
 
 export interface FocusUser {
   userId: string;
@@ -131,6 +132,10 @@ export function useFocusWorld({
 
     socket.on("user_joined", (user: FocusUser) => {
       console.log("User joined:", user);
+      // Only play sound for OTHER users joining (server sends world_state to self)
+      if (user.userId !== userId) {
+        playSfx("focus-world-update");
+      }
       setFocusUsers((prev) => {
         // Check if user already exists
         const existingIndex = prev.findIndex((u) => u.userId === user.userId);
@@ -148,10 +153,11 @@ export function useFocusWorld({
       });
     });
 
-    socket.on("user_left", ({ userId }: { userId: string }) => {
-      console.log("User left:", userId);
+    socket.on("user_left", ({ userId: leftUserId }: { userId: string }) => {
+      console.log("User left:", leftUserId);
+      playSfx("focus-world-update");
       setFocusUsers((prev) => {
-        const next = prev.filter((u) => u.userId !== userId);
+        const next = prev.filter((u) => u.userId !== leftUserId);
         useFocusWorldStore.getState().setFocusUsers(next);
         return next;
       });
@@ -173,10 +179,11 @@ export function useFocusWorld({
 
     socket.on(
       "spotify:listening_changed",
-      ({ userId, isListening }: { userId: string; isListening: boolean }) => {
+      ({ userId: changedUserId, isListening }: { userId: string; isListening: boolean }) => {
+        playSfx("listen-along-update");
         setFocusUsers((prev) => {
           const next = prev.map((u) =>
-            u.userId === userId ? { ...u, isListeningToDj: isListening } : u,
+            u.userId === changedUserId ? { ...u, isListeningToDj: isListening } : u,
           );
           useFocusWorldStore.getState().setFocusUsers(next);
           return next;
@@ -185,6 +192,7 @@ export function useFocusWorld({
     );
 
     socket.on("spotify:listeners_reset", () => {
+      playSfx("listen-along-update");
       setFocusUsers((prev) => {
         const next = prev.map((u) => ({ ...u, isListeningToDj: false }));
         useFocusWorldStore.getState().setFocusUsers(next);
@@ -206,6 +214,7 @@ export function useFocusWorld({
 
     // ── Spotify DJ co-listening events ──
     socket.on("spotify:dj_changed", (state: SpotifyHostState | null) => {
+      playSfx("listen-along-update");
       const store = useSpotifyStore.getState();
       store.setDjState(state);
       // If I was the DJ but someone else claimed → auto-release

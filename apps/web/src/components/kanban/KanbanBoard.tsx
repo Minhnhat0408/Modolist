@@ -26,6 +26,7 @@ import { TaskStatus, TaskPriority } from "@/types/database";
 import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useFocusStore } from "@/stores/useFocusStore";
 
 /** Priority weight — higher = more important (sort DESC) */
 const PRIORITY_WEIGHT: Record<string, number> = {
@@ -65,6 +66,12 @@ function sortDone(a: KanbanTask, b: KanbanTask): number {
 
 interface KanbanBoardProps {
   tasks: KanbanTask[];
+  doneHistoryCount?: number;
+  loadDoneHistory?: () => Promise<KanbanTask[]>;
+  refreshDoneHistoryCount?: () => Promise<number>;
+  backlogCount?: number;
+  loadBacklog?: () => Promise<KanbanTask[]>;
+  refreshBacklogCount?: () => Promise<number>;
   onTaskMove: (taskId: string, newStatus: TaskStatus) => Promise<void>;
   onTaskDelete: (taskId: string) => Promise<void>;
   onTaskReorder?: (
@@ -80,6 +87,12 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({
   tasks: initialTasks,
+  doneHistoryCount,
+  loadDoneHistory,
+  refreshDoneHistoryCount,
+  backlogCount,
+  loadBacklog,
+  refreshBacklogCount,
   onTaskMove,
   onTaskDelete,
   onTaskReorder,
@@ -110,6 +123,14 @@ export function KanbanBoard({
   const [activeTab, setActiveTab] = useState<TaskStatus>(TaskStatus.TODAY);
 
   const { play } = useSoundEffects();
+
+  // ID of the task that is currently being focused (if any)
+  const focusingTaskId = useFocusStore((s) =>
+    s.activeTask !== null &&
+    (s.status === "focusing" || s.status === "break" || s.status === "paused")
+      ? s.activeTask.id
+      : null,
+  );
 
   // ✅ Cấu hình cảm biến (Sensor)
   const sensors = useSensors(
@@ -211,6 +232,25 @@ export function KanbanBoard({
     }
   };
 
+  /** Immediately update local KanbanBoard state for cross-column move (optimistic). */
+  const applyOptimisticMove = (taskId: string, newStatus: TaskStatus) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) return t;
+        return {
+          ...t,
+          status: newStatus,
+          completedAt:
+            newStatus === TaskStatus.DONE
+              ? (t.completedAt ?? new Date())
+              : t.status === TaskStatus.DONE
+                ? null
+                : t.completedAt,
+        };
+      }),
+    );
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -232,6 +272,12 @@ export function KanbanBoard({
       overId: over.id,
     });
 
+    // Guard: never move or delete the currently focused task
+    if (focusingTaskId && focusingTaskId === taskId) {
+      console.log("⛔ Cannot operate on focused task");
+      return;
+    }
+
     // 1. Handle delete
     if (over.id === "delete-zone") {
       console.log("🗑️ Deleting task:", taskId);
@@ -252,7 +298,8 @@ export function KanbanBoard({
 
       if (originalTask.status !== newStatus) {
         console.log("✅ Moving task to new column:", newStatus);
-        await onTaskMove(taskId, newStatus);
+        applyOptimisticMove(taskId, newStatus);
+        onTaskMove(taskId, newStatus);
       } else {
         console.log("⏭️ Same column, no move needed");
       }
@@ -277,7 +324,8 @@ export function KanbanBoard({
         "✅ Moving task to different column via task:",
         overTask.status,
       );
-      await onTaskMove(taskId, overTask.status);
+      applyOptimisticMove(taskId, overTask.status);
+      void onTaskMove(taskId, overTask.status);
       return;
     }
 
@@ -336,6 +384,7 @@ export function KanbanBoard({
   };
 
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
+    if (focusingTaskId && focusingTaskId === taskId) return;
     await onTaskMove(taskId, newStatus);
   };
 
@@ -389,6 +438,27 @@ export function KanbanBoard({
                   title={KANBAN_COLUMNS[status].title}
                   tasks={surfaceTasks}
                   allTasks={allColumnTasks}
+                  totalCountOverride={
+                    status === TaskStatus.DONE
+                      ? doneHistoryCount
+                      : status === TaskStatus.BACKLOG
+                        ? backlogCount
+                        : undefined
+                  }
+                  onLoadAllTasks={
+                    status === TaskStatus.DONE
+                      ? loadDoneHistory
+                      : status === TaskStatus.BACKLOG
+                        ? loadBacklog
+                        : undefined
+                  }
+                  onRefreshTotalCount={
+                    status === TaskStatus.DONE
+                      ? refreshDoneHistoryCount
+                      : status === TaskStatus.BACKLOG
+                        ? refreshBacklogCount
+                        : undefined
+                  }
                   color={KANBAN_COLUMNS[status].color}
                   onAddTask={onAddTask}
                   onEditTask={onEditTask}
@@ -466,6 +536,27 @@ export function KanbanBoard({
                     title={KANBAN_COLUMNS[status].title}
                     tasks={surfaceTasks}
                     allTasks={allColumnTasks}
+                    totalCountOverride={
+                      status === TaskStatus.DONE
+                        ? doneHistoryCount
+                        : status === TaskStatus.BACKLOG
+                          ? backlogCount
+                          : undefined
+                    }
+                    onLoadAllTasks={
+                      status === TaskStatus.DONE
+                        ? loadDoneHistory
+                        : status === TaskStatus.BACKLOG
+                          ? loadBacklog
+                          : undefined
+                    }
+                    onRefreshTotalCount={
+                      status === TaskStatus.DONE
+                        ? refreshDoneHistoryCount
+                        : status === TaskStatus.BACKLOG
+                          ? refreshBacklogCount
+                          : undefined
+                    }
                     color={KANBAN_COLUMNS[status].color}
                     className="w-full max-w-none min-w-0"
                     onAddTask={onAddTask}
