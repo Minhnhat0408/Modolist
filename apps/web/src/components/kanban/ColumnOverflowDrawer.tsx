@@ -65,6 +65,7 @@ interface ColumnOverflowDrawerProps {
   title: string;
   status: TaskStatus;
   tasks: KanbanTask[];
+  loading?: boolean;
   onEditTask?: (task: KanbanTask) => void;
   onStartFocus?: (task: KanbanTask) => void;
   onDuplicate?: (task: KanbanTask) => void;
@@ -358,6 +359,7 @@ export function ColumnOverflowDrawer({
   title,
   status,
   tasks,
+  loading = false,
   onEditTask,
   onStartFocus,
   onDuplicate,
@@ -519,32 +521,35 @@ export function ColumnOverflowDrawer({
     />
   );
 
-  const taskContent =
-    filteredTasks.length === 0 ? (
-      <div className="text-center py-8 text-sm text-muted-foreground">
-        {searchQuery || dateFilter
-          ? "Không tìm thấy nhiệm vụ phù hợp"
-          : "Chưa có nhiệm vụ"}
-      </div>
-    ) : (
-      <TaskGroupedList
-        tasks={filteredTasks}
-        status={status}
-        accent={accent}
-        onEditTask={handleEditTask}
-        onStartFocus={onStartFocus}
-        onTaskMove={onTaskMove}
-        onDuplicate={onDuplicate}
-        onTaskMoveToTop={onTaskMoveToTop}
-        groupBy={
-          isBacklog
-            ? backlogSort === "priority"
-              ? "priority"
-              : "date"
+  const taskContent = loading ? (
+    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+      Đang tải lịch sử hoàn thành...
+    </div>
+  ) : filteredTasks.length === 0 ? (
+    <div className="text-center py-8 text-sm text-muted-foreground">
+      {searchQuery || dateFilter
+        ? "Không tìm thấy nhiệm vụ phù hợp"
+        : "Chưa có nhiệm vụ"}
+    </div>
+  ) : (
+    <TaskGroupedList
+      tasks={filteredTasks}
+      status={status}
+      accent={accent}
+      onEditTask={handleEditTask}
+      onStartFocus={onStartFocus}
+      onTaskMove={onTaskMove}
+      onDuplicate={onDuplicate}
+      onTaskMoveToTop={onTaskMoveToTop}
+      groupBy={
+        isBacklog
+          ? backlogSort === "priority"
+            ? "priority"
             : "date"
-        }
-      />
-    );
+          : "date"
+      }
+    />
+  );
 
   // ── Desktop: Dialog ──────────────────────────────────────────────────
   if (isDesktop) {

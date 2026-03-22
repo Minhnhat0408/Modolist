@@ -22,6 +22,9 @@ interface KanbanColumnProps {
   tasks: KanbanTask[];
   /** All tasks in the column (for drawer). Falls back to tasks if omitted. */
   allTasks?: KanbanTask[];
+  totalCountOverride?: number;
+  onLoadAllTasks?: () => Promise<KanbanTask[]>;
+  onRefreshTotalCount?: () => Promise<number>;
   color: string;
   className?: string;
   onAddTask?: (status: TaskStatus) => void;
@@ -38,6 +41,9 @@ export function KanbanColumn({
   title,
   tasks,
   allTasks,
+  totalCountOverride,
+  onLoadAllTasks,
+  onRefreshTotalCount,
   color,
   className,
   onAddTask,
@@ -56,13 +62,63 @@ export function KanbanColumn({
 
   const isDone = status === TaskStatus.DONE;
   const drawerTasks = allTasks ?? tasks;
-  const totalCount = drawerTasks.length;
+  const totalCount = totalCountOverride ?? drawerTasks.length;
 
   // ── Truncation logic (not used for TODAY — it scrolls inline) ────────
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTitle, setDrawerTitle] = useState(title);
+  const [drawerTaskSet, setDrawerTaskSet] = useState<KanbanTask[]>(drawerTasks);
+  const [drawerLoading, setDrawerLoading] = useState(false);
   const hasOverflow = !isToday && tasks.length > VISIBLE_LIMIT;
   const visibleTasks = hasOverflow ? tasks.slice(0, VISIBLE_LIMIT) : tasks;
   const overflowCount = tasks.length - VISIBLE_LIMIT;
+  const doneHasHistory = isDone && totalCount > 0;
+
+  const openSurfaceDrawer = () => {
+    setDrawerTitle(title);
+    setDrawerTaskSet(drawerTasks);
+    setDrawerLoading(false);
+    setDrawerOpen(true);
+  };
+
+  const openLazyDrawer = async (customTitle?: string) => {
+    const label = customTitle ?? title;
+    setDrawerTitle(label);
+    setDrawerTaskSet([]);
+    setDrawerLoading(true);
+    setDrawerOpen(true);
+
+    if (!onLoadAllTasks) {
+      setDrawerTaskSet(drawerTasks);
+      setDrawerLoading(false);
+      return;
+    }
+
+    try {
+      const loadedTasks = await onLoadAllTasks();
+      setDrawerTaskSet(loadedTasks);
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const handleOverflowClick = () => {
+    if (onLoadAllTasks) {
+      void openLazyDrawer(isDone ? "Nhiệm vụ đã hoàn thành hôm nay" : title);
+    } else {
+      openSurfaceDrawer();
+    }
+  };
+
+  const handleDoneHistoryClick = () => {
+    void openLazyDrawer("Tất cả nhiệm vụ đã hoàn thành");
+  };
+
+  const handleDrawerTaskMove = async (taskId: string, newStatus: TaskStatus) => {
+    await onTaskMove?.(taskId, newStatus);
+    setDrawerTaskSet((prev) => prev.filter((task) => task.id !== taskId));
+    await onRefreshTotalCount?.();
+  };
 
   return (
     <motion.div
@@ -98,7 +154,7 @@ export function KanbanColumn({
               >
                 {isDone ? tasks.length : totalCount}
               </Badge>
-              {isDone && totalCount > tasks.length && (
+              {isDone && doneHasHistory && (
                 <span className="text-xs text-muted-foreground/60">
                   /{totalCount} tổng
                 </span>
@@ -186,24 +242,25 @@ export function KanbanColumn({
               transition={{ delay: VISIBLE_LIMIT * 0.05 }}
             >
               <button
-                onClick={() => setDrawerOpen(true)}
+                onClick={handleOverflowClick}
                 className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
               >
                 <ChevronDown className="h-3.5 w-3.5" />
-                Xem thêm {overflowCount} nhiệm vụ...
+                {isDone
+                  ? `Xem thêm ${overflowCount} nhiệm vụ hôm nay`
+                  : `Xem thêm ${overflowCount} nhiệm vụ...`}
               </button>
             </motion.div>
           )}
 
-          {/* ── DONE: always show history button when there are older tasks ── */}
-          {isDone && !hasOverflow && totalCount > tasks.length && (
+          {isDone && doneHasHistory && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <button
-                onClick={() => setDrawerOpen(true)}
+                onClick={handleDoneHistoryClick}
                 className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
               >
                 <CalendarDays className="h-3.5 w-3.5" />
-                Xem tất cả {totalCount} nhiệm vụ đã hoàn thành
+                Xem tất cả nhiệm vụ đã hoàn thành
               </button>
             </motion.div>
           )}
@@ -224,12 +281,13 @@ export function KanbanColumn({
           <ColumnOverflowDrawer
             open={drawerOpen}
             onOpenChange={setDrawerOpen}
-            title={title}
+            title={drawerTitle}
             status={status}
-            tasks={drawerTasks}
+            tasks={drawerTaskSet}
+            loading={drawerLoading}
             onEditTask={onEditTask}
             onStartFocus={onStartFocus}
-            onTaskMove={onTaskMove}
+            onTaskMove={handleDrawerTaskMove}
             onTaskMoveToTop={onTaskMoveToTop}
             onDuplicate={onDuplicate}
           />

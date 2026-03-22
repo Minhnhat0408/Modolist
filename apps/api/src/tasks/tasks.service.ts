@@ -117,7 +117,6 @@ export class TasksService {
                 },
             },
         });
-
         await this.cacheManager.set(cacheKey, tasks, 30000); // Cache 30s
         return tasks;
     }
@@ -132,6 +131,66 @@ export class TasksService {
             },
             orderBy: {
                 createdAt: "desc",
+            },
+        });
+    }
+
+    async findBacklog(userId: string) {
+        return await this.prisma.task.findMany({
+            where: { userId, status: TaskStatus.BACKLOG, isArchived: false },
+            orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+            include: {
+                focusSessions: {
+                    where: { status: "COMPLETED" },
+                    select: {
+                        id: true,
+                        duration: true,
+                        endedAt: true,
+                        plannedDuration: true,
+                        startedAt: true,
+                        status: true,
+                    },
+                    orderBy: { startedAt: "asc" },
+                },
+            },
+        });
+    }
+
+    async getBacklogCount(userId: string) {
+        return this.prisma.task.count({
+            where: { userId, status: TaskStatus.BACKLOG, isArchived: false },
+        });
+    }
+
+    async findDoneHistory(userId: string) {
+        return await this.prisma.task.findMany({
+            where: {
+                userId,
+                status: TaskStatus.DONE,
+            },
+            orderBy: [{ completedAt: "desc" }, { updatedAt: "desc" }],
+            include: {
+                focusSessions: {
+                    where: { status: "COMPLETED" },
+                    select: {
+                        id: true,
+                        duration: true,
+                        endedAt: true,
+                        plannedDuration: true,
+                        startedAt: true,
+                        status: true,
+                    },
+                    orderBy: { startedAt: "asc" },
+                },
+            },
+        });
+    }
+
+    async getDoneHistoryCount(userId: string) {
+        return this.prisma.task.count({
+            where: {
+                userId,
+                status: TaskStatus.DONE,
             },
         });
     }
@@ -266,11 +325,26 @@ export class TasksService {
             updateData.completedAt = new Date();
         } else if (updateTaskDto.status) {
             updateData.completedAt = null;
+            updateData.isArchived = false;
         }
 
         const task = await this.prisma.task.update({
             where: { id },
             data: updateData,
+            include: {
+                focusSessions: {
+                    where: { status: "COMPLETED" },
+                    select: {
+                        id: true,
+                        duration: true,
+                        endedAt: true,
+                        plannedDuration: true,
+                        startedAt: true,
+                        status: true,
+                    },
+                    orderBy: { startedAt: "asc" },
+                },
+            },
         });
 
         await this.invalidateUserCache(userId);

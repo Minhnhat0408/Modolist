@@ -43,6 +43,26 @@ export class TasksController {
         return this.tasksService.findByStatus(user.id, status);
     }
 
+    @Get("done-history/count")
+    getDoneHistoryCount(@CurrentUser() user: CurrentUserData) {
+        return this.tasksService.getDoneHistoryCount(user.id);
+    }
+
+    @Get("done-history")
+    findDoneHistory(@CurrentUser() user: CurrentUserData) {
+        return this.tasksService.findDoneHistory(user.id);
+    }
+
+    @Get("backlog/count")
+    getBacklogCount(@CurrentUser() user: CurrentUserData) {
+        return this.tasksService.getBacklogCount(user.id);
+    }
+
+    @Get("backlog")
+    findBacklog(@CurrentUser() user: CurrentUserData) {
+        return this.tasksService.findBacklog(user.id);
+    }
+
     // GET /tasks/:id - Lấy 1 task
     @Get(":id")
     findOne(@Param("id") id: string, @CurrentUser() user: CurrentUserData) {
