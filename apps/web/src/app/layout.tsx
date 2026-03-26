@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
+import Script from "next/script";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,6 +33,7 @@ export default function RootLayout({
         >
           {children}
         </ThemeProvider>
+        <Script id="sw-register" src="/sw-register.js" strategy="afterInteractive" />
       </body>
     </html>
   );
