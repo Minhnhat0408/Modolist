@@ -527,6 +527,7 @@ export function FloatingWidget() {
                     </span>
                     <a
                       href="/api/spotify/connect"
+                      target="_top"
                       className="px-3 py-1.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white text-xs font-medium transition-colors flex items-center gap-1.5"
                     >
                       <ExternalLink className="w-3 h-3" />

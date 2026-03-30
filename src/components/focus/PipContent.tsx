@@ -532,6 +532,7 @@ export function PipContent({ onClose }: PipContentProps) {
                 </span>
                 <a
                   href="/api/spotify/connect"
+                  target="_top"
                   className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-[11px] font-medium transition-colors flex items-center gap-1.5"
                 >
                   <ExternalLink size={12} />

@@ -298,6 +298,7 @@ export default function DashboardPage() {
               {spotifyErrorCode !== "user_not_found" && (
                 <a
                   href="/api/spotify/connect"
+                  target="_top"
                   className="mt-2 inline-block rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300 hover:bg-green-500/30 transition-colors"
                 >
                   Thử kết nối lại
