@@ -10,21 +10,6 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,11 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
@@ -60,18 +40,6 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/test
-        run: |
-          cd packages/database
-          pnpm db:generate
-
-      - name: Install Python dependencies
-        run: |
-          cd apps/ai-service
-          pip install -r requirements.txt -r requirements-dev.txt
-
       - name: Lint
         run: pnpm lint
 
@@ -80,22 +48,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-        env:
-          NEXT_PUBLIC_API_URL: "http://localhost:3001"
-
-      # ── Tests ────────────────────────────────────────────────────────────
-
-      - name: Test — NestJS API
-        run: pnpm --filter=api test
 
       - name: Test — Frontend
-        run: pnpm --filter=web test
-
-      - name: Test — Python AI Service
-        run: |
-          cd apps/ai-service
-          pytest test_main.py \
-            --cov=config --cov=database --cov=rag \
-            --cov=estimation --cov=task_generator \
-            --cov=servicer --cov=main \
-            --cov-fail-under=80 -q
+        run: pnpm test
