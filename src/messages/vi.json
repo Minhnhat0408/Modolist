@@ -380,7 +380,9 @@
     "longestStreak": "Kỷ lục streak",
     "todayLabel": "Nay",
     "previousPeriod": "Tuần trước",
-    "nextPeriod": "Tuần sau"
+    "nextPeriod": "Tuần sau",
+    "heatmapPomodoros": "pomodoro",
+    "heatmapTasks": "task hoàn thành"
   },
 
   "ai": {

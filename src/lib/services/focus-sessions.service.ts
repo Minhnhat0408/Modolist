@@ -447,24 +447,25 @@ export async function getDashboardStats(supabase: SupabaseClient, userId: string
 
   const { data: heatmapRaw } = await supabase
     .from("daily_stats")
-    .select("date, completedPomodoros")
+    .select("date, completedPomodoros, totalFocusTime, completedTasks")
     .eq("userId", userId)
     .gte("date", heatmapStart.toISOString())
     .order("date", { ascending: true });
 
   const heatmapMap = new Map(
-    (heatmapRaw ?? []).map((s: { date: string; completedPomodoros: number }) => [
+    (heatmapRaw ?? []).map((s: { date: string; completedPomodoros: number; totalFocusTime: number; completedTasks: number }) => [
       s.date.split("T")[0],
-      s.completedPomodoros,
+      { count: s.completedPomodoros, focusTime: s.totalFocusTime ?? 0, tasks: s.completedTasks ?? 0 },
     ]),
   );
 
-  const heatmap: { date: string; count: number }[] = [];
+  const heatmap: { date: string; count: number; focusTime: number; tasks: number }[] = [];
   for (let i = heatmapDays - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = d.toISOString().split("T")[0]!;
-    heatmap.push({ date: key, count: heatmapMap.get(key) ?? 0 });
+    const entry = heatmapMap.get(key);
+    heatmap.push({ date: key, count: entry?.count ?? 0, focusTime: entry?.focusTime ?? 0, tasks: entry?.tasks ?? 0 });
   }
 
   return {

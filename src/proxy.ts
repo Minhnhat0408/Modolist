@@ -14,5 +14,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|auth/callback|trpc|_next|_vercel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|js|css)$).*)"],
+  matcher: ["/((?!api|auth/callback|trpc|_next|_vercel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|js|css|mp3|mp4|ogg|wav|woff2?|ttf|eot)$).*)"],
 };

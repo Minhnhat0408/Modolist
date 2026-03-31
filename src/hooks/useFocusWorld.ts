@@ -182,6 +182,10 @@ export function useFocusWorld({
           },
         });
       }
+
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        setIsConnected(false);
+      }
     });
   }, [enabled, userId, sessionId, taskId, userName, userImage]);
 

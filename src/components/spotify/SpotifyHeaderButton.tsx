@@ -23,7 +23,7 @@ function EqualizerBars() {
       {[0, 1, 2, 3, 4].map((i) => (
         <motion.div
           key={i}
-          className="w-[3px] bg-current rounded-sm"
+          className="w-0.75 bg-current rounded-sm"
           style={{ originY: 1, height: 14 }}
           animate={{ scaleY: [0.2, 1, 0.2] }}
           transition={{
@@ -75,7 +75,7 @@ export function SpotifyHeaderButton() {
       )}
 
       {/* Spotify logo */}
-      <SpotifyLogo className="h-[18px] w-[18px] relative z-10 shrink-0" />
+      <SpotifyLogo className="h-4.5 w-4.5 relative z-10 shrink-0" />
 
       {/* Dynamic right side */}
       <AnimatePresence mode="wait">
@@ -88,7 +88,7 @@ export function SpotifyHeaderButton() {
             className="flex items-center gap-2 relative z-10 overflow-hidden"
           >
             <EqualizerBars />
-            <span className="hidden sm:block max-w-[90px] truncate text-xs leading-none">
+            <span className="hidden sm:block max-w-22.5 truncate text-xs leading-none">
               {currentTrack?.name ?? t("playing")}
             </span>
           </motion.div>

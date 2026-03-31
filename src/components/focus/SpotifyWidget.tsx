@@ -562,7 +562,7 @@ export function SpotifyWidget() {
                             initials(u.name)
                           )}
                         </div>
-                        <span className="text-[11px] text-gray-300 max-w-[110px] truncate">
+                        <span className="text-[11px] text-gray-300 max-w-27.5 truncate">
                           {u.name || "Anonymous"}
                         </span>
                       </div>

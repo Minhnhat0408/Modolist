@@ -155,13 +155,13 @@ export default function SignInPage() {
 
           <div className="text-center text-sm text-muted-foreground">
             {t("termsAgreement")}{" "}
-            <a href="/terms" className="underline hover:text-primary">
+            <Link href="/terms" className="underline hover:text-primary">
               {t("termsOfService")}
-            </a>{" "}
+            </Link>{" "}
             {t("and")}{" "}
-            <a href="/privacy" className="underline hover:text-primary">
+            <Link href="/privacy" className="underline hover:text-primary">
               {t("privacyPolicy")}
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

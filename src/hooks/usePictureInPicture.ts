@@ -124,8 +124,22 @@ export async function openPip(height: number, width: number): Promise<boolean> {
 
     // Lazy-import to avoid circular deps
     const { PipContent } = await import("../components/focus/PipContent");
+    const { NextIntlClientProvider } = await import("next-intl");
+
+    // Read locale from localStorage preference or NEXT_LOCALE cookie, fallback to "vi"
+    const cookieLocale = document.cookie.match(/NEXT_LOCALE=([^;]+)/)?.[1];
+    const locale = (localStorage.getItem("modolist-locale") ?? cookieLocale ?? "vi") as "vi" | "en" | "ja";
+    const validLocales = ["vi", "en", "ja"];
+    const safeLocale = validLocales.includes(locale) ? locale : "vi";
+    const messages = (await import(`../messages/${safeLocale}.json`)).default as Record<string, unknown>;
+
     pipRoot = createRoot(container);
-    pipRoot.render(createElement(PipContent, { onClose: closePip }));
+    pipRoot.render(
+      createElement(
+        NextIntlClientProvider,
+        { locale: safeLocale, messages, children: createElement(PipContent, { onClose: closePip }) },
+      ),
+    );
 
     // When user closes the PiP window manually → clean up
     win.addEventListener("pagehide", () => {

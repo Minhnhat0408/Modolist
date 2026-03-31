@@ -34,7 +34,7 @@ interface DashboardStats {
     sessions: number;
     tasks: number;
   };
-  heatmap?: { date: string; count: number }[];
+  heatmap?: { date: string; count: number; focusTime: number; tasks: number }[];
 }
 
 function toYMD(d: Date): string {
@@ -120,7 +120,7 @@ function buildGuestStats(
   }
 
   // Heatmap — all log entries
-  const heatmap = focusLog.map((l) => ({ date: l.date, count: l.pomodoros }));
+  const heatmap = focusLog.map((l) => ({ date: l.date, count: l.pomodoros, focusTime: l.focusTime, tasks: 0 }));
 
   return {
     user: { totalFocusTime, currentStreak, longestStreak },

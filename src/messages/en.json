@@ -380,7 +380,9 @@
     "longestStreak": "Longest streak",
     "todayLabel": "Today",
     "previousPeriod": "Previous period",
-    "nextPeriod": "Next period"
+    "nextPeriod": "Next period",
+    "heatmapPomodoros": "pomodoros",
+    "heatmapTasks": "tasks done"
   },
 
   "ai": {

@@ -197,6 +197,13 @@ export function FocusWorldModal() {
     }
   }, [isConnected, enabled]);
 
+  // Fallback: if still "initializing" after 4s, show content anyway
+  useEffect(() => {
+    if (!isInitializing) return;
+    const t = setTimeout(() => setIsInitializing(false), 4000);
+    return () => clearTimeout(t);
+  }, [isInitializing]);
+
   // Filter out current user
   const otherUsers = focusUsers.filter((u) => u.userId !== userId);
 

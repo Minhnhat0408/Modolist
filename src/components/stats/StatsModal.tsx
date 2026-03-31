@@ -57,7 +57,7 @@ interface DashboardStats {
     sessions: number;
     tasks: number;
   };
-  heatmap?: { date: string; count: number }[];
+  heatmap?: { date: string; count: number; focusTime: number; tasks: number }[];
 }
 
 function formatTime(seconds: number): string {
@@ -171,10 +171,17 @@ const MONTHS_VI = [
   "Th12",
 ];
 
-function toHeatmapValue(raw: { date: string; count: number }[]) {
+function toHeatmapValue(raw: { date: string; count: number; focusTime?: number; tasks?: number }[]) {
   return raw
     .filter((d) => d.count > 0)
-    .map((d) => ({ date: d.date.replace(/-/g, "/"), count: d.count }));
+    .map((d) => ({ date: d.date.replace(/-/g, "/"), count: d.count, focusTime: d.focusTime ?? 0, tasks: d.tasks ?? 0 }));
+}
+
+function formatDisplayDate(dateSlash: string): string {
+  const parts = dateSlash.split("/");
+  if (parts.length !== 3) return dateSlash;
+  const [y, m, d] = parts;
+  return `${d}/${m}/${y}`;
 }
 
 // Each page = 10 full calendar months, aligned to month boundaries → no overlap
@@ -310,11 +317,18 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
   const t = useTranslations("stats");
   const { resolvedTheme } = useTheme();
   const [heatmapPage, setHeatmapPage] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<{
+    date: string;
+    count: number;
+    focusTime: number;
+    tasks: number;
+  } | null>(null);
   const maxFocus = Math.max(...stats.week.data.map((d) => d.focusTime), 1);
 
   const rawHeatmap =
     stats.heatmap ??
-    stats.week.data.map((d) => ({ date: d.date, count: d.pomodoros }));
+    stats.week.data.map((d) => ({ date: d.date, count: d.pomodoros, focusTime: d.focusTime, tasks: d.tasks }));
+
   const { start: heatStart, end: heatEnd } = getHeatmapWindow(heatmapPage);
   const heatmapLabel = `${MONTHS_VI[heatStart.getMonth()]} ${heatStart.getFullYear()} – ${MONTHS_VI[heatEnd.getMonth()]} ${heatEnd.getFullYear()}`;
 
@@ -434,14 +448,14 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
             </span>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setHeatmapPage((p) => p - 1)}
+                onClick={() => { setHeatmapPage((p) => p - 1); setSelectedDay(null); }}
                 className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors"
                 title={t("previousPeriod")}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
-                onClick={() => setHeatmapPage((p) => p + 1)}
+                onClick={() => { setHeatmapPage((p) => p + 1); setSelectedDay(null); }}
                 disabled={heatmapPage >= 1}
                 className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title={t("nextPeriod")}
@@ -478,14 +492,24 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
                     9: "#c2410c",
                   }
             }
-            rectRender={(props, data) => (
-              <g>
-                {data.count != null && data.count > 0 && (
-                  <title>{`${data.count} 🍅 • ${data.date}`}</title>
-                )}
-                <rect {...props} />
-              </g>
-            )}
+            rectRender={(props, data) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const d = data as any;
+              return (
+                <rect
+                  {...props}
+                  style={{ cursor: d.count ? "pointer" : "default" }}
+                  onClick={() => {
+                    if (!d.count) return;
+                    setSelectedDay(
+                      selectedDay?.date === (d.date as string)
+                        ? null
+                        : { date: d.date as string, count: d.count, focusTime: d.focusTime ?? 0, tasks: d.tasks ?? 0 },
+                    );
+                  }}
+                />
+              );
+            }}
             style={
               {
                 "--rhm-rect": resolvedTheme === "dark" ? "#374151" : "#e5e7eb",
@@ -494,6 +518,43 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
             }
           />
         </div>
+
+        {selectedDay && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            className="mt-3 rounded-xl border border-border bg-accent/40 px-4 py-3 flex flex-wrap items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              {formatDisplayDate(selectedDay.date)}
+            </div>
+            <div className="flex items-center gap-5 text-sm">
+              <span className="flex items-center gap-1.5">
+                <Target className="h-3.5 w-3.5 text-chart-2" />
+                <span className="font-bold">{selectedDay.count}</span>
+                <span className="text-muted-foreground">{t("heatmapPomodoros")}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Timer className="h-3.5 w-3.5 text-primary" />
+                <span className="font-bold">{formatTime(selectedDay.focusTime)}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-chart-4" />
+                <span className="font-bold">{selectedDay.tasks}</span>
+                <span className="text-muted-foreground">{t("heatmapTasks")}</span>
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedDay(null)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+        )}
       </motion.div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

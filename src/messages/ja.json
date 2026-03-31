@@ -380,7 +380,9 @@
     "longestStreak": "最長ストリーク",
     "todayLabel": "今日",
     "previousPeriod": "前の期間",
-    "nextPeriod": "次の期間"
+    "nextPeriod": "次の期間",
+    "heatmapPomodoros": "ポモドーロ",
+    "heatmapTasks": "タスク完了"
   },
 
   "ai": {
