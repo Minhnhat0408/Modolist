@@ -14,7 +14,7 @@
  * false and the existing in-page floating widgets render normally.
  */
 
-import { useSyncExternalStore, createElement } from "react";
+import { useSyncExternalStore, createElement, type ComponentType, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 // ── Module-level singleton ──────────────────────────────────────────────
@@ -134,9 +134,12 @@ export async function openPip(height: number, width: number): Promise<boolean> {
     const messages = (await import(`../messages/${safeLocale}.json`)).default as Record<string, unknown>;
 
     pipRoot = createRoot(container);
+    // Cast to drop the required `children` from props so TS accepts children as 3rd arg
+    type ProviderProps = { locale: string; messages: Record<string, unknown>; children?: ReactNode };
+    const Provider = NextIntlClientProvider as ComponentType<ProviderProps>;
     pipRoot.render(
       createElement(
-        NextIntlClientProvider,
+        Provider,
         { locale: safeLocale, messages },
         createElement(PipContent, { onClose: closePip }),
       ),

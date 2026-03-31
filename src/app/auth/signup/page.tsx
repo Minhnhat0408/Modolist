@@ -12,8 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { clearGuestCookie } from "@/hooks/useIsGuest";
+
+// This page is outside [locale] — middleware redirects to /vi/auth/signup at runtime.
+// force-dynamic skips static prerendering so next-intl is never called without a provider.
+export const dynamic = "force-dynamic";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -88,9 +91,6 @@ export default function SignUpPage() {
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
@@ -117,9 +117,6 @@ export default function SignUpPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold">
