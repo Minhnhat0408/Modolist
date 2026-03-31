@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { KanbanTask, KANBAN_COLUMNS } from "@/types/kanban";
 import { TaskStatus, TaskPriority } from "@/types/database";
+import { useTranslations } from "next-intl";
 
 const PRIORITY_LABELS: Record<string, { label: string; icon: string }> = {
   [TaskPriority.URGENT]: { label: "Khẩn cấp", icon: "🔴" },
@@ -89,7 +90,7 @@ function getGroupDate(task: KanbanTask, status: TaskStatus): Date {
 }
 
 /** Format a date as a readable, localized section header */
-function formatSectionDate(date: Date): string {
+function formatSectionDate(date: Date, t: (key: string, values?: Record<string, number>) => string): string {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -97,11 +98,11 @@ function formatSectionDate(date: Date): string {
     (today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
   );
 
-  if (diff === 0) return "Hôm nay";
-  if (diff === 1) return "Hôm qua";
-  if (diff === -1) return "Ngày mai";
-  if (diff > 1 && diff <= 7) return `${diff} ngày trước`;
-  if (diff < -1 && diff >= -7) return `${Math.abs(diff)} ngày nữa`;
+  if (diff === 0) return t("today");
+  if (diff === 1) return t("yesterday");
+  if (diff === -1) return t("tomorrow");
+  if (diff > 1 && diff <= 7) return t("daysAgo", { count: diff });
+  if (diff < -1 && diff >= -7) return t("daysFromNow", { count: Math.abs(diff) });
 
   return target.toLocaleDateString("vi-VN", {
     weekday: "short",
@@ -148,6 +149,8 @@ function TaskGroupedList({
   onTaskMove?: (taskId: string, newStatus: TaskStatus) => void;
   onTaskMoveToTop?: (taskId: string, status: TaskStatus) => void;
 }) {
+  const t = useTranslations("kanban");
+  const tTask = useTranslations("taskForm");
   // Group tasks by date or priority
   const groups = useMemo(() => {
     if (groupBy === "priority") {
@@ -167,7 +170,7 @@ function TaskGroupedList({
         .filter((p) => map.has(p))
         .map((p) => ({
           key: p,
-          label: `${PRIORITY_LABELS[p]?.icon ?? ""} ${PRIORITY_LABELS[p]?.label ?? p}`,
+          label: `${PRIORITY_LABELS[p]?.icon ?? ""} ${tTask(`priority${p.charAt(0)}${p.slice(1).toLowerCase()}` as "priorityLow" | "priorityMedium" | "priorityHigh" | "priorityUrgent")}`,
           tasks: map.get(p)!,
         }));
     }
@@ -189,10 +192,10 @@ function TaskGroupedList({
 
     return sorted.map(([key, val]) => ({
       key,
-      label: formatSectionDate(val.date),
+      label: formatSectionDate(val.date, t),
       tasks: val.tasks,
     }));
-  }, [tasks, status, groupBy]);
+  }, [tasks, status, groupBy, t, tTask]);
 
   const showHeaders = groups.length > 1 || status === TaskStatus.DONE;
   const DateIcon = groupBy === "date" ? CalendarDays : ArrowUpDown;
@@ -236,7 +239,7 @@ function TaskGroupedList({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-white/15 hover:border-white/25"
-                      title="Đưa lên đầu danh sách"
+                      title={t("moveToTop")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onTaskMoveToTop(task.id, status);
@@ -255,7 +258,7 @@ function TaskGroupedList({
                     onDuplicate(task);
                     
                   }}
-                  title="Tạo lại task này"
+                  title={t("duplicateTask")}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -265,7 +268,7 @@ function TaskGroupedList({
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 bg-background/80 backdrop-blur-sm border border-white/10 hover:bg-secondary/30 hover:border-secondary/40 hover:text-secondary"
-                      title="Cho vào Hôm nay"
+                      title={t("moveToToday")}
                       onClick={(e) => {
                         e.stopPropagation();
                         onTaskMove(task.id, TaskStatus.TODAY);
@@ -301,6 +304,7 @@ function FilterBar({
   totalCount: number;
   filteredCount: number;
 }) {
+  const t = useTranslations("kanban");
   return (
     <div className="space-y-2.5">
       {/* Search input */}
@@ -309,7 +313,7 @@ function FilterBar({
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Tìm theo tên, mô tả..."
+          placeholder={t("searchPlaceholder")}
           className="pl-9 pr-9 h-9 bg-white/5 border-white/10 focus:border-primary/50 text-sm"
         />
         {searchQuery && (
@@ -368,6 +372,7 @@ export function ColumnOverflowDrawer({
 }: ColumnOverflowDrawerProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const accent = KANBAN_COLUMNS[status].accent;
+  const t = useTranslations("kanban");
 
   // Close drawer then open edit dialog — ensures clean UX without overlay stacking
   const handleEditTask = (task: KanbanTask) => {
@@ -442,7 +447,7 @@ export function ColumnOverflowDrawer({
     return result;
   }, [tasks, searchQuery, dateFilter, status, isBacklog, backlogSort]);
 
-  const description = `${tasks.length} nhiệm vụ`;
+  const description = `${tasks.length} ${t("tasks")}`;
 
   // BACKLOG: sort cycle button + search. DONE: search + date filter
   const SORT_CYCLE: BacklogSortMode[] = ["default", "priority", "dueDate"];
@@ -456,15 +461,15 @@ export function ColumnOverflowDrawer({
   > = {
     default: {
       icon: ArrowUpDown,
-      nextTooltip: "Sắp xếp theo độ ưu tiên",
+      nextTooltip: t("sortByPriority"),
       active: false,
     },
     priority: {
       icon: Flag,
-      nextTooltip: "Sắp xếp theo hạn chót",
+      nextTooltip: t("sortByDueDate"),
       active: true,
     },
-    dueDate: { icon: Clock, nextTooltip: "Trở về mặc định", active: true },
+    dueDate: { icon: Clock, nextTooltip: t("sortDefault"), active: true },
   };
   const cycleSortMode = () => {
     const idx = SORT_CYCLE.indexOf(backlogSort);
@@ -478,7 +483,7 @@ export function ColumnOverflowDrawer({
       <Input
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Tìm theo tên, mô tả..."
+        placeholder={t("searchPlaceholder")}
         className="flex-1 pl-9 pr-9 h-9 bg-white/5 border-white/10 focus:border-primary/50 text-sm"
       />
       {searchQuery && (
@@ -529,7 +534,7 @@ export function ColumnOverflowDrawer({
     <div className="text-center py-8 text-sm text-muted-foreground">
       {searchQuery || dateFilter
         ? "Không tìm thấy nhiệm vụ phù hợp"
-        : "Chưa có nhiệm vụ"}
+        : t("noTasks")}
     </div>
   ) : (
     <TaskGroupedList

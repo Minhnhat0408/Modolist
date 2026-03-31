@@ -2,11 +2,14 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function DeleteZone() {
   const { isOver, setNodeRef } = useDroppable({
     id: "delete-zone",
   });
+
+  const t = useTranslations("kanban");
 
   return (
     <div
@@ -22,7 +25,7 @@ export function DeleteZone() {
       <div className="flex items-center gap-2">
         <Trash2 className="h-6 w-6" />
         <span className="font-medium">
-          {isOver ? "Thả để xóa" : "Kéo vào đây để xóa"}
+          {isOver ? t("deleteZoneDrop") : t("deleteZoneDrag")}
         </span>
       </div>
     </div>

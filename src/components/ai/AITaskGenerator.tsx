@@ -26,6 +26,7 @@ import {
   ChevronRight,
   AlertTriangle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 interface FocusPlan {
@@ -66,22 +67,22 @@ const priorityConfig: Record<
   HIGH: {
     color: "text-orange-400",
     bg: "bg-orange-500/20 border-orange-500/30",
-    label: "Cao",
+    label: "HIGH",
   },
   MEDIUM: {
     color: "text-yellow-400",
     bg: "bg-yellow-500/20 border-yellow-500/30",
-    label: "TB",
+    label: "MEDIUM",
   },
   LOW: {
     color: "text-blue-400",
     bg: "bg-blue-500/20 border-blue-500/30",
-    label: "Thấp",
+    label: "LOW",
   },
   URGENT: {
     color: "text-red-400",
     bg: "bg-red-500/20 border-red-500/30",
-    label: "Khẩn",
+    label: "URGENT",
   },
 };
 
@@ -90,6 +91,7 @@ export function AITaskGenerator({
   onOpenChange,
   onTasksCreated,
 }: AITaskGeneratorProps) {
+  const t = useTranslations("ai");
   const [step, setStep] = useState<"input" | "review" | "creating">("input");
   const [goal, setGoal] = useState("");
   const [context, setContext] = useState("");
@@ -137,7 +139,7 @@ export function AITaskGenerator({
       setSummary(res.summary || "");
       setStep("review");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Lỗi không xác định";
+      const msg = err instanceof Error ? err.message : t("unknownError");
       setError(msg);
     } finally {
       setLoading(false);
@@ -167,7 +169,7 @@ export function AITaskGenerator({
       onTasksCreated();
       handleClose(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Lỗi tạo tasks";
+      const msg = err instanceof Error ? err.message : t("createError");
       setError(msg);
       setStep("review");
     }
@@ -207,25 +209,24 @@ export function AITaskGenerator({
                     <Wand2 className="w-5 h-5 text-primary" />
                   </div>
                   <ResponsiveModalTitle className="text-xl">
-                    AI Task Generator
+                    {t("title")}
                   </ResponsiveModalTitle>
                 </div>
                 <ResponsiveModalDescription>
-                  Mô tả mục tiêu của bạn — AI sẽ phân tích và tạo ra các nhiệm
-                  vụ cụ thể với ước lượng thời gian.
+                  {t("description")}
                 </ResponsiveModalDescription>
               </ResponsiveModalHeader>
 
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="goal" className="text-sm font-medium">
-                    Mục tiêu / Dự án *
+                    {t("goalLabel")}
                   </Label>
                   <Input
                     id="goal"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
-                    placeholder="VD: Lập tài khoản shopee và đăng bán sản phẩm"
+                    placeholder={t("goalPlaceholder")}
                     className="bg-white/5 border-white/10 focus:border-primary/50 transition-all"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) handleGenerate();
@@ -235,21 +236,21 @@ export function AITaskGenerator({
 
                 <div className="space-y-2">
                   <Label htmlFor="context" className="text-sm font-medium">
-                    Bối cảnh thêm{" "}
-                    <span className="text-muted-foreground">(tùy chọn)</span>
+                    {t("contextLabel")}{" "}
+                    <span className="text-muted-foreground">{t("contextOptional")}</span>
                   </Label>
                   <Textarea
                     id="context"
                     value={context}
                     onChange={(e) => setContext(e.target.value)}
-                    placeholder="VD: Tôi đã có tài khoản facebook nhưng chưa biết cách tạo gian hàng trên shopee. Tôi muốn tập trung vào việc học cách đăng bán sản phẩm và tối ưu hóa bài đăng để thu hút khách hàng."
+                    placeholder={t("contextPlaceholder")}
                     className="bg-white/5 border-white/10 focus:border-primary/50 transition-all min-h-20"
                   />
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Label className="text-sm font-medium whitespace-nowrap">
-                    Số tasks
+                    {t("taskCount")}
                   </Label>
                   <div className="flex gap-1">
                     {[3, 5, 7].map((n) => (
@@ -284,7 +285,7 @@ export function AITaskGenerator({
                   onClick={() => handleClose(false)}
                   className="mr-auto"
                 >
-                  Hủy
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleGenerate}
@@ -294,12 +295,12 @@ export function AITaskGenerator({
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Đang phân tích...
+                      {t("analyzing")}
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Tạo nhiệm vụ
+                      {t("generate")}
                     </>
                   )}
                 </Button>
@@ -323,7 +324,7 @@ export function AITaskGenerator({
                     <Brain className="w-5 h-5 text-primary" />
                   </div>
                   <ResponsiveModalTitle className="text-xl">
-                    AI đề xuất {tasks.length} nhiệm vụ
+                    {t("aiSuggests", { count: tasks.length })}
                   </ResponsiveModalTitle>
                 </div>
                 {summary && (
@@ -380,8 +381,7 @@ export function AITaskGenerator({
                             variant="outline"
                             className={`text-[10px] px-1.5 py-0 ${priorityConfig[task.priority]?.bg || ""} ${priorityConfig[task.priority]?.color || ""}`}
                           >
-                            {priorityConfig[task.priority]?.label ||
-                              task.priority}
+                            {t(`priority${task.priority.charAt(0)}${task.priority.slice(1).toLowerCase()}`)}
                           </Badge>
                         </div>
 
@@ -419,11 +419,10 @@ export function AITaskGenerator({
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10 text-sm">
                 <div className="flex items-center gap-4 text-muted-foreground">
                   <span>
-                    <strong className="text-foreground">{selectedCount}</strong>{" "}
-                    / {tasks.length} được chọn
+                    {t("selectedCount", { selected: selectedCount, total: tasks.length })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />~{totalPomodoros * 25} phút
+                    <Clock className="w-3.5 h-3.5" />{t("estimatedMinutes", { minutes: totalPomodoros * 25 })}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -432,7 +431,7 @@ export function AITaskGenerator({
                     size="sm"
                     onClick={() => setStep("input")}
                   >
-                    Quay lại
+                    {t("back")}
                   </Button>
                   <Button
                     size="sm"
@@ -441,7 +440,7 @@ export function AITaskGenerator({
                     className="gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    Tạo {selectedCount} tasks
+                    {t("createTasks", { count: selectedCount })}
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -479,7 +478,7 @@ export function AITaskGenerator({
                 />
               </div>
               <p className="text-muted-foreground">
-                Đang tạo {selectedCount} nhiệm vụ...
+                {t("creating", { count: selectedCount })}
               </p>
             </motion.div>
           )}

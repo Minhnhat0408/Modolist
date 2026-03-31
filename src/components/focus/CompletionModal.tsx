@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useFocusStore } from "@/stores/useFocusStore";
 import { PartyPopper, Plus, CheckCircle, Coffee, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export function CompletionModal() {
   const {
@@ -16,6 +17,7 @@ export function CompletionModal() {
     completeAndExit,
     takeLongBreak,
   } = useFocusStore();
+  const t = useTranslations("focus");
 
   if (!showCompletionModal) return null;
 
@@ -56,8 +58,8 @@ export function CompletionModal() {
               className="text-3xl font-bold text-white mb-2"
             >
               {isShortFocus
-                ? "🎉 Hoàn Thành Focus!"
-                : `🎉 Hoàn Thành ${totalSessions} Phiên!`}
+                ? t("completedFocusShort")
+                : t("completedSessions", { count: totalSessions })}
             </motion.h2>
 
             <motion.p
@@ -67,8 +69,8 @@ export function CompletionModal() {
               className="text-gray-300"
             >
               {isShortFocus
-                ? "Làm tốt lắm! Bạn vừa hoàn thành phiên focus nhanh!"
-                : `Tuyệt vời! Bạn đã hoàn thành ${totalSessions} phiên focus. Bạn muốn làm gì tiếp theo?`}
+                ? t("greatJobShort")
+                : t("greatJobLong", { count: totalSessions })}
             </motion.p>
           </div>
 
@@ -87,14 +89,14 @@ export function CompletionModal() {
                   className="h-14 bg-linear-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold shadow-lg"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  +5 phút nữa
+                  {t("addMore5min")}
                 </Button>
                 <Button
                   onClick={() => addQuickSession(15)}
                   className="h-14 bg-linear-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold shadow-lg"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  +15 phút nữa
+                  {t("addMore15min")}
                 </Button>
               </div>
             )}
@@ -119,7 +121,7 @@ export function CompletionModal() {
                 />
                 <Plus className="w-5 h-5 mr-2 relative z-10" />
                 <span className="relative z-10">
-                  Thêm +1 Phiên (Tiếp tục nhịp!)
+                  {t("addOneSession")}
                 </span>
               </Button>
             )}
@@ -131,7 +133,7 @@ export function CompletionModal() {
                 className="w-full h-14 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold shadow-lg"
               >
                 <Coffee className="w-5 h-5 mr-2" />
-                Nghỉ Dài (15 phút)
+                {t("longBreakAction")}
               </Button>
             )}
 
@@ -146,7 +148,7 @@ export function CompletionModal() {
               }`}
             >
               <CheckCircle className="w-5 h-5 mr-2" />
-              Hoàn Thành & Thoát
+              {t("completeAndExit")}
             </Button>
           </motion.div>
 
@@ -163,13 +165,13 @@ export function CompletionModal() {
                   <p className="text-2xl font-bold text-white">
                     {totalSessions * 25}
                   </p>
-                  <p className="text-xs text-gray-400">Phút tập trung</p>
+                  <p className="text-xs text-gray-400">{t("focusMinutes")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-white">
                     {totalSessions}
                   </p>
-                  <p className="text-xs text-gray-400">Phiên đã hoàn thành</p>
+                  <p className="text-xs text-gray-400">{t("sessionsCompletedLabel")}</p>
                 </div>
               </div>
             </motion.div>

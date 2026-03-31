@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, ChevronDown, CalendarDays } from "lucide-react";
 import clsx from "clsx";
+import { useTranslations } from "next-intl";
 
 /** Max tasks shown directly in the column before truncating */
 const VISIBLE_LIMIT = 3;
@@ -58,6 +59,8 @@ export function KanbanColumn({
     id: status,
   });
 
+  const t = useTranslations("kanban");
+
   const isToday = status === TaskStatus.TODAY;
 
   const isDone = status === TaskStatus.DONE;
@@ -104,14 +107,14 @@ export function KanbanColumn({
 
   const handleOverflowClick = () => {
     if (onLoadAllTasks) {
-      void openLazyDrawer(isDone ? "Nhiệm vụ đã hoàn thành hôm nay" : title);
+      void openLazyDrawer(isDone ? t("doneTasksToday") : title);
     } else {
       openSurfaceDrawer();
     }
   };
 
   const handleDoneHistoryClick = () => {
-    void openLazyDrawer("Tất cả nhiệm vụ đã hoàn thành");
+    void openLazyDrawer(t("allDoneTasks"));
   };
 
   const handleDrawerTaskMove = async (taskId: string, newStatus: TaskStatus) => {
@@ -156,7 +159,7 @@ export function KanbanColumn({
               </Badge>
               {isDone && doneHasHistory && (
                 <span className="text-xs text-muted-foreground/60">
-                  /{totalCount} tổng
+                  /{totalCount} {t("total")}
                 </span>
               )}
             </div>
@@ -201,7 +204,7 @@ export function KanbanColumn({
                   }}
                 />
                 <Play className="mr-2 h-5 w-5 z-10 font-bold text-black" />
-                <span className="relative z-10">Bắt đầu Focus Mode</span>
+                <span className="relative z-10">{t("startFocusMode")}</span>
               </Button>
             </motion.div>
           )}
@@ -217,7 +220,7 @@ export function KanbanColumn({
         >
           {(isToday ? tasks : visibleTasks).map((task, index) => (
             <motion.div
-              key={task.id}
+              key={task.stableKey ?? task.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -247,8 +250,8 @@ export function KanbanColumn({
               >
                 <ChevronDown className="h-3.5 w-3.5" />
                 {isDone
-                  ? `Xem thêm ${overflowCount} nhiệm vụ hôm nay`
-                  : `Xem thêm ${overflowCount} nhiệm vụ...`}
+                  ? t("viewMoreToday", { count: overflowCount })
+                  : t("viewMore", { count: overflowCount })}
               </button>
             </motion.div>
           )}
@@ -260,7 +263,7 @@ export function KanbanColumn({
                 className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-muted-foreground/70 hover:text-muted-foreground hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-dashed border-white/10 hover:border-white/20"
               >
                 <CalendarDays className="h-3.5 w-3.5" />
-                Xem tất cả nhiệm vụ đã hoàn thành
+                {t("viewAllDone")}
               </button>
             </motion.div>
           )}
@@ -271,7 +274,7 @@ export function KanbanColumn({
               animate={{ opacity: 1 }}
               className="text-center py-12 text-sm text-muted-foreground"
             >
-              Chưa có nhiệm vụ
+              {t("noTasks")}
             </motion.div>
           )}
         </div>

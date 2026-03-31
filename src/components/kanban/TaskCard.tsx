@@ -11,6 +11,7 @@ import { CalendarDays, Play, Clock, Zap, AlertTriangle, Copy } from "lucide-reac
 import { useFocusStore } from "@/stores/useFocusStore";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useTranslations } from "next-intl";
 
 // ── Session type colors ───────────────────────────────────────────────
 const SESSION_COLORS = {
@@ -112,6 +113,9 @@ export function TaskCard({
 
   const { play } = useSoundEffects();
 
+  const tKanban = useTranslations("kanban");
+  const tTask = useTranslations("taskForm");
+
   // ── Blocked-operation feedback ──────────────────────────────────────
   const [showBlockedMsg, setShowBlockedMsg] = useBlockedMsg();
 
@@ -142,22 +146,22 @@ export function TaskCard({
     [TaskPriority.LOW]: {
       bg: "bg-blue-500/20",
       text: "text-blue-400",
-      label: "Thấp",
+      label: tTask("priorityLow"),
     },
     [TaskPriority.MEDIUM]: {
       bg: "bg-yellow-500/20",
       text: "text-yellow-400",
-      label: "Trung bình",
+      label: tTask("priorityMedium"),
     },
     [TaskPriority.HIGH]: {
       bg: "bg-orange-500/20",
       text: "text-orange-400",
-      label: "Cao",
+      label: tTask("priorityHigh"),
     },
     [TaskPriority.URGENT]: {
       bg: "bg-red-500/20",
       text: "text-red-400",
-      label: "Khẩn cấp",
+      label: tTask("priorityUrgent"),
     },
   };
 
@@ -326,10 +330,10 @@ export function TaskCard({
             >
               <span className="text-base">🎯</span>
               <span className="text-xs font-semibold text-white text-center leading-snug">
-                Đang trong phiên Focus
+                {tKanban("focusInProgress")}
               </span>
               <span className="text-[10px] text-white/60 text-center">
-                Không thể thao tác với task này
+                {tKanban("cannotOperateTask")}
               </span>
             </motion.div>
           )}
@@ -346,7 +350,7 @@ export function TaskCard({
                   size="icon"
                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
                   onClick={handleDuplicate}
-                  title="Tạo lại task này"
+                  title={tKanban("duplicateTask")}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -357,7 +361,7 @@ export function TaskCard({
                   size="icon"
                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20"
                   onClick={handleStartFocus}
-                  title="Bắt đầu Focus"
+                  title={tKanban("startFocus")}
                 >
                   <Play className="h-3 w-3" fill="currentColor" />
                 </Button>
@@ -370,12 +374,12 @@ export function TaskCard({
                   className="flex items-center gap-1 text-primary text-xs font-medium px-2 py-0.5 bg-primary/20 rounded-full"
                 >
                   {focusType === "STANDARD"
-                    ? `Phiên ${currentSession}/${totalSessions}`
+                    ? tKanban("session", { current: currentSession, total: totalSessions })
                     : focusStatus === "focusing"
-                      ? "Đang Focus"
+                      ? tKanban("focusing")
                       : focusStatus === "break"
-                        ? "Nghỉ"
-                        : "Tạm Dừng"}
+                        ? tKanban("break")
+                        : tKanban("paused")}
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 </motion.div>
               )}
@@ -416,7 +420,7 @@ export function TaskCard({
                     : showStandardProgress
                       ? `${standardCompletedCount} / ${standardTotal}`
                       : isFocusing
-                        ? "Đang Focus"
+                        ? tKanban("focusing")
                         : `✅ ${allFocusSessions.length} phiên hoàn thành`}
                 </span>
                 {showStandardProgress && <span>{standardPct}%</span>}
@@ -537,7 +541,7 @@ export function TaskCard({
                     {dueDateUrgency === "overdue"
                       ? "Quá hạn"
                       : dueDateUrgency === "today"
-                        ? "Hôm nay"
+                        ? tKanban("today")
                         : new Date(task.dueDate).toLocaleDateString("vi-VN")}
                   </span>
                 </div>

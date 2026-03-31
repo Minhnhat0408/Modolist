@@ -27,6 +27,7 @@ import { FocusStartDialog } from "@/components/focus/FocusStartDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useFocusStore } from "@/stores/useFocusStore";
+import { useTranslations } from "next-intl";
 
 /** Priority weight — higher = more important (sort DESC) */
 const PRIORITY_WEIGHT: Record<string, number> = {
@@ -101,6 +102,8 @@ export function KanbanBoard({
   onDuplicate,
   onTodayScrollRef,
 }: KanbanBoardProps) {
+  const t = useTranslations("kanban");
+
   // ✅ State nội bộ để render UI mượt mà (Optimistic UI)
   // Chúng ta sync props vào state này
   const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);

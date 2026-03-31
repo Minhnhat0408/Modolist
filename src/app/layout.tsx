@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import Script from "next/script";
 
@@ -15,7 +14,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Modolist",
-  description: "Quản lý công việc và tập trung hiệu quả",
+  description: "Manage tasks and focus effectively",
 };
 
 export default function RootLayout({
@@ -24,15 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
         <Script id="sw-register" src="/sw-register.js" strategy="afterInteractive" />
       </body>
     </html>

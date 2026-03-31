@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api-client";
 import { useGuestStore } from "@/stores/useGuestStore";
 import { clearGuestCookie } from "@/hooks/useIsGuest";
@@ -32,6 +33,7 @@ export function MigrateModal({
   const [migrating, setMigrating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clearGuest = useGuestStore((s) => s.clearGuest);
+  const t = useTranslations("guest");
 
   const handleMigrate = async () => {
     setMigrating(true);
@@ -51,7 +53,7 @@ export function MigrateModal({
       clearGuestCookie();
       onComplete();
     } catch {
-      setError("Không thể chuyển dữ liệu. Vui lòng thử lại.");
+      setError(t("migrateError"));
     } finally {
       setMigrating(false);
     }
@@ -67,10 +69,9 @@ export function MigrateModal({
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <ResponsiveModalContent dialogClassName="sm:max-w-md">
         <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Chuyển dữ liệu khách</ResponsiveModalTitle>
+          <ResponsiveModalTitle>{t("migrateTitle")}</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Chúng tôi tìm thấy {tasks.length} task bạn đã tạo khi dùng thử.
-            Bạn có muốn gộp vào tài khoản?
+            {t("migrateDescription", { count: tasks.length })}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <ResponsiveModalBody className="space-y-4">
@@ -84,12 +85,12 @@ export function MigrateModal({
               {migrating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang chuyển {tasks.length} tasks...
+                  {t("migrating", { count: tasks.length })}
                 </>
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  Gộp data vào tài khoản
+                  {t("mergeData")}
                 </>
               )}
             </Button>
@@ -100,7 +101,7 @@ export function MigrateModal({
               className="text-muted-foreground"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Bỏ qua & xóa dữ liệu khách
+              {t("skipAndDelete")}
             </Button>
           </div>
         </ResponsiveModalBody>

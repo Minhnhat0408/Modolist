@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,24 +9,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle } from "@/components/language-toggle";
 import { CheckCircle, Target, Users, Zap } from "lucide-react";
 
 export default function Home() {
+  const t = useTranslations("landing");
   return (
     <div className="min-h-screen bg-background">
       <header className="container mx-auto px-4 py-6">
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Target className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">Modolist</span>
+            <span className="text-2xl font-bold text-foreground">{t("brand")}</span>
           </div>
           <div className="flex items-center gap-4">
+            <LanguageToggle />
             <ThemeToggle />
             <Link href="/auth/signin">
-              <Button variant="ghost">Đăng nhập</Button>
+              <Button variant="ghost">{t("signIn")}</Button>
             </Link>
             <Link href="/auth/signup">
-              <Button>Đăng ký</Button>
+              <Button>{t("signUp")}</Button>
             </Link>
           </div>
         </nav>
@@ -35,23 +39,21 @@ export default function Home() {
         <section className="py-20 text-center">
           <div className="mx-auto max-w-3xl space-y-6">
             <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
-              Quản lý công việc và{" "}
-              <span className="text-primary">tập trung hiệu quả</span>
+              {t("heroTitle")}{" "}
+              <span className="text-primary">{t("heroTitleHighlight")}</span>
             </h1>
             <p className="text-xl text-muted-foreground">
-              Modolist giúp bạn tổ chức công việc, theo dõi tiến độ và cộng tác
-              cùng đội nhóm một cách dễ dàng với giao diện trực quan và tính
-              năng mạnh mẽ.
+              {t("heroDescription")}
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
               <Link href="/auth/signup">
                 <Button size="lg" className="text-lg">
-                  Bắt đầu ngay
+                  {t("getStarted")}
                 </Button>
               </Link>
               <Link href="/auth/signin">
                 <Button size="lg" variant="outline" className="text-lg">
-                  Tìm hiểu thêm
+                  {t("learnMore")}
                 </Button>
               </Link>
             </div>
@@ -65,10 +67,9 @@ export default function Home() {
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Nhanh chóng & Hiệu quả</CardTitle>
+                <CardTitle>{t("featureQuickTitle")}</CardTitle>
                 <CardDescription>
-                  Tạo và quản lý task chỉ trong vài giây với giao diện kéo thả
-                  trực quan
+                  {t("featureQuickDesc")}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -78,10 +79,9 @@ export default function Home() {
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Cộng tác nhóm</CardTitle>
+                <CardTitle>{t("featureTeamTitle")}</CardTitle>
                 <CardDescription>
-                  Làm việc cùng đội nhóm với tính năng chia sẻ và phân công công
-                  việc
+                  {t("featureTeamDesc")}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -91,10 +91,9 @@ export default function Home() {
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                   <Target className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Theo dõi tiến độ</CardTitle>
+                <CardTitle>{t("featureTrackTitle")}</CardTitle>
                 <CardDescription>
-                  Nắm bắt tiến độ dự án một cách trực quan qua bảng Kanban và
-                  biểu đồ
+                  {t("featureTrackDesc")}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -104,9 +103,9 @@ export default function Home() {
         <section className="py-16">
           <Card className="border-2">
             <CardHeader className="text-center">
-              <CardTitle className="text-3xl">Tính năng nổi bật</CardTitle>
+              <CardTitle className="text-3xl">{t("highlightTitle")}</CardTitle>
               <CardDescription className="text-lg">
-                Mọi thứ bạn cần để quản lý công việc hiệu quả
+                {t("highlightSubtitle")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -114,36 +113,36 @@ export default function Home() {
                 <div className="flex gap-3">
                   <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
-                    <h3 className="font-semibold">Bảng Kanban trực quan</h3>
+                    <h3 className="font-semibold">{t("highlightKanban")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Kéo thả task dễ dàng giữa các cột trạng thái
+                      {t("highlightKanbanDesc")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
-                    <h3 className="font-semibold">Thông báo thời gian thực</h3>
+                    <h3 className="font-semibold">{t("highlightRealtime")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Cập nhật ngay lập tức khi có thay đổi
+                      {t("highlightRealtimeDesc")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
-                    <h3 className="font-semibold">Giao diện tối/sáng</h3>
+                    <h3 className="font-semibold">{t("highlightTheme")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Tùy chỉnh giao diện theo sở thích của bạn
+                      {t("highlightThemeDesc")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <CheckCircle className="h-6 w-6 shrink-0 text-primary" />
                   <div>
-                    <h3 className="font-semibold">Bảo mật cao</h3>
+                    <h3 className="font-semibold">{t("highlightSecurity")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Dữ liệu được mã hóa và bảo vệ an toàn
+                      {t("highlightSecurityDesc")}
                     </p>
                   </div>
                 </div>
@@ -155,16 +154,15 @@ export default function Home() {
         <section className="py-20 text-center">
           <div className="mx-auto max-w-2xl space-y-6">
             <h2 className="text-4xl font-bold text-foreground">
-              Sẵn sàng bắt đầu?
+              {t("ctaTitle")}
             </h2>
             <p className="text-xl text-muted-foreground">
-              Tham gia cùng hàng nghìn người dùng đang sử dụng Modolist để quản
-              lý công việc hiệu quả hơn
+              {t("ctaDescription")}
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
               <Link href="/auth/signup">
                 <Button size="lg" className="text-lg">
-                  Đăng ký miễn phí
+                  {t("signUpFree")}
                 </Button>
               </Link>
             </div>
@@ -177,10 +175,10 @@ export default function Home() {
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center space-x-2">
               <Target className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-foreground">Modolist</span>
+              <span className="font-semibold text-foreground">{t("brand")}</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 Modolist. Tất cả quyền được bảo lưu.
+              {t("copyright")}
             </p>
           </div>
         </div>

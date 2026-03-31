@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "@/hooks/useSupabaseSession";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { UserNav } from "@/components/user-nav";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskFormDialog } from "@/components/kanban/TaskFormDialog";
@@ -19,6 +21,7 @@ import { AITaskGenerator } from "@/components/ai/AITaskGenerator";
 import { TaskDetailModal } from "@/components/kanban/TaskDetailModal";
 import { SpotifyPlayerInit } from "@/components/spotify/SpotifyPlayerInit";
 import { SpotifyHeaderButton } from "@/components/spotify/SpotifyHeaderButton";
+import { LanguageToggle } from "@/components/language-toggle";
 import { SpotifyModal } from "@/components/spotify/SpotifyModal";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import { useGuestStore } from "@/stores/useGuestStore";
@@ -27,6 +30,8 @@ import { signOut } from "@/lib/auth";
 import { AlertCircle, X } from "lucide-react";
 
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
+  const tGuest = useTranslations("guest");
   const { data: session, status } = useSession();
   const isGuest = useIsGuest();
   const router = useRouter();
@@ -49,23 +54,19 @@ export default function DashboardPage() {
       const code = decodeURIComponent(spotifyError);
       console.error("[Spotify OAuth error]", code);
       const messages: Record<string, string> = {
-        state_mismatch:
-          "Phiên kết nối hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
-        token_exchange_failed:
-          "Không thể lấy token từ Spotify. Kiểm tra Client ID/Secret và Redirect URI trong Spotify Dashboard.",
-        profile_fetch_failed:
-          "Kết nối thành công nhưng không lấy được thông tin tài khoản Spotify.",
-        user_not_found:
-          "Không tìm thấy tài khoản của bạn trong hệ thống. Vui lòng đăng xuất và đăng nhập lại.",
-        access_denied: "Bạn đã từ chối quyền truy cập Spotify.",
+        state_mismatch: t("spotifyStateMismatch"),
+        token_exchange_failed: t("spotifyTokenFailed"),
+        profile_fetch_failed: t("spotifyProfileFailed"),
+        user_not_found: t("spotifyUserNotFound"),
+        access_denied: t("spotifyAccessDenied"),
       };
-      setSpotifyErrorMsg(messages[code] ?? `Lỗi không xác định: ${code}`);
+      setSpotifyErrorMsg(messages[code] ?? t("spotifyUnknownError", { code }));
       setSpotifyErrorCode(code);
       const url = new URL(window.location.href);
       url.searchParams.delete("spotify_error");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, [searchParams, checkConnection]);
+  }, [searchParams, checkConnection, t]);
 
   const {
     tasks,
@@ -249,7 +250,7 @@ export default function DashboardPage() {
         />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Đang tải...</p>
+          <p className="mt-4 text-muted-foreground">{t("loading")}</p>
         </div>
       </div>
     );
@@ -259,7 +260,7 @@ export default function DashboardPage() {
     return null;
   }
 
-  const displayName = isGuest ? "Khách" : session?.user?.name;
+  const displayName = isGuest ? tGuest("guestName") : session?.user?.name;
 
   return (
     <div className="min-h-screen bg-background">
@@ -284,7 +285,7 @@ export default function DashboardPage() {
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
             <div className="flex-1">
               <p className="font-medium text-red-200">
-                Kết nối Spotify thất bại
+                {t("spotifyConnectFailed")}
               </p>
               <p className="mt-0.5 text-red-300/80">{spotifyErrorMsg}</p>
               {spotifyErrorCode === "user_not_found" && (
@@ -292,7 +293,7 @@ export default function DashboardPage() {
                   onClick={async () => { await signOut(); window.location.href = "/auth/signin"; }}
                   className="mt-2 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-200 hover:bg-red-500/30 transition-colors"
                 >
-                  Đăng xuất và đăng nhập lại
+                  {t("signOutAndSignIn")}
                 </button>
               )}
               {spotifyErrorCode !== "user_not_found" && (
@@ -301,7 +302,7 @@ export default function DashboardPage() {
                   target="_top"
                   className="mt-2 inline-block rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-300 hover:bg-green-500/30 transition-colors"
                 >
-                  Thử kết nối lại
+                  {t("tryReconnect")}
                 </a>
               )}
             </div>
@@ -319,12 +320,13 @@ export default function DashboardPage() {
         )}
         <div className="flex items-center  justify-between mb-5">
           <div>
-            <h1 className="text-3xl font-bold">Danh sách công việc</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground">
-              Xin chào, <strong>{displayName}</strong>
+              {t("greeting")} <strong>{displayName}</strong>
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageToggle />
             <SpotifyHeaderButton />
             <UserNav
               user={session?.user ?? undefined}

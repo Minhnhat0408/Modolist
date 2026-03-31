@@ -43,6 +43,7 @@ import {
   ExternalLink,
   Search,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 /* ─── Responsive breakpoints ───────────────────────────────────────── */
 const BP_FULL = 640;
@@ -54,6 +55,9 @@ interface PipContentProps {
 }
 
 export function PipContent({ onClose }: PipContentProps) {
+  const t = useTranslations("focus");
+  const tw = useTranslations("focusWorld");
+  const ts = useTranslations("spotify");
   /* ── Width tracking (PiP window resize) ────────────────────────────── */
   const [cw, setCw] = useState(
     typeof window !== "undefined" ? window.innerWidth : 460,
@@ -248,11 +252,11 @@ export function PipContent({ onClose }: PipContentProps) {
   const modeLabel =
     mode === "WORK"
       ? focusType === "STANDARD"
-        ? `🎯 Phiên ${currentSession}/${totalSessions}`
-        : "🎯 Đang Tập Trung"
+        ? t("sessionLabel", { current: currentSession, total: totalSessions })
+        : t("focusingLabel")
       : mode === "SHORT_BREAK"
-        ? "☕ Nghỉ Ngắn"
-        : "🌴 Nghỉ Dài";
+        ? t("shortBreak")
+        : t("longBreak");
 
   const btnCls =
     "w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 " +
@@ -278,7 +282,7 @@ export function PipContent({ onClose }: PipContentProps) {
               } border-b-2 ${activeTab === "timer" ? "border-blue-500" : "border-transparent"}`}
             >
               <Timer size={12} />
-              {" Bộ Đếm"}
+              {" "}{t("timerTab")}
             </button>
           )}
           {hasWorldTab && (
@@ -294,7 +298,7 @@ export function PipContent({ onClose }: PipContentProps) {
               } border-b-2 ${activeTab === "world" ? "border-indigo-500" : "border-transparent"}`}
             >
               <Users size={12} />
-              {" Focus World"}
+              {" "}{t("focusWorldTab")}
               {onlineCount > 0 && ` (${onlineCount})`}
             </button>
           )}
@@ -311,7 +315,7 @@ export function PipContent({ onClose }: PipContentProps) {
               } border-b-2 ${activeTab === "spotify" ? "border-green-500" : "border-transparent"}`}
             >
               <Music size={12} />
-              {" Spotify"}
+              {" "}{t("spotifyTab")}
             </button>
           )}
         </div>
@@ -406,7 +410,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   onClose();
                 }}
                 className={btnCls}
-                title="Phóng to"
+                title={t("enlarge")}
               >
                 <Maximize2 size={16} />
               </button>
@@ -415,14 +419,14 @@ export function PipContent({ onClose }: PipContentProps) {
                   <button
                     onClick={skipWorkSession}
                     className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-500 dark:text-red-400 transition-colors"
-                    title="Bỏ qua"
+                    title={t("skipWorkShort")}
                   >
                     <XCircle size={16} />
                   </button>
                   <button
                     onClick={markWorkDone}
                     className="w-8 h-8 rounded-full border-0 cursor-pointer flex items-center justify-center shrink-0 bg-green-500/20 hover:bg-green-500/30 text-green-500 dark:text-green-400 transition-colors"
-                    title="Hoàn thành"
+                    title={t("markDone")}
                   >
                     <CheckCircle2 size={16} />
                   </button>
@@ -448,7 +452,7 @@ export function PipContent({ onClose }: PipContentProps) {
           {status === "paused" && (
             <div className="px-4 pb-2.5 flex items-center gap-1.5 text-[11px] text-yellow-500 dark:text-yellow-400">
               <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 dark:bg-yellow-400 inline-block" />
-              Đang Tạm Dừng
+              {t("pausedStatus")}
             </div>
           )}
         </>
@@ -482,8 +486,8 @@ export function PipContent({ onClose }: PipContentProps) {
             </div>
             <div className="text-[13px] font-semibold text-gray-900 dark:text-white">
               {onlineCount === 0
-                ? "Chưa có ai"
-                : `${onlineCount} người đang focus`}
+                ? tw("noOneYet")
+                : tw("peopleFocusing", { count: onlineCount })}
             </div>
           </div>
 
@@ -499,7 +503,7 @@ export function PipContent({ onClose }: PipContentProps) {
                 }
               }}
               className={btnCls}
-              title="Phóng to"
+              title={t("enlarge")}
             >
               <Maximize2 size={16} />
             </button>
@@ -528,7 +532,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   <Music size={20} className="text-[#1DB954]" />
                 </div>
                 <span className="text-[13px] text-gray-500 dark:text-gray-400 flex-1">
-                  Kết nối Spotify để nghe nhạc
+                  {ts("connectToListenWidget")}
                 </span>
                 <button
                   onClick={() => {
@@ -538,7 +542,7 @@ export function PipContent({ onClose }: PipContentProps) {
                   className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-[11px] font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink size={12} />
-                  Kết Nối
+                  {ts("connect")}
                 </button>
                 <button
                   onClick={() => {
@@ -557,7 +561,7 @@ export function PipContent({ onClose }: PipContentProps) {
               <div className="px-4 py-3 flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
                 <span className="text-[13px] text-gray-500 dark:text-gray-400">
-                  Đang kết nối Spotify...
+                  {ts("connectingSpotify")}
                 </span>
               </div>
             )}
@@ -570,10 +574,10 @@ export function PipContent({ onClose }: PipContentProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-yellow-600 dark:text-yellow-300 font-medium">
-                    Cần Spotify Premium
+                    {ts("needPremium")}
                   </p>
                   <p className="text-[10px] text-gray-500">
-                    Web Playback SDK yêu cầu Premium
+                    {ts("premiumRequired")}
                   </p>
                 </div>
                 <button
@@ -620,11 +624,11 @@ export function PipContent({ onClose }: PipContentProps) {
                         </>
                       ) : spotifyReady ? (
                         <p className="text-[13px] text-gray-500 dark:text-gray-400">
-                          Chưa phát nhạc
+                          {ts("noTrackPlaying")}
                         </p>
                       ) : (
                         <p className="text-[13px] text-gray-500 dark:text-gray-400">
-                          Đang kết nối...
+                          {ts("connectingPlayer")}
                         </p>
                       )}
                     </div>
@@ -637,7 +641,7 @@ export function PipContent({ onClose }: PipContentProps) {
                           onClick={() => spotifyActions.transferAndPlay()}
                           className="shrink-0 px-2 py-1 rounded-full border-0 cursor-pointer bg-green-500/20 text-green-600 dark:text-green-400 text-[11px] font-medium"
                         >
-                          Phát ở đây
+                          {ts("playHere")}
                         </button>
                       )}
 
@@ -647,7 +651,7 @@ export function PipContent({ onClose }: PipContentProps) {
                         onClick={() => spotifyActions.toggleShuffle()}
                         disabled={!spotifyReady}
                         className={`p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 ${spotifyShuffle ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
-                        title={spotifyShuffle ? "Tắt trộn bài" : "Trộn bài"}
+                        title={spotifyShuffle ? ts("shuffleOn") : ts("shuffleOff")}
                       >
                         <Shuffle size={14} />
                       </button>
@@ -745,7 +749,7 @@ export function PipContent({ onClose }: PipContentProps) {
                       }}
                       disabled={!spotifyReady}
                       className="p-1.5 rounded-full border-0 cursor-pointer disabled:opacity-30 text-gray-700 dark:text-white"
-                      title="Tìm kiếm"
+                      title={ts("search")}
                     >
                       <Search size={16} />
                     </button>
@@ -753,7 +757,7 @@ export function PipContent({ onClose }: PipContentProps) {
                     <button
                       onClick={() => spotifyDisconnect()}
                       className="p-1.5 rounded-full border-0 cursor-pointer text-gray-500 hover:text-red-500"
-                      title="Ngắt kết nối"
+                      title={ts("disconnect")}
                     >
                       <Unplug size={14} />
                     </button>

@@ -2,6 +2,7 @@
 
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 function SpotifyLogo({ className }: { className?: string }) {
   return (
@@ -38,6 +39,7 @@ function EqualizerBars() {
 }
 
 export function SpotifyHeaderButton() {
+  const t = useTranslations("spotify");
   const { isConnected, isPlaying, currentTrack, openWidget } =
     useSpotifyStore();
 
@@ -48,10 +50,10 @@ export function SpotifyHeaderButton() {
       whileTap={{ scale: 0.95 }}
       title={
         !isConnected
-          ? "Kết nối Spotify"
+          ? t("connectSpotify")
           : currentTrack
             ? `${currentTrack.name} — ${currentTrack.artists}`
-            : "Mở Spotify"
+            : t("openSpotify")
       }
       className={[
         "relative flex items-center gap-2 h-10 px-3.5 rounded-full overflow-hidden",
@@ -87,7 +89,7 @@ export function SpotifyHeaderButton() {
           >
             <EqualizerBars />
             <span className="hidden sm:block max-w-[90px] truncate text-xs leading-none">
-              {currentTrack?.name ?? "\u0110ang ph\u00e1t"}
+              {currentTrack?.name ?? t("playing")}
             </span>
           </motion.div>
         ) : (
@@ -98,7 +100,7 @@ export function SpotifyHeaderButton() {
             exit={{ opacity: 0 }}
             className="hidden sm:block relative z-10"
           >
-            {isConnected ? "Nghe nhạc Spotify" : "Kết nối Spotify"}
+            {isConnected ? t("listenSpotify") : t("connectSpotify")}
           </motion.span>
         )}
       </AnimatePresence>

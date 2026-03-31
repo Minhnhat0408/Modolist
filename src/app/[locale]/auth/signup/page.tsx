@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Mail, Lock, User, CheckCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,9 +13,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle } from "@/components/language-toggle";
+import { clearGuestCookie } from "@/hooks/useIsGuest";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -39,13 +42,13 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu không khớp");
+      setError(t("passwordMismatch"));
       setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự");
+      setError(t("passwordTooShort"));
       setIsLoading(false);
       return;
     }
@@ -66,15 +69,19 @@ export default function SignUpPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Đã có lỗi xảy ra");
+        setError(data.error || t("genericError"));
       } else {
         setSuccess(true);
+        // Clear guest cookie so useIsGuest() returns false on dashboard
+        // Guest tasks in localStorage are preserved — MigrateModal will handle migration
+        clearGuestCookie();
+        // Supabase tự đăng nhập user sau signup → đi thẳng vào dashboard
         setTimeout(() => {
-          router.push("/auth/signin");
-        }, 3000);
+          router.push("/dashboard");
+        }, 2000);
       }
     } catch {
-      setError("Đã có lỗi xảy ra. Vui lòng thử lại.");
+      setError(t("genericErrorRetry"));
     } finally {
       setIsLoading(false);
     }
@@ -83,26 +90,27 @@ export default function SignUpPage() {
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <LanguageToggle />
           <ThemeToggle />
         </div>
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
               <CheckCircle className="h-6 w-6" />
-              Đăng ký thành công!
+              {t("signUpSuccess")}
             </CardTitle>
             <CardDescription>
-              Tài khoản của bạn đã được tạo thành công
+              {t("accountCreated")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Bạn có thể đăng nhập ngay bây giờ với email{" "}
+              {t("canLoginNow")}{" "}
               <strong>{formData.email}</strong>
             </p>
             <p className="text-sm text-muted-foreground">
-              Đang chuyển hướng đến trang đăng nhập...
+              {t("redirecting")}
             </p>
           </CardContent>
         </Card>
@@ -112,16 +120,17 @@ export default function SignUpPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold">
-            Đăng ký tài khoản
+            {t("signUpTitle")}
           </CardTitle>
           <CardDescription>
-            Tạo tài khoản mới để bắt đầu sử dụng Modolist
+            {t("signUpDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -132,7 +141,7 @@ export default function SignUpPage() {
                 className="text-sm font-medium flex items-center gap-2"
               >
                 <User className="h-4 w-4" />
-                Tên của bạn
+                {t("nameLabel")}
               </label>
               <input
                 id="name"
@@ -140,7 +149,7 @@ export default function SignUpPage() {
                 type="text"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Nguyễn Văn A"
+                placeholder={t("namePlaceholder")}
                 className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -151,7 +160,7 @@ export default function SignUpPage() {
                 className="text-sm font-medium flex items-center gap-2"
               >
                 <Mail className="h-4 w-4" />
-                Email *
+                {t("emailRequired")}
               </label>
               <input
                 id="email"
@@ -159,7 +168,7 @@ export default function SignUpPage() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="your@email.com"
+                placeholder={t("emailSignUpPlaceholder")}
                 required
                 className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
@@ -171,7 +180,7 @@ export default function SignUpPage() {
                 className="text-sm font-medium flex items-center gap-2"
               >
                 <Lock className="h-4 w-4" />
-                Mật khẩu *
+                {t("passwordRequired")}
               </label>
               <input
                 id="password"
@@ -179,7 +188,7 @@ export default function SignUpPage() {
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Ít nhất 8 ký tự"
+                placeholder={t("passwordMinLength")}
                 required
                 className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
@@ -191,7 +200,7 @@ export default function SignUpPage() {
                 className="text-sm font-medium flex items-center gap-2"
               >
                 <Lock className="h-4 w-4" />
-                Xác nhận mật khẩu *
+                {t("confirmPasswordLabel")}
               </label>
               <input
                 id="confirmPassword"
@@ -199,7 +208,7 @@ export default function SignUpPage() {
                 type="password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="Nhập lại mật khẩu"
+                placeholder={t("confirmPasswordPlaceholder")}
                 required
                 className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
@@ -217,28 +226,28 @@ export default function SignUpPage() {
               className="w-full"
               size="lg"
             >
-              {isLoading ? "Đang xử lý..." : "Đăng ký"}
+              {isLoading ? t("processing") : t("signUp")}
             </Button>
           </form>
 
           <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Đã có tài khoản? </span>
+            <span className="text-muted-foreground">{t("hasAccount")}</span>
             <Link
               href="/auth/signin"
               className="font-medium text-primary hover:text-primary/80"
             >
-              Đăng nhập
+              {t("signIn")}
             </Link>
           </div>
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            Bằng việc đăng ký, bạn đồng ý với{" "}
+            {t("signUpAgreement")}{" "}
             <a href="/terms" className="underline hover:text-foreground">
-              Điều khoản sử dụng
+              {t("termsOfService")}
             </a>{" "}
-            và{" "}
+            {t("and")}{" "}
             <a href="/privacy" className="underline hover:text-foreground">
-              Chính sách bảo mật
+              {t("privacyPolicy")}
             </a>
           </div>
         </CardContent>

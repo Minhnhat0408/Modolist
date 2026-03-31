@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface FocusWorldPanelProps {
   userId: string | null;
@@ -125,6 +126,7 @@ export function FocusWorldPanel({
   userName,
   userImage,
 }: FocusWorldPanelProps) {
+  const t = useTranslations("focusWorld");
   const { isConnected, focusUsers } = useFocusWorld({
     userId,
     sessionId,
@@ -143,7 +145,7 @@ export function FocusWorldPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Co-Focus World</CardTitle>
+            <CardTitle className="text-lg">{t("title")}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Badge
@@ -170,20 +172,20 @@ export function FocusWorldPanel({
       <CardContent className="space-y-2">
         {!enabled && (
           <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">Start a focus session to see others</p>
+            <p className="text-sm">{t("startFocusToSee")}</p>
           </div>
         )}
 
         {enabled && !isConnected && (
           <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">Connecting...</p>
+            <p className="text-sm">{t("connecting")}</p>
           </div>
         )}
 
         {enabled && isConnected && otherUsers.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">No one else is focusing right now</p>
-            <p className="text-xs mt-1">Be the pioneer! 🚀</p>
+            <p className="text-sm">{t("noOneFocusing")}</p>
+            <p className="text-xs mt-1">{t("bePioneerPanel")}</p>
           </div>
         )}
 

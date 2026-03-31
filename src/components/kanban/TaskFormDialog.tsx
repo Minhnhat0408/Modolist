@@ -29,6 +29,7 @@ import {
 import { api } from "@/lib/api-client";
 import { useIsGuest } from "@/hooks/useIsGuest";
 import { Sparkles, Loader2, Clock, Zap, Brain, X, Repeat } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 const taskFormSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống").max(200),
@@ -90,6 +91,7 @@ export function TaskFormDialog({
 }: TaskFormDialogProps) {
   const isEditing = !!task;
   const isGuest = useIsGuest();
+  const t = useTranslations("taskForm");
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
@@ -260,7 +262,7 @@ export function TaskFormDialog({
     const description = watch("description");
 
     if (!title || title.trim().length === 0) {
-      setAiError("Vui lòng nhập tiêu đề trước khi dùng AI");
+      setAiError(t("aiEnterTitleFirst"));
       return;
     }
 
@@ -286,7 +288,7 @@ export function TaskFormDialog({
       }
     } catch (error) {
       console.error("AI estimate failed:", error);
-      setAiError("AI không khả dụng. Bạn có thể điền thủ công.");
+      setAiError(t("aiUnavailable"));
     } finally {
       setAiLoading(false);
     }
@@ -309,12 +311,12 @@ export function TaskFormDialog({
             >
               <ResponsiveModalHeader>
                 <ResponsiveModalTitle className="text-xl">
-                  {isEditing ? "Chỉnh sửa nhiệm vụ" : "Tạo nhiệm vụ mới"}
+                  {isEditing ? t("editTask") : t("createTask")}
                 </ResponsiveModalTitle>
                 <ResponsiveModalDescription>
                   {isEditing
-                    ? "Cập nhật thông tin chi tiết của nhiệm vụ."
-                    : "Nhập thông tin chi tiết để tạo nhiệm vụ mới."}
+                    ? t("editDescription")
+                    : t("createDescription")}
                 </ResponsiveModalDescription>
               </ResponsiveModalHeader>
 
@@ -331,14 +333,14 @@ export function TaskFormDialog({
                       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs"
                     >
                       <span className="flex-1">
-                        📝 Bạn có bản nháp chưa lưu
+                        {t("draftBanner")}
                       </span>
                       <button
                         type="button"
                         onClick={handleRestoreDraft}
                         className="font-semibold underline hover:text-amber-300 shrink-0"
                       >
-                        Khôi phục
+                        {t("restore")}
                       </button>
                       <button
                         type="button"
@@ -357,12 +359,12 @@ export function TaskFormDialog({
                     className="space-y-2"
                   >
                     <Label htmlFor="title" className="text-sm font-medium">
-                      Tiêu đề *
+                      {t("titleLabel")}
                     </Label>
                     <Input
                       id="title"
                       {...register("title")}
-                      placeholder="Nhập tiêu đề task"
+                      placeholder={t("titlePlaceholder")}
                       className="
                         bg-white/5 border-white/10
                         focus:bg-white/10 focus:border-primary/50
@@ -375,7 +377,7 @@ export function TaskFormDialog({
                         animate={{ opacity: 1, y: 0 }}
                         className="text-sm text-destructive"
                       >
-                        {errors.title.message}
+                        {t("titleRequired")}
                       </motion.p>
                     )}
                   </motion.div>
@@ -391,12 +393,12 @@ export function TaskFormDialog({
                       htmlFor="description"
                       className="text-sm font-medium"
                     >
-                      Mô tả
+                      {t("descriptionLabel")}
                     </Label>
                     <Textarea
                       id="description"
                       {...register("description")}
-                      placeholder="Mô tả chi tiết task"
+                      placeholder={t("descriptionPlaceholder")}
                       className="
                         bg-white/5 border-white/10
                         focus:bg-white/10 focus:border-primary/50
@@ -419,22 +421,22 @@ export function TaskFormDialog({
                       onClick={handleAiAutoComplete}
                       disabled={aiLoading || isGuest}
                       className="w-full bg-linear-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30 hover:border-purple-500/50 hover:from-purple-500/20 hover:to-blue-500/20 transition-all duration-300"
-                      title={isGuest ? "Đăng ký để dùng AI" : undefined}
+                      title={isGuest ? t("aiSignUpRequired") : undefined}
                     >
                       {aiLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          AI đang phân tích...
+                          {t("aiAnalyzing")}
                         </>
                       ) : isGuest ? (
                         <>
                           <Sparkles className="h-4 w-4 mr-2 opacity-50" />
-                          Đăng ký để dùng AI
+                          {t("aiSignUpRequired")}
                         </>
                       ) : (
                         <>
-                          <Sparkles className="h-4 w-4 mr-2" />✨ AI Ước lượng
-                          thời gian
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          {t("aiEstimateTime")}
                         </>
                       )}
                     </Button>
@@ -457,17 +459,17 @@ export function TaskFormDialog({
                       >
                         <div className="flex items-center gap-2 text-sm font-medium text-purple-300">
                           <Brain className="h-4 w-4" />
-                          Gợi ý từ AI
+                          {t("aiSuggestion")}
                           <span className="ml-auto text-xs text-muted-foreground">
-                            Độ tin cậy:{" "}
+                            {t("confidence")}:{" "}
                             {aiSuggestion.confidence === "high" ? (
-                              <span className="text-green-400">Cao</span>
+                              <span className="text-green-400">{t("confidenceHigh")}</span>
                             ) : aiSuggestion.confidence === "medium" ? (
                               <span className="text-yellow-400">
-                                Trung bình
+                                {t("confidenceMedium")}
                               </span>
                             ) : (
-                              <span className="text-red-400">Thấp</span>
+                              <span className="text-red-400">{t("confidenceLow")}</span>
                             )}
                           </span>
                         </div>
@@ -504,24 +506,24 @@ export function TaskFormDialog({
                       className="space-y-2"
                     >
                       <Label className="text-sm font-medium">
-                        Di chuyển nhanh
+                        {t("quickMove")}
                       </Label>
                       <div className="flex gap-2">
                         {[
                           {
                             value: TaskStatus.BACKLOG,
-                            label: "📋 Chờ",
+                            label: t("statusBacklog"),
                             color: "bg-muted hover:bg-muted/80",
                           },
                           {
                             value: TaskStatus.TODAY,
-                            label: "🎯 Hôm nay",
+                            label: t("statusToday"),
                             color:
                               "bg-secondary/20 hover:bg-secondary/30 border border-secondary/30",
                           },
                           {
                             value: TaskStatus.DONE,
-                            label: "✅ Xong",
+                            label: t("statusDone"),
                             color:
                               "bg-primary/20 hover:bg-primary/30 border border-primary/30",
                           },
@@ -552,7 +554,7 @@ export function TaskFormDialog({
                   >
                     <div className="space-y-2">
                       <Label htmlFor="status" className="text-sm font-medium">
-                        Trạng thái
+                        {t("statusLabel")}
                       </Label>
                       <Select
                         value={currentStatus}
@@ -568,17 +570,17 @@ export function TaskFormDialog({
                             transition-all duration-200
                           "
                         >
-                          <SelectValue placeholder="Chọn trạng thái" />
+                          <SelectValue placeholder={t("statusPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent className="bg-background/95 backdrop-blur-xl border-white/20">
                           <SelectItem value={TaskStatus.BACKLOG}>
-                            Danh sách chờ
+                            {t("backlog")}
                           </SelectItem>
                           <SelectItem value={TaskStatus.TODAY}>
-                            Hôm nay
+                            {t("todayStatus")}
                           </SelectItem>
                           <SelectItem value={TaskStatus.DONE}>
-                            Hoàn thành
+                            {t("done")}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -586,7 +588,7 @@ export function TaskFormDialog({
 
                     <div className="space-y-2">
                       <Label htmlFor="priority" className="text-sm font-medium">
-                        Độ ưu tiên
+                        {t("priorityLabel")}
                       </Label>
                       <Select
                         value={currentPriority}
@@ -602,16 +604,16 @@ export function TaskFormDialog({
                             transition-all duration-200
                           "
                         >
-                          <SelectValue placeholder="Chọn độ ưu tiên" />
+                          <SelectValue placeholder={t("priorityPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent className="bg-background/95 backdrop-blur-xl border-white/20">
-                          <SelectItem value={TaskPriority.LOW}>Thấp</SelectItem>
+                          <SelectItem value={TaskPriority.LOW}>{t("priorityLow")}</SelectItem>
                           <SelectItem value={TaskPriority.MEDIUM}>
-                            Trung bình
+                            {t("priorityMedium")}
                           </SelectItem>
-                          <SelectItem value={TaskPriority.HIGH}>Cao</SelectItem>
+                          <SelectItem value={TaskPriority.HIGH}>{t("priorityHigh")}</SelectItem>
                           <SelectItem value={TaskPriority.URGENT}>
-                            Khẩn cấp
+                            {t("priorityUrgent")}
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -626,7 +628,7 @@ export function TaskFormDialog({
                     className="space-y-2"
                   >
                     <Label htmlFor="dueDate" className="text-sm font-medium">
-                      Hạn hoàn thành
+                      {t("dueDateLabel")}
                     </Label>
                     <Input
                       id="dueDate"
@@ -648,12 +650,12 @@ export function TaskFormDialog({
                     className="space-y-2"
                   >
                     <Label htmlFor="tags" className="text-sm font-medium">
-                      Nhãn (phân cách bằng dấu phẩy)
+                      {t("tagsLabel")}
                     </Label>
                     <Input
                       id="tags"
                       {...register("tags")}
-                      placeholder="công việc, khẩn cấp, họp"
+                      placeholder={t("tagsPlaceholder")}
                       className="
                         bg-white/5 border-white/10
                         focus:bg-white/10 focus:border-primary/50
@@ -671,7 +673,7 @@ export function TaskFormDialog({
                   >
                     <Label className="text-sm font-medium flex items-center gap-1.5">
                       <Repeat className="h-3.5 w-3.5" />
-                      Lặp lại
+                      {t("recurrenceLabel")}
                     </Label>
                     <Select
                       value={currentRecurrence ?? RecurrenceRule.NONE}
@@ -686,23 +688,23 @@ export function TaskFormDialog({
                           transition-all duration-200
                         "
                       >
-                        <SelectValue placeholder="Chọn tần suất lặp" />
+                        <SelectValue placeholder={t("recurrencePlaceholder")} />
                       </SelectTrigger>
                       <SelectContent className="bg-background/95 backdrop-blur-xl border-white/20">
                         <SelectItem value={RecurrenceRule.NONE}>
-                          Không lặp
+                          {t("recurrenceNone")}
                         </SelectItem>
                         <SelectItem value={RecurrenceRule.DAILY}>
-                          Hàng ngày
+                          {t("recurrenceDaily")}
                         </SelectItem>
                         <SelectItem value={RecurrenceRule.WEEKDAY}>
-                          Ngày trong tuần (T2-T6)
+                          {t("recurrenceWeekday")}
                         </SelectItem>
                         <SelectItem value={RecurrenceRule.WEEKLY}>
-                          Hàng tuần
+                          {t("recurrenceWeekly")}
                         </SelectItem>
                         <SelectItem value={RecurrenceRule.MONTHLY}>
-                          Hàng tháng
+                          {t("recurrenceMonthly")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -710,7 +712,7 @@ export function TaskFormDialog({
                     {currentRecurrence === RecurrenceRule.WEEKLY && (
                       <div className="mt-3 space-y-2">
                         <p className="text-xs text-muted-foreground">
-                          Chọn 1 hoặc nhiều ngày trong tuần
+                          {t("selectWeekdays")}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {WEEKDAY_OPTIONS.map((day) => {
@@ -750,7 +752,7 @@ export function TaskFormDialog({
                           htmlFor="recurrenceDayOfMonth"
                           className="text-xs text-muted-foreground"
                         >
-                          Ngày lặp trong tháng (1-31)
+                          {t("monthlyDay")}
                         </Label>
                         <Input
                           id="recurrenceDayOfMonth"
@@ -790,7 +792,7 @@ export function TaskFormDialog({
                           disabled={isSubmitting}
                           className="backdrop-blur-sm"
                         >
-                          Xóa
+                          {t("delete")}
                         </Button>
                       </motion.div>
                     ) : (
@@ -807,10 +809,10 @@ export function TaskFormDialog({
                         className="backdrop-blur-sm"
                       >
                         {isSubmitting
-                          ? "Đang lưu..."
+                          ? t("saving")
                           : isEditing
-                            ? "Cập nhật"
-                            : "Tạo"}
+                            ? t("update")
+                            : t("create")}
                       </Button>
                     </motion.div>
                   </div>

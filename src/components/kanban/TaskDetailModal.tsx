@@ -12,6 +12,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import type { Task } from "@/types/database";
 import { TaskStatus, TaskPriority, RecurrenceRule } from "@/types/database";
@@ -99,22 +100,22 @@ export interface TaskDetailModalProps {
 const PRIORITY_OPTIONS = [
   {
     value: TaskPriority.URGENT,
-    label: "🔴 Khẩn cấp",
+    label: "priorityUrgentEmoji",
     cls: "bg-red-500/15 text-red-400 border-red-500/25 hover:bg-red-500/25",
   },
   {
     value: TaskPriority.HIGH,
-    label: "🟠 Cao",
+    label: "priorityHighEmoji",
     cls: "bg-orange-500/15 text-orange-400 border-orange-500/25 hover:bg-orange-500/25",
   },
   {
     value: TaskPriority.MEDIUM,
-    label: "🟡 Trung bình",
+    label: "priorityMediumEmoji",
     cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25 hover:bg-yellow-500/25",
   },
   {
     value: TaskPriority.LOW,
-    label: "🔵 Thấp",
+    label: "priorityLowEmoji",
     cls: "bg-blue-500/15 text-blue-400 border-blue-500/25 hover:bg-blue-500/25",
   },
 ] as const;
@@ -130,6 +131,7 @@ function getPriorityOption(p: TaskPriority | undefined) {
 
 function formatDueDate(
   d: Date | string | null,
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): { text: string; cls: string } | null {
   if (!d) return null;
   const today = new Date();
@@ -140,12 +142,12 @@ function formatDueDate(
 
   if (diff < 0)
     return {
-      text: `Quá hạn ${Math.abs(diff)} ngày`,
+      text: t("overdue", { days: Math.abs(diff) }),
       cls: "text-red-400 font-medium",
     };
   if (diff === 0)
-    return { text: "Hôm nay", cls: "text-orange-400 font-medium" };
-  if (diff === 1) return { text: "Ngày mai", cls: "text-yellow-400" };
+    return { text: t("todayStatus"), cls: "text-orange-400 font-medium" };
+  if (diff === 1) return { text: t("tomorrow"), cls: "text-yellow-400" };
   return {
     text: date.toLocaleDateString("vi-VN", {
       day: "2-digit",
@@ -176,21 +178,21 @@ function SectionLabel({
 // ── Recurrence labels ─────────────────────────────────────────────────
 
 const RECURRENCE_OPTIONS = [
-  { value: RecurrenceRule.NONE, label: "Không lặp" },
-  { value: RecurrenceRule.DAILY, label: "Hàng ngày" },
-  { value: RecurrenceRule.WEEKDAY, label: "Ngày trong tuần" },
-  { value: RecurrenceRule.WEEKLY, label: "Hàng tuần" },
-  { value: RecurrenceRule.MONTHLY, label: "Hàng tháng" },
+  { value: RecurrenceRule.NONE, label: "recurrenceNone" },
+  { value: RecurrenceRule.DAILY, label: "recurrenceDaily" },
+  { value: RecurrenceRule.WEEKDAY, label: "recurrenceWeekday" },
+  { value: RecurrenceRule.WEEKLY, label: "recurrenceWeekly" },
+  { value: RecurrenceRule.MONTHLY, label: "recurrenceMonthly" },
 ] as const;
 
 const WEEKDAY_OPTIONS = [
-  { value: 1, label: "T2" },
-  { value: 2, label: "T3" },
-  { value: 3, label: "T4" },
-  { value: 4, label: "T5" },
-  { value: 5, label: "T6" },
-  { value: 6, label: "T7" },
-  { value: 0, label: "CN" },
+  { value: 1, label: "weekdayMon" },
+  { value: 2, label: "weekdayTue" },
+  { value: 3, label: "weekdayWed" },
+  { value: 4, label: "weekdayThu" },
+  { value: 5, label: "weekdayFri" },
+  { value: 6, label: "weekdaySat" },
+  { value: 0, label: "weekdaySun" },
 ] as const;
 
 // ── Inline editable text (single-line or textarea) ────────────────────
@@ -303,6 +305,7 @@ export function TaskDetailModal({
   onTaskDeleted,
   onDuplicate,
 }: TaskDetailModalProps) {
+  const t = useTranslations("taskForm");
   const [localTask, setLocalTask] = useState<Task | null>(null);
   const [editingPriority, setEditingPriority] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState(false);
@@ -496,7 +499,7 @@ export function TaskDetailModal({
     setEditingTags(false);
     const tags = tagsDraft
       .split(",")
-      .map((t) => t.trim())
+      .map((s) => s.trim())
       .filter(Boolean);
     if (JSON.stringify(tags) !== JSON.stringify(localTask?.tags ?? [])) {
       patchField("tags", tags);
@@ -506,7 +509,7 @@ export function TaskDetailModal({
   if (!localTask) return null;
 
   const isDone = localTask.status === TaskStatus.DONE;
-  const dueInfo = formatDueDate(localTask.dueDate);
+  const dueInfo = formatDueDate(localTask.dueDate, t);
   const priorityOpt = getPriorityOption(localTask.priority);
 
   // ── DONE = read-only "history" view ─────────────────────────────────
@@ -521,13 +524,13 @@ export function TaskDetailModal({
             {localTask.title}
           </ResponsiveModalTitle>
           <ResponsiveModalDescription className="sr-only">
-            Lịch sử nhiệm vụ
+            {t("taskHistory")}
           </ResponsiveModalDescription>
 
           {/* Header */}
           <div className="px-6 pt-5 pb-4 border-b border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-xs text-muted-foreground/55 mb-2">
-              <span>✅ Hoàn thành</span>
+              <span>{t("completed")}</span>
               <span>·</span>
               <span>
                 {localTask.completedAt
@@ -554,7 +557,7 @@ export function TaskDetailModal({
             {/* Description */}
             {localTask.description && (
               <section>
-                <SectionLabel icon={AlignLeft}>Mô tả</SectionLabel>
+                <SectionLabel icon={AlignLeft}>{t("descriptionSection")}</SectionLabel>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground px-1">
                   {localTask.description}
                 </p>
@@ -564,7 +567,7 @@ export function TaskDetailModal({
             {/* Tags */}
             {localTask.tags && localTask.tags.length > 0 && (
               <section>
-                <SectionLabel icon={Tag}>Nhãn</SectionLabel>
+                <SectionLabel icon={Tag}>{t("tagsSection")}</SectionLabel>
                 <div className="flex items-center gap-1.5 flex-wrap px-1">
                   {localTask.tags.map((tag) => (
                     <Badge
@@ -581,7 +584,7 @@ export function TaskDetailModal({
 
             {/* Focus stats */}
             <section>
-              <SectionLabel icon={Clock}>Thống kê Focus</SectionLabel>
+              <SectionLabel icon={Clock}>{t("focusStats")}</SectionLabel>
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground/80 px-1">
                 {localTask.completedPomodoros > 0 ? (
                   <span className="flex items-center gap-1.5">
@@ -589,17 +592,17 @@ export function TaskDetailModal({
                     <span className="font-medium text-foreground">
                       {localTask.completedPomodoros}
                     </span>{" "}
-                    phiên Pomodoro hoàn thành
+                    {t("pomodoroCompleted")}
                   </span>
                 ) : (
                   <span className="text-muted-foreground/50 italic text-xs">
-                    Chưa có phiên Focus nào
+                    {t("noFocusSessions")}
                   </span>
                 )}
                 {localTask.estimatedPomodoros ? (
                   <span className="flex items-center gap-1 text-xs">
                     <Clock className="h-3.5 w-3.5 text-green-400" />
-                    Ước lượng: {localTask.estimatedPomodoros} pomodoros
+                    {t("estimated", { count: localTask.estimatedPomodoros })}
                   </span>
                 ) : null}
               </div>
@@ -615,18 +618,18 @@ export function TaskDetailModal({
                         sessionsOpen ? "rotate-180" : ""
                       }`}
                     />
-                    {sessionsOpen ? "Ẩn" : "Xem"} lịch sử
+                    {sessionsOpen ? t("hideHistory") : t("viewHistory")} {t("history")}
                   </button>
                   {sessionsOpen && (
                     <div className="mt-2 space-y-1">
                       {loadingHistory ? (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          Đang tải...
+                          {t("loading")}
                         </div>
                       ) : sessionHistory.length === 0 ? (
                         <p className="text-xs text-muted-foreground/40 italic">
-                          Chưa có dữ liệu
+                          {t("noData")}
                         </p>
                       ) : (
                         sessionHistory.map((s) => {
@@ -690,7 +693,7 @@ export function TaskDetailModal({
                 variant="outline"
                 className={cn("text-xs", priorityOpt.cls)}
               >
-                {priorityOpt.label}
+                {t(priorityOpt.label)}
               </Badge>
               {dueInfo && (
                 <span
@@ -712,7 +715,7 @@ export function TaskDetailModal({
               className="gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              Khôi phục về Hôm nay
+              {t("restoreToToday")}
             </Button>
             {onDuplicate && localTask && (
               <Button
@@ -725,7 +728,7 @@ export function TaskDetailModal({
                 className="gap-2"
               >
                 <Copy className="h-4 w-4" />
-                Tạo lại task này
+                {t("duplicateTask")}
               </Button>
             )}
           </div>
@@ -747,7 +750,7 @@ export function TaskDetailModal({
           {localTask.title}
         </ResponsiveModalTitle>
         <ResponsiveModalDescription className="sr-only">
-          Chi tiết nhiệm vụ
+          {t("detailTitle")}
         </ResponsiveModalDescription>
 
         {/* ── Custom Header ── */}
@@ -756,23 +759,23 @@ export function TaskDetailModal({
           <div className="flex items-center gap-2 text-xs text-muted-foreground/55 mb-2">
             <span>
               {localTask.status === TaskStatus.BACKLOG
-                ? "📋 Danh sách chờ"
+                ? t("backlogMeta")
                 : localTask.status === TaskStatus.TODAY
-                  ? "🎯 Hôm nay"
-                  : "✅ Hoàn thành"}
+                  ? t("todayMeta")
+                  : t("doneMeta")}
             </span>
             <span>·</span>
             <span>
               {localTask.completedAt
-                ? `Hoàn thành ${new Date(localTask.completedAt).toLocaleDateString("vi-VN")}`
-                : `Tạo ${new Date(localTask.createdAt).toLocaleDateString("vi-VN")}`}
+                ? `${t("completedAt")} ${new Date(localTask.completedAt).toLocaleDateString("vi-VN")}`
+                : `${t("createdAt")} ${new Date(localTask.createdAt).toLocaleDateString("vi-VN")}`}
             </span>
           </div>
 
           {/* Editable title */}
           <EditableText
             value={localTask.title}
-            placeholder="Nhập tiêu đề..."
+            placeholder={t("titleEditPlaceholder")}
             onSave={(val) => val && patchField("title", val)}
             large
             className="-mx-3"
@@ -783,10 +786,10 @@ export function TaskDetailModal({
         <ResponsiveModalBody className="px-6 py-4 space-y-5 overflow-y-auto max-h-[55dvh] md:max-h-[58vh]">
           {/* Description */}
           <section>
-            <SectionLabel icon={AlignLeft}>Mô tả</SectionLabel>
+            <SectionLabel icon={AlignLeft}>{t("descriptionSection")}</SectionLabel>
             <EditableText
               value={localTask.description}
-              placeholder="Thêm mô tả chi tiết..."
+              placeholder={t("descriptionEditPlaceholder")}
               onSave={(val) => patchField("description", val)}
               multiline
               className="-mx-3"
@@ -795,23 +798,23 @@ export function TaskDetailModal({
 
           {/* Status quick-switch */}
           <section>
-            <SectionLabel>Trạng thái</SectionLabel>
+            <SectionLabel>{t("statusSection")}</SectionLabel>
             <div className="flex gap-2">
               {[
                 {
                   value: TaskStatus.BACKLOG,
-                  label: "📋 Chờ",
+                  label: t("statusBacklog"),
                   activeCls: "bg-muted border-border text-foreground",
                 },
                 {
                   value: TaskStatus.TODAY,
-                  label: "🎯 Hôm nay",
+                  label: t("statusToday"),
                   activeCls:
                     "bg-secondary/20 border-secondary/35 text-secondary",
                 },
                 {
                   value: TaskStatus.DONE,
-                  label: "✅ Xong",
+                  label: t("statusDone"),
                   activeCls: "bg-primary/20 border-primary/35 text-primary",
                 },
               ].map((s) => {
@@ -839,7 +842,7 @@ export function TaskDetailModal({
           <div className="grid grid-cols-2 gap-5">
             {/* Priority */}
             <section>
-              <SectionLabel>Độ ưu tiên</SectionLabel>
+              <SectionLabel>{t("prioritySection")}</SectionLabel>
               {!editingPriority ? (
                 <button
                   onClick={() => setEditingPriority(true)}
@@ -849,7 +852,7 @@ export function TaskDetailModal({
                     variant="outline"
                     className={cn("text-xs cursor-pointer", priorityOpt.cls)}
                   >
-                    {priorityOpt.label}
+                    {t(priorityOpt.label)}
                   </Badge>
                   <Pencil className="h-3 w-3 text-transparent group-hover:text-muted-foreground/40 transition-colors" />
                 </button>
@@ -869,7 +872,7 @@ export function TaskDetailModal({
                           : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/8",
                       )}
                     >
-                      {opt.label}
+                      {t(opt.label)}
                     </button>
                   ))}
                 </div>
@@ -878,7 +881,7 @@ export function TaskDetailModal({
 
             {/* Due Date */}
             <section>
-              <SectionLabel icon={CalendarDays}>Hạn chót</SectionLabel>
+              <SectionLabel icon={CalendarDays}>{t("dueDate")}</SectionLabel>
               {!editingDueDate ? (
                 <button
                   onClick={() => setEditingDueDate(true)}
@@ -890,7 +893,7 @@ export function TaskDetailModal({
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground/40 italic">
-                      Chưa đặt
+                      {t("notSet")}
                     </span>
                   )}
                   <Pencil className="h-3 w-3 text-transparent group-hover:text-muted-foreground/40 transition-colors" />
@@ -921,7 +924,7 @@ export function TaskDetailModal({
 
           {/* Tags */}
           <section>
-            <SectionLabel icon={Tag}>Nhãn</SectionLabel>
+            <SectionLabel icon={Tag}>{t("tagsSection")}</SectionLabel>
             {!editingTags ? (
               <div
                 className="group flex items-center gap-1.5 flex-wrap cursor-pointer rounded-xl py-1.5 px-1 hover:bg-white/5 transition-colors -mx-1"
@@ -942,7 +945,7 @@ export function TaskDetailModal({
                   ))
                 ) : (
                   <span className="text-sm text-muted-foreground/40 italic">
-                    Thêm nhãn...
+                    {t("addTags")}
                   </span>
                 )}
                 <Pencil className="h-3 w-3 ml-1 text-transparent group-hover:text-muted-foreground/40 transition-colors" />
@@ -956,7 +959,7 @@ export function TaskDetailModal({
                   if (e.key === "Enter") (e.target as HTMLElement).blur();
                   if (e.key === "Escape") setEditingTags(false);
                 }}
-                placeholder="công việc, khẩn cấp, họp"
+                placeholder={t("tagsPlaceholder")}
                 autoFocus
                 className="w-full bg-white/5 border border-primary/40 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/60 transition-colors"
               />
@@ -966,7 +969,7 @@ export function TaskDetailModal({
           {/* Focus info + AI estimate */}
           <section>
             <div className="flex items-center justify-between mb-2">
-              <SectionLabel icon={Clock}>Thông tin Focus</SectionLabel>
+              <SectionLabel icon={Clock}>{t("focusInfo")}</SectionLabel>
               <Button
                 variant="ghost"
                 size="sm"
@@ -979,18 +982,18 @@ export function TaskDetailModal({
                 ) : (
                   <Sparkles className="h-3 w-3" />
                 )}
-                Ước lượng AI
+                {t("aiEstimate")}
               </Button>
             </div>
             <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground/70 px-1">
               {localTask.estimatedPomodoros ? (
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5 text-green-400" />
-                  {localTask.estimatedPomodoros} pomodoros
+                  {t("estimated", { count: localTask.estimatedPomodoros })}
                 </span>
               ) : (
                 <span className="text-muted-foreground/30 italic">
-                  Chưa có ước lượng
+                  {t("noEstimate")}
                 </span>
               )}
               {localTask.suggestedSessionType ? (
@@ -1000,13 +1003,13 @@ export function TaskDetailModal({
                     ? "Quick 5p"
                     : localTask.suggestedSessionType === "QUICK_15"
                       ? "Quick 15p"
-                      : "Pomodoro chuẩn"}
+                      : t("standardPomodoro")}
                 </span>
               ) : null}
               {localTask.completedPomodoros > 0 ? (
                 <span className="flex items-center gap-1">
                   <Check className="h-3.5 w-3.5 text-primary" />
-                  {localTask.completedPomodoros} phiên đã focus
+                  {localTask.completedPomodoros} {t("focusSessions")}
                 </span>
               ) : null}
             </div>
@@ -1022,19 +1025,19 @@ export function TaskDetailModal({
                       sessionsOpen ? "rotate-180" : ""
                     }`}
                   />
-                  {sessionsOpen ? "Ẩn" : "Xem"} lịch sử{" "}
-                  {localTask.completedPomodoros} phiên
+                  {sessionsOpen ? t("hideHistory") : t("viewHistory")} {t("history")}{" "}
+                  {localTask.completedPomodoros} {t("sessionUnit")}
                 </button>
                 {sessionsOpen && (
                   <div className="mt-2 space-y-1">
                     {loadingHistory ? (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Đang tải...
+                        {t("loading")}
                       </div>
                     ) : sessionHistory.length === 0 ? (
                       <p className="text-xs text-muted-foreground/40 italic">
-                        Chưa có dữ liệu
+                        {t("noData")}
                       </p>
                     ) : (
                       sessionHistory.map((s) => {
@@ -1100,15 +1103,15 @@ export function TaskDetailModal({
               >
                 <div className="flex items-center gap-2 text-sm font-medium text-purple-400">
                   <Brain className="h-4 w-4" />
-                  Gợi ý từ AI
+                  {t("aiSuggestion")}
                   <span className="ml-auto text-xs text-muted-foreground">
-                    Độ tin cậy:{" "}
+                    {t("confidence")}:{" "}
                     {aiSuggestion.confidence === "high" ? (
-                      <span className="text-green-400">Cao</span>
+                      <span className="text-green-400">{t("confidenceHigh")}</span>
                     ) : aiSuggestion.confidence === "medium" ? (
-                      <span className="text-yellow-400">Trung bình</span>
+                      <span className="text-yellow-400">{t("confidenceMedium")}</span>
                     ) : (
-                      <span className="text-red-400">Thấp</span>
+                      <span className="text-red-400">{t("confidenceLow")}</span>
                     )}
                   </span>
                 </div>
@@ -1142,7 +1145,7 @@ export function TaskDetailModal({
 
           {/* Recurrence */}
           <section>
-            <SectionLabel icon={Repeat}>Lặp lại</SectionLabel>
+            <SectionLabel icon={Repeat}>{t("recurrenceSection")}</SectionLabel>
             <div className="flex gap-2 flex-wrap">
               {RECURRENCE_OPTIONS.map((opt) => {
                 const isActive = (localTask.recurrence ?? RecurrenceRule.NONE) === opt.value;
@@ -1157,7 +1160,7 @@ export function TaskDetailModal({
                         : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10",
                     )}
                   >
-                    {opt.label}
+                    {t(opt.label)}
                   </button>
                 );
               })}
@@ -1166,7 +1169,7 @@ export function TaskDetailModal({
             {localTask.recurrence === RecurrenceRule.WEEKLY && (
               <div className="mt-3 space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Chọn 1 hoặc nhiều ngày trong tuần
+                  {t("selectWeekdays")}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {WEEKDAY_OPTIONS.map((day) => {
@@ -1182,7 +1185,7 @@ export function TaskDetailModal({
                         onClick={() => toggleWeeklyDay(day.value)}
                         className="h-8 px-3"
                       >
-                        {day.label}
+                        {t(day.label)}
                       </Button>
                     );
                   })}
@@ -1196,7 +1199,7 @@ export function TaskDetailModal({
                   htmlFor="recurrenceDayOfMonth"
                   className="text-xs text-muted-foreground"
                 >
-                  Ngày lặp trong tháng (1-31)
+                  {t("monthlyDay")}
                 </label>
                 <input
                   id="recurrenceDayOfMonth"
@@ -1227,7 +1230,7 @@ export function TaskDetailModal({
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
-            Xóa nhiệm vụ
+            {t("deleteTask")}
           </Button>
           {onDuplicate && localTask && (
             <Button
@@ -1240,7 +1243,7 @@ export function TaskDetailModal({
               className="gap-2"
             >
               <Copy className="h-4 w-4" />
-              Tạo lại task này
+              {t("duplicateTask")}
             </Button>
           )}
         </div>

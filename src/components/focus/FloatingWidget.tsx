@@ -39,11 +39,15 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 type Tab = "timer" | "world" | "spotify";
 
 export function FloatingWidget() {
   const { data: session } = useSession();
+  const t = useTranslations("focus");
+  const tw = useTranslations("focusWorld");
+  const ts = useTranslations("spotify");
   const isPip = usePipActive();
   const widgetRef = useRef<HTMLDivElement>(null);
   const [widgetWidth, setWidgetWidth] = useState(380);
@@ -200,11 +204,11 @@ export function FloatingWidget() {
   const modeLabel =
     mode === "WORK"
       ? focusType === "STANDARD"
-        ? `🎯 Phiên ${currentSession}/${totalSessions}`
-        : "🎯 Đang Tập Trung"
+        ? t("sessionLabel", { current: currentSession, total: totalSessions })
+        : t("focusingLabel")
       : mode === "SHORT_BREAK"
-        ? "☕ Nghỉ Ngắn"
-        : "🌴 Nghỉ Dài";
+        ? t("shortBreak")
+        : t("longBreak");
 
   const btnCls =
     "w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 transition-colors flex items-center justify-center text-gray-700 dark:text-white";
@@ -247,7 +251,7 @@ export function FloatingWidget() {
                 className={tabBtnCls("timer", "border-blue-500")}
               >
                 <Timer className="w-3.5 h-3.5" />
-                Bộ Đếm
+                {t("timerTab")}
               </button>
             )}
             {hasWorldTab && (
@@ -256,7 +260,7 @@ export function FloatingWidget() {
                 className={tabBtnCls("world", "border-indigo-500")}
               >
                 <Users className="w-3.5 h-3.5" />
-                Focus World
+                {t("focusWorldTab")}
                 {otherUsers.length > 0 && (
                   <span className="w-4 h-4 rounded-full bg-indigo-500 text-[9px] flex items-center justify-center text-white">
                     {otherUsers.length}
@@ -270,7 +274,7 @@ export function FloatingWidget() {
                 className={tabBtnCls("spotify", "border-green-500")}
               >
                 <Music className="w-3.5 h-3.5" />
-                Spotify
+                {t("spotifyTab")}
                 {spotifyPlaying && (
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 )}
@@ -359,7 +363,7 @@ export function FloatingWidget() {
                       status === "paused" ? resumeFocus() : pauseFocus()
                     }
                     className={btnCls}
-                    aria-label={status === "paused" ? "Tiếp tục" : "Tạm dừng"}
+                    aria-label={status === "paused" ? t("resume") : t("pause")}
                   >
                     {status === "paused" ? (
                       <Play className="w-4 h-4" fill="currentColor" />
@@ -373,7 +377,7 @@ export function FloatingWidget() {
                       toggleTimerMinimize();
                     }}
                     className={btnCls}
-                    aria-label="Phóng to"
+                    aria-label={t("enlarge")}
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
@@ -383,7 +387,7 @@ export function FloatingWidget() {
                       stopFocus();
                     }}
                     className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center text-red-500 dark:text-white"
-                    aria-label="Dừng"
+                    aria-label={t("stop")}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -394,7 +398,7 @@ export function FloatingWidget() {
                 <div className="px-4 pb-2 pt-1">
                   <div className="text-xs text-yellow-500 dark:text-yellow-400 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 dark:bg-yellow-400 animate-pulse" />
-                    Đang Tạm Dừng
+                    {t("pausedStatus")}
                   </div>
                 </div>
               )}
@@ -441,8 +445,8 @@ export function FloatingWidget() {
                   </div>
                   <div className="text-sm font-semibold text-gray-900 dark:text-white">
                     {otherUsers.length === 0
-                      ? "Chưa có ai"
-                      : `${otherUsers.length} người đang focus`}
+                      ? tw("noOneYet")
+                      : tw("peopleFocusing", { count: otherUsers.length })}
                   </div>
                 </div>
 
@@ -453,7 +457,7 @@ export function FloatingWidget() {
                       toggleWorldMinimize();
                     }}
                     className={btnCls}
-                    aria-label="Phóng to"
+                    aria-label={t("enlarge")}
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
@@ -463,7 +467,7 @@ export function FloatingWidget() {
                       closeWorld();
                     }}
                     className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center text-red-500 dark:text-white"
-                    aria-label="Đóng Focus World"
+                    aria-label={t("stop")}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -523,7 +527,7 @@ export function FloatingWidget() {
                       <Music className="w-5 h-5 text-[#1DB954]" />
                     </div>
                     <span className="text-sm text-gray-500 dark:text-gray-400 flex-1">
-                      Kết nối Spotify để nghe nhạc
+                      {ts("connectToListenWidget")}
                     </span>
                     <button
                       onClick={() => {
@@ -533,7 +537,7 @@ export function FloatingWidget() {
                       className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" />
-                      Kết Nối
+                      {ts("connect")}
                     </button>
                     <button
                       onClick={spotifyCloseWidget}
@@ -549,7 +553,7 @@ export function FloatingWidget() {
                   <div className="px-4 py-3 flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-[#1DB954] border-t-transparent rounded-full animate-spin" />
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Đang kết nối Spotify...
+                      {ts("connectingSpotify")}
                     </span>
                   </div>
                 )}
@@ -562,10 +566,10 @@ export function FloatingWidget() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-yellow-600 dark:text-yellow-300 font-medium">
-                        Cần Spotify Premium
+                        {ts("needPremium")}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Web Playback SDK yêu cầu Premium
+                        {ts("premiumRequired")}
                       </p>
                     </div>
                     <button
@@ -613,11 +617,11 @@ export function FloatingWidget() {
                             </>
                           ) : spotifyReady ? (
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Chưa phát nhạc
+                              {ts("noTrackPlaying")}
                             </p>
                           ) : (
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Đang kết nối...
+                              {ts("connectingPlayer")}
                             </p>
                           )}
                         </div>
@@ -630,7 +634,7 @@ export function FloatingWidget() {
                               onClick={() => spotifyActions.transferAndPlay()}
                               className="shrink-0 px-2 py-1 rounded-full bg-green-500/20 hover:bg-green-500/30 text-green-600 dark:text-green-400 text-[11px] font-medium transition-colors"
                             >
-                              Phát ở đây
+                              {ts("playHere")}
                             </button>
                           )}
 
@@ -640,7 +644,7 @@ export function FloatingWidget() {
                             onClick={() => spotifyActions.toggleShuffle()}
                             disabled={!spotifyReady}
                             className={`p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30 ${spotifyShuffle ? "text-green-500" : "text-gray-500 dark:text-gray-400"}`}
-                            title={spotifyShuffle ? "Tắt trộn bài" : "Trộn bài"}
+                            title={spotifyShuffle ? ts("shuffleOn") : ts("shuffleOff")}
                           >
                             <Shuffle className="w-3.5 h-3.5" />
                           </button>
@@ -697,7 +701,7 @@ export function FloatingWidget() {
                             onClick={spotifyOpenSearch}
                             disabled={!spotifyReady}
                             className="p-1.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
-                            title="Tìm kiếm"
+                            title={ts("search")}
                           >
                             <Search className="w-4 h-4 text-gray-700 dark:text-white" />
                           </button>
@@ -705,7 +709,7 @@ export function FloatingWidget() {
                           <button
                             onClick={() => spotifyDisconnect()}
                             className="p-1.5 rounded-full hover:bg-red-500/10 transition-colors text-gray-500 hover:text-red-500"
-                            title="Ngắt kết nối"
+                            title={ts("disconnect")}
                           >
                             <Unplug className="w-3.5 h-3.5" />
                           </button>
@@ -714,7 +718,7 @@ export function FloatingWidget() {
                           <button
                             onClick={spotifyOpenWidget}
                             className={btnCls}
-                            aria-label="Phóng to"
+                            aria-label={t("enlarge")}
                           >
                             <Maximize2 className="w-4 h-4" />
                           </button>

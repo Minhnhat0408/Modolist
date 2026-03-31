@@ -2,6 +2,8 @@ import type { Task } from "@/types/database";
 import { TaskStatus } from "@/types/database";
 
 export interface KanbanTask extends Task {
+  /** Stable React key — set once on creation, never changes even when id is swapped from temp→real */
+  stableKey?: string;
   focusSessions?: {
     id: string;
     duration: number | null;

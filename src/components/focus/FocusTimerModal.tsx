@@ -18,6 +18,7 @@ import {
   Users,
   Sparkles,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function FocusTimerModal() {
   const {
@@ -48,6 +49,7 @@ export function FocusTimerModal() {
   } = useFocusWorldStore();
   const spotifyWidgetMinimized = useSpotifyStore((s) => s.isWidgetMinimized);
   const { play, stop } = useSoundEffects();
+  const t = useTranslations("focus");
 
   const handleMinimize = async () => {
     console.log("reạsiopjeifoas");
@@ -191,10 +193,10 @@ export function FocusTimerModal() {
           >
             <p className="text-sm uppercase tracking-wider text-gray-400 mb-2">
               {mode === "WORK"
-                ? "🎯 Tập Trung"
+                ? t("focusing")
                 : mode === "SHORT_BREAK"
-                  ? "☕ Nghỉ Ngắn"
-                  : "🌴 Nghỉ Dài"}
+                  ? t("shortBreak")
+                  : t("longBreak")}
             </p>
             <h2 className="text-2xl font-semibold mb-2">{activeTask.title}</h2>
 
@@ -203,7 +205,7 @@ export function FocusTimerModal() {
               activeTask.estimatedPomodoros > 0 && (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs mb-1">
                   <Sparkles className="w-3 h-3" />
-                  <span>AI ước tính {activeTask.estimatedPomodoros} 🍅</span>
+                  <span>{t("aiEstimate", { count: activeTask.estimatedPomodoros })}</span>
                 </div>
               )}
 
@@ -212,7 +214,7 @@ export function FocusTimerModal() {
               <div className="mt-3">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="text-lg font-bold text-primary">
-                    Phiên {currentSession} / {totalSessions}
+                    {t("sessionCounter", { current: currentSession, total: totalSessions })}
                   </span>
                 </div>
                 {/* Session Progress Bar */}
@@ -225,7 +227,7 @@ export function FocusTimerModal() {
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {completedSessions} / {totalSessions} phiên đã hoàn thành
+                  {t("sessionsCompleted", { completed: completedSessions, total: totalSessions })}
                 </p>
               </div>
             )}
@@ -233,7 +235,7 @@ export function FocusTimerModal() {
             {/* Quick Focus indicator */}
             {focusType === "SHORT" && (
               <p className="text-xs text-gray-400 mt-2">
-                ⚡ Chế Độ Focus Nhanh
+                {t("quickFocusMode")}
               </p>
             )}
           </motion.div>
@@ -298,8 +300,8 @@ export function FocusTimerModal() {
                   await handleMinimize();
                 }}
                 className="w-16 h-16 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors flex items-center justify-center group"
-                aria-label="Mở Focus World"
-                title="Xem ai đang focus cùng bạn"
+                aria-label={t("openFocusWorld")}
+                title={t("focusWorldTooltip")}
               >
                 <Users className="w-8 h-8 text-primary group-hover:text-primary/80" />
               </button>
@@ -311,7 +313,7 @@ export function FocusTimerModal() {
                 status === "paused" ? resumeFocus() : pauseFocus()
               }
               className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center"
-              aria-label={status === "paused" ? "Tiếp tục" : "Tạm dừng"}
+              aria-label={status === "paused" ? t("resume") : t("pause")}
             >
               {status === "paused" ? (
                 <Play className="w-8 h-8" fill="currentColor" />
@@ -327,11 +329,11 @@ export function FocusTimerModal() {
                 <button
                   onClick={skipWorkSession}
                   className="w-16 h-16 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center group"
-                  aria-label="Bỏ qua phiên làm việc này"
+                  aria-label={t("skipWork")}
                   title={
                     focusType === "SHORT"
-                      ? "Bỏ qua (không tính)"
-                      : "Bỏ qua phiên làm việc (không tính)"
+                      ? t("skipWorkShort")
+                      : t("skipWorkLong")
                   }
                 >
                   <XCircle className="w-8 h-8 text-red-400 group-hover:text-red-300" />
@@ -341,8 +343,8 @@ export function FocusTimerModal() {
                 <button
                   onClick={markWorkDone}
                   className="w-16 h-16 rounded-full bg-green-500/20 hover:bg-green-500/30 transition-colors flex items-center justify-center group"
-                  aria-label="Đánh dấu hoàn thành"
-                  title="Hoàn thành phiên này sớm"
+                  aria-label={t("markDone")}
+                  title={t("markDoneEarly")}
                 >
                   <CheckCircle2 className="w-8 h-8 text-green-400 group-hover:text-green-300" />
                 </button>
@@ -354,8 +356,8 @@ export function FocusTimerModal() {
               <button
                 onClick={skipToNext}
                 className="w-16 h-16 rounded-full bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors flex items-center justify-center group"
-                aria-label="Bỏ qua nghỉ"
-                title="Bỏ qua giờ nghỉ và bắt đầu làm việc tiếp"
+                aria-label={t("skipBreak")}
+                title={t("skipBreakTooltip")}
               >
                 <SkipForward className="w-8 h-8 text-yellow-400 group-hover:text-yellow-300" />
               </button>
@@ -365,7 +367,7 @@ export function FocusTimerModal() {
             <button
               onClick={handleMinimize}
               className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center"
-              aria-label="Thu nhỏ"
+              aria-label={t("minimize")}
             >
               <Minimize2 className="w-6 h-6" />
             </button>
@@ -374,7 +376,7 @@ export function FocusTimerModal() {
             <button
               onClick={stopFocus}
               className="w-16 h-16 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center"
-              aria-label="Dừng"
+              aria-label={t("stop")}
             >
               <X className="w-8 h-8" />
             </button>
@@ -388,7 +390,7 @@ export function FocusTimerModal() {
               className="mt-6 px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30"
             >
               <p className="text-yellow-300 text-sm font-medium">
-                ⏸️ Đang Tạm Dừng
+                {t("pausedStatus")}
               </p>
             </motion.div>
           )}

@@ -19,6 +19,7 @@ import {
   ResponsiveModalDescription,
   ResponsiveModalBody,
 } from "@/components/ui/responsive-modal";
+import { useTranslations } from "next-intl";
 
 function ProgressRing({
   startTime,
@@ -95,6 +96,7 @@ function ProgressRing({
 }
 
 function FocusUserCard({ user }: { user: FocusUser }) {
+  const t = useTranslations("focusWorld");
   const initials =
     user.name
       ?.split(" ")
@@ -125,7 +127,7 @@ function FocusUserCard({ user }: { user: FocusUser }) {
           {user.name || "Anonymous"}
         </p>
         <p className="text-sm text-muted-foreground truncate">
-          {user.isPaused ? "⏸ Đang tạm dừng" : user.currentTask}
+          {user.isPaused ? t("pausedUser") : user.currentTask}
         </p>
       </div>
 
@@ -140,6 +142,7 @@ function FocusUserCard({ user }: { user: FocusUser }) {
 }
 
 export function FocusWorldModal() {
+  const t = useTranslations("focusWorld");
   const { data: session } = useSession();
   const { isOpen, isMinimized, toggleMinimize, closeWorld } =
     useFocusWorldStore();
@@ -219,10 +222,10 @@ export function FocusWorldModal() {
             <Users className="h-6 w-6 text-primary" />
             <div>
               <ResponsiveModalTitle className="text-2xl font-bold">
-                Co-Focus World
+                {t("title")}
               </ResponsiveModalTitle>
               <ResponsiveModalDescription className="text-sm">
-                Những người đang tập trung cùng bạn
+                {t("description")}
               </ResponsiveModalDescription>
             </div>
           </div>
@@ -244,7 +247,7 @@ export function FocusWorldModal() {
                 </>
               )}
             </Badge>
-            <Badge variant="outline">{otherUsers.length} người</Badge>
+            <Badge variant="outline">{otherUsers.length} {t("online")}</Badge>
 
             <button
               onClick={handleMinimize}
@@ -269,9 +272,9 @@ export function FocusWorldModal() {
           {!enabled && (
             <div className="text-center py-12">
               <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">Bắt đầu Focus Session</p>
+              <p className="text-lg font-medium mb-2">{t("startSession")}</p>
               <p className="text-sm text-muted-foreground">
-                Bạn cần có focus session đang chạy để vào Focus World
+                {t("needSession")}
               </p>
             </div>
           )}
@@ -279,16 +282,16 @@ export function FocusWorldModal() {
           {enabled && isInitializing && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-              <p className="text-muted-foreground">Đang kết nối...</p>
+              <p className="text-muted-foreground">{t("connecting")}</p>
             </div>
           )}
 
           {enabled && !isInitializing && otherUsers.length === 0 && (
             <div className="text-center py-12">
               <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">Chưa có ai ở đây</p>
+              <p className="text-lg font-medium mb-2">{t("noOneHere")}</p>
               <p className="text-sm text-muted-foreground">
-                Hãy là người tiên phong! Các bạn khác sẽ sớm tham gia 🚀
+                {t("bePioneer")}
               </p>
             </div>
           )}
@@ -308,7 +311,7 @@ export function FocusWorldModal() {
         {enabled && !isInitializing && (
           <div className="px-6 py-4 border-t bg-muted/50 shrink-0">
             <p className="text-xs text-center text-muted-foreground">
-              💡 Tip: Thu nhỏ để xem trong khi làm việc
+              {t("tip")}
             </p>
           </div>
         )}

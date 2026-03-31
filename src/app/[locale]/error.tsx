@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +20,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errors");
+
   useEffect(() => {
     console.error("[Client Error]", error);
   }, [error]);
@@ -30,27 +33,26 @@ export default function Error({
           <div className="flex justify-center mb-2">
             <AlertCircle className="h-12 w-12 text-destructive" />
           </div>
-          <CardTitle className="text-2xl font-bold">Đã xảy ra lỗi</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("errorOccurred")}</CardTitle>
           <CardDescription>
-            {error.message ||
-              "Một lỗi không mong muốn đã xảy ra. Vui lòng thử lại."}
+            {error.message || t("unexpectedError")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {error.digest && (
             <p className="text-center text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-md">
-              Mã lỗi: {error.digest}
+              {t("errorCode")}: {error.digest}
             </p>
           )}
           <div className="flex flex-col gap-2">
             <Button onClick={reset} className="w-full" variant="default">
               <RefreshCw className="mr-2 h-4 w-4" />
-              Thử lại
+              {t("retry")}
             </Button>
             <Button asChild variant="outline" className="w-full">
               <Link href="/dashboard">
                 <Home className="mr-2 h-4 w-4" />
-                Về trang chủ
+                {t("backToHome")}
               </Link>
             </Button>
           </div>

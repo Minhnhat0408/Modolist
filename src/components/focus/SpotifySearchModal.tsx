@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useSpotifyStore } from "@/stores/useSpotifyStore";
+import { useTranslations } from "next-intl";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -98,6 +99,7 @@ export function SpotifySearchModal({
   onPlayUri,
   onAddToQueue,
 }: Props) {
+  const t = useTranslations("spotify");
   const getAccessToken = useSpotifyStore((s) => s.getAccessToken);
   const [tab, setTab] = useState<Tab>("search");
   const [query, setQuery] = useState("");
@@ -243,17 +245,17 @@ export function SpotifySearchModal({
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     {
       key: "search",
-      label: "Tìm kiếm",
+      label: t("searchTab"),
       icon: <Search className="w-3.5 h-3.5" />,
     },
     {
       key: "playlists",
-      label: "Playlist",
+      label: t("playlistTab"),
       icon: <ListMusic className="w-3.5 h-3.5" />,
     },
     {
       key: "recent",
-      label: "Gần đây",
+      label: t("recentTab"),
       icon: <Clock className="w-3.5 h-3.5" />,
     },
   ];
@@ -317,7 +319,7 @@ export function SpotifySearchModal({
                     type="text"
                     value={query}
                     onChange={(e) => handleQueryChange(e.target.value)}
-                    placeholder="Tìm bài hát, playlist, album..."
+                    placeholder={t("searchPlaceholder")}
                     className="w-full pl-9 pr-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 outline-none focus:border-green-500/50 transition-colors"
                   />
                   {query && (
@@ -385,6 +387,7 @@ interface PanelProps {
 }
 
 export function SpotifySearchPanel({ onPlayUri, onAddToQueue }: PanelProps) {
+  const t = useTranslations("spotify");
   const getAccessToken = useSpotifyStore((s) => s.getAccessToken);
   const [tab, setTab] = useState<Tab>("search");
   const [query, setQuery] = useState("");
@@ -499,17 +502,17 @@ export function SpotifySearchPanel({ onPlayUri, onAddToQueue }: PanelProps) {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     {
       key: "search",
-      label: "Tìm kiếm",
+      label: t("searchTab"),
       icon: <Search className="w-3.5 h-3.5" />,
     },
     {
       key: "playlists",
-      label: "Playlist",
+      label: t("playlistTab"),
       icon: <ListMusic className="w-3.5 h-3.5" />,
     },
     {
       key: "recent",
-      label: "Gần đây",
+      label: t("recentTab"),
       icon: <Clock className="w-3.5 h-3.5" />,
     },
   ];
@@ -544,7 +547,7 @@ export function SpotifySearchPanel({ onPlayUri, onAddToQueue }: PanelProps) {
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Tìm bài hát, playlist, album..."
+              placeholder={t("searchPlaceholder")}
               className="w-full pl-9 pr-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 outline-none focus:border-green-500/50 transition-colors"
             />
             {query && (
@@ -615,11 +618,12 @@ function SearchResults({
   onPlay: (uri: string) => void;
   onQueue: (uri: string) => void;
 }) {
+  const t = useTranslations("spotify");
   if (!query) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
         <Search className="w-8 h-8 mb-2 opacity-30" />
-        <p className="text-sm">Tìm bài hát, playlist hoặc album</p>
+        <p className="text-sm">{t("searchHint")}</p>
       </div>
     );
   }
@@ -628,7 +632,7 @@ function SearchResults({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
         <Music className="w-8 h-8 mb-2 opacity-30" />
-        <p className="text-sm">Không tìm thấy kết quả</p>
+        <p className="text-sm">{t("noResults")}</p>
       </div>
     );
   }
@@ -639,7 +643,7 @@ function SearchResults({
       {tracks.length > 0 && (
         <section>
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Bài hát
+            {t("songs")}
           </h3>
           <div className="space-y-0.5">
             {tracks.map((t) => (
@@ -668,7 +672,7 @@ function SearchResults({
               <ItemRow
                 key={p.id}
                 name={p.name}
-                subtitle={`${p.owner?.display_name ?? ""}${p.tracks?.total != null ? ` · ${p.tracks.total} bài` : ""}`}
+                subtitle={`${p.owner?.display_name ?? ""}${p.tracks?.total != null ? ` · ${t("nTracks", { count: p.tracks.total })}` : ""}`}
                 image={p.images?.[0]?.url}
                 onPlay={() => onPlay(p.uri)}
               />
@@ -688,7 +692,7 @@ function SearchResults({
               <ItemRow
                 key={a.id}
                 name={a.name}
-                subtitle={`${a.artists.map((ar) => ar.name).join(", ")} · ${a.total_tracks} bài`}
+                subtitle={`${a.artists.map((ar) => ar.name).join(", ")} · ${t("nTracks", { count: a.total_tracks })}`}
                 image={a.images?.[a.images.length - 1]?.url}
                 onPlay={() => onPlay(a.uri)}
               />
@@ -707,11 +711,12 @@ function PlaylistList({
   playlists: UserPlaylist[];
   onPlay: (uri: string) => void;
 }) {
+  const t = useTranslations("spotify");
   if (!playlists.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
         <ListMusic className="w-8 h-8 mb-2 opacity-30" />
-        <p className="text-sm">Chưa có playlist nào</p>
+        <p className="text-sm">{t("noPlaylists")}</p>
       </div>
     );
   }
@@ -722,7 +727,7 @@ function PlaylistList({
         <ItemRow
           key={p.id}
           name={p.name}
-          subtitle={`${p.owner?.display_name ?? ""}${p.tracks?.total != null ? ` · ${p.tracks.total} bài` : ""}`}
+          subtitle={`${p.owner?.display_name ?? ""}${p.tracks?.total != null ? ` · ${t("nTracks", { count: p.tracks.total })}` : ""}`}
           image={p.images?.[0]?.url}
           onPlay={() => onPlay(p.uri)}
         />
@@ -740,11 +745,12 @@ function RecentList({
   onPlay: (uri: string) => void;
   onQueue: (uri: string) => void;
 }) {
+  const t = useTranslations("spotify");
   if (!recentTracks.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
         <Clock className="w-8 h-8 mb-2 opacity-30" />
-        <p className="text-sm">Chưa có bài hát nào</p>
+        <p className="text-sm">{t("noRecentTracks")}</p>
       </div>
     );
   }
@@ -793,6 +799,7 @@ function TrackRow({
   onPlay: () => void;
   onQueue: () => void;
 }) {
+  const t = useTranslations("spotify");
   return (
     <div className="group flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
       <div className="w-9 h-9 rounded bg-white/10 overflow-hidden shrink-0 relative">
@@ -826,7 +833,7 @@ function TrackRow({
       <button
         onClick={onQueue}
         className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all text-gray-400 hover:text-green-400"
-        title="Thêm vào hàng đợi"
+        title={t("addToQueue")}
       >
         <Plus className="w-3.5 h-3.5" />
       </button>

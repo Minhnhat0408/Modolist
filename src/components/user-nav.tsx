@@ -2,7 +2,8 @@
 
 import { signOut } from "@/lib/auth";
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,9 +27,7 @@ import {
   UserCircle,
   UserPlus,
 } from "lucide-react";
-import { useIsGuest } from "@/hooks/useIsGuest";
-import { useGuestStore } from "@/stores/useGuestStore";
-import { clearGuestCookie } from "@/hooks/useIsGuest";
+import { useIsGuest, clearGuestCookie } from "@/hooks/useIsGuest";
 
 interface UserNavProps {
   user?: {
@@ -44,11 +43,12 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
   const { theme, setTheme } = useTheme();
   const isGuest = useIsGuest();
   const router = useRouter();
-  const clearGuest = useGuestStore((s) => s.clearGuest);
+  const t = useTranslations("userNav");
 
   const handleSignOut = async () => {
     if (isGuest) {
-      clearGuest();
+      // Only clear the cookie — keep guest tasks in localStorage
+      // MigrateModal will offer to import them after the user signs in
       clearGuestCookie();
       router.push("/auth/signin");
       return;
@@ -83,10 +83,10 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {isGuest ? "👤 Khách" : user?.name}
+              {isGuest ? t("guest") : user?.name}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {isGuest ? "Chế độ dùng thử" : user?.email}
+              {isGuest ? t("guestMode") : user?.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -98,7 +98,7 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
             onClick={() => router.push("/auth/signup")}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            Đăng ký tài khoản
+            {t("signUpAccount")}
           </DropdownMenuItem>
         )}
         <DropdownMenuSub>
@@ -110,20 +110,20 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
             ) : (
               <Monitor className="mr-2 h-4 w-4" />
             )}
-            Giao diện
+            {t("theme")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuItem onClick={() => setTheme("light")}>
               <Sun className="mr-2 h-4 w-4" />
-              Sáng
+              {t("light")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("dark")}>
               <Moon className="mr-2 h-4 w-4" />
-              Tối
+              {t("dark")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme("system")}>
               <Monitor className="mr-2 h-4 w-4" />
-              Hệ thống
+              {t("system")}
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -133,11 +133,11 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
         </DropdownMenuItem> */}
         <DropdownMenuItem className="cursor-pointer" onClick={onStatsClick}>
           <BarChart3 className="mr-2 h-4 w-4" />
-          Thống kê
+          {t("stats")}
         </DropdownMenuItem>
         <DropdownMenuItem className="cursor-pointer" onClick={onAIClick} disabled={isGuest}>
           <Sparkles className="mr-2 h-4 w-4" />
-          {isGuest ? "AI Tạo tasks (cần đăng ký)" : "AI Tạo tasks"}
+          {isGuest ? t("aiGenerateTasksGuest") : t("aiGenerateTasks")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -145,7 +145,7 @@ export function UserNav({ user, onStatsClick, onAIClick }: UserNavProps) {
           onClick={handleSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          {isGuest ? "Thoát chế độ khách" : "Đăng xuất"}
+          {isGuest ? t("exitGuestMode") : t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

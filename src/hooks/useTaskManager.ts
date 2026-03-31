@@ -170,14 +170,50 @@ export function useTaskManager() {
         }
         return task;
       }
+
+      // Optimistic update — show task immediately while API call is in-flight
+      const tempId = `temp_${Date.now()}`;
+      const optimisticTask: KanbanTask = {
+        id: tempId,
+        title: data.title ?? "",
+        description: data.description ?? null,
+        status: (data.status as TaskStatus) ?? TaskStatus.TODAY,
+        priority: data.priority ?? "MEDIUM",
+        order: -1,
+        tags: data.tags ?? [],
+        dueDate: data.dueDate ?? null,
+        completedAt: null,
+        completedPomodoros: 0,
+        estimatedPomodoros: data.estimatedPomodoros ?? null,
+        isArchived: false,
+        recurrence: data.recurrence ?? "NONE",
+        recurrenceDaysOfWeek: data.recurrenceDaysOfWeek ?? [],
+        recurrenceDayOfMonth: data.recurrenceDayOfMonth ?? null,
+        userId: "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        suggestedSessionType: data.suggestedSessionType ?? null,
+        suggestedSessions: data.suggestedSessions ?? null,
+        suggestedTotalMinutes: data.suggestedTotalMinutes ?? null,
+        focusTotalSessions: null,
+        stableKey: tempId,
+      } as KanbanTask;
+
+      setTasks((prev) => [optimisticTask, ...prev]);
+
       try {
         const newTask = await api.post<Task>("/tasks", data);
-        setTasks((prev) => [newTask as KanbanTask, ...prev]);
+        // Replace temp task with real one, preserving stableKey so React doesn't re-animate
+        setTasks((prev) =>
+          prev.map((t) => (t.id === tempId ? { ...(newTask as KanbanTask), stableKey: tempId } : t)),
+        );
         if (newTask.status === TaskStatus.DONE) {
           setDoneHistoryCount((prev) => prev + 1);
         }
         return newTask as KanbanTask;
       } catch (error) {
+        // Rollback optimistic update on failure
+        setTasks((prev) => prev.filter((t) => t.id !== tempId));
         console.error("Error creating task:", error);
         return null;
       }

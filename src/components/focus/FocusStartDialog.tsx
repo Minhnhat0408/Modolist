@@ -14,6 +14,7 @@ import {
   ResponsiveModalDescription,
   ResponsiveModalBody,
 } from "@/components/ui/responsive-modal";
+import { useTranslations } from "next-intl";
 
 interface FocusStartDialogProps {
   task: KanbanTask;
@@ -56,6 +57,7 @@ export function FocusStartDialog({
 
   const [sessionCount, setSessionCount] = useState(defaultSessions);
   const { startShortFocus, startStandardFocus } = useFocusStore();
+  const t = useTranslations("focus");
 
   const handleQuickFocus = (minutes: 5 | 15) => {
     startShortFocus(task, minutes);
@@ -64,7 +66,7 @@ export function FocusStartDialog({
 
   const handleStandardFocus = () => {
     if (sessionCount < 1) {
-      alert("Số session phải lớn hơn 0");
+      alert(t("sessionsMustBePositive"));
       return;
     }
     startStandardFocus(task, sessionCount);
@@ -102,7 +104,7 @@ export function FocusStartDialog({
       >
         <ResponsiveModalHeader className="px-6 pt-6 pb-4">
           <ResponsiveModalTitle className="text-2xl font-bold text-white">
-            Bắt đầu Focus
+            {t("startFocus")}
           </ResponsiveModalTitle>
           <ResponsiveModalDescription className="text-sm text-gray-400 line-clamp-2">
             {task.title}
@@ -122,15 +124,14 @@ export function FocusStartDialog({
               >
                 <Sparkles className="w-3.5 h-3.5 shrink-0" />
                 <span>
-                  ✨ AI gợi ý{" "}
+                  {t("aiSuggests")}{" "}
                   <strong>
                     {aiRecommendation === "QUICK_5"
-                      ? "Quick 5 phút"
-                      : "Quick 15 phút"}
-                  </strong>{" "}
-                  cho task này
+                      ? t("quick5Min")
+                      : t("quick15Min")}
+                  </strong>
                   {task.suggestedTotalMinutes
-                    ? ` (~${task.suggestedTotalMinutes} phút)`
+                    ? ` (~${task.suggestedTotalMinutes} ${t("minutesUnit")})`
                     : ""}
                 </span>
               </motion.div>
@@ -143,12 +144,11 @@ export function FocusStartDialog({
                 <div className="flex items-center gap-2 mb-3">
                   <Zap className="w-5 h-5 text-yellow-400" />
                   <h3 className="text-lg font-semibold text-white">
-                    Focus Nhanh
+                    {t("quickFocus")}
                   </h3>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">
-                  Một phiên làm việc, không nghỉ giải lao. Phù hợp cho công việc
-                  ngắn.
+                  {t("quickFocusDesc")}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <Button
@@ -161,10 +161,10 @@ export function FocusStartDialog({
                   >
                     <div className="flex flex-col items-center">
                       <span className="text-2xl font-bold">5</span>
-                      <span className="text-xs opacity-80">Minutes</span>
+                      <span className="text-xs opacity-80">{t("minutes")}</span>
                       {aiRecommendation === "QUICK_5" && (
                         <span className="text-[10px] text-yellow-300 mt-0.5">
-                          ✨ AI gợi ý
+                          {t("aiSuggests")}
                         </span>
                       )}
                     </div>
@@ -179,10 +179,10 @@ export function FocusStartDialog({
                   >
                     <div className="flex flex-col items-center">
                       <span className="text-2xl font-bold">15</span>
-                      <span className="text-xs opacity-80">Minutes</span>
+                      <span className="text-xs opacity-80">{t("minutes")}</span>
                       {aiRecommendation === "QUICK_15" && (
                         <span className="text-[10px] text-yellow-300 mt-0.5">
-                          ✨ AI gợi ý
+                          {t("aiSuggests")}
                         </span>
                       )}
                     </div>
@@ -197,7 +197,7 @@ export function FocusStartDialog({
                 </div>
                 <div className="relative flex justify-center">
                   <span className="bg-gray-800 px-3 text-sm text-gray-400">
-                    hoặc
+                    {t("orDivider")}
                   </span>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export function FocusStartDialog({
             <div className="flex items-center gap-2 mb-3">
               <Target className="w-5 h-5 text-green-400" />
               <h3 className="text-lg font-semibold text-white">
-                Focus Chuẩn (Pomodoro)
+                {t("standardFocus")}
               </h3>
             </div>
 
@@ -227,10 +227,10 @@ export function FocusStartDialog({
                     </div>
                     <div>
                       <h4 className="text-white font-semibold text-lg">
-                        Đang Có Phiên Focus
+                        {t("existingSession")}
                       </h4>
                       <p className="text-blue-300 text-sm">
-                        Tiếp tục từ nơi bạn đã dừng lại
+                        {t("continueFrom")}
                       </p>
                     </div>
                   </div>
@@ -239,26 +239,26 @@ export function FocusStartDialog({
                   <div className="bg-gray-900/50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400 text-sm">
-                        Đã hoàn thành
+                        {t("sessionsCompleteLabel")}
                       </span>
                       <span className="text-white font-bold">
                         {standardCompletedCount} / {task.focusTotalSessions}{" "}
-                        phiên
+                        {t("sessionsText")}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-400 text-sm">Còn lại</span>
+                      <span className="text-gray-400 text-sm">{t("remaining")}</span>
                       <span className="text-green-400 font-bold">
-                        {remainingSessions} phiên
+                        {remainingSessions} {t("sessionsText")}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400 text-sm">
-                        Thời gian dự kiến
+                        {t("estimatedTime")}
                       </span>
                       <span className="text-white font-semibold">
                         ~{remainingSessions * 25 + (remainingSessions - 1) * 5}{" "}
-                        phút
+                        {t("minutesUnit")}
                       </span>
                     </div>
 
@@ -282,15 +282,14 @@ export function FocusStartDialog({
                   onClick={handleResumeFocus}
                   className="w-full h-14 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold shadow-lg text-lg"
                 >
-                  Tiếp Tục Focus
+                  {t("continueFocus")}
                 </Button>
               </>
             ) : (
               <>
                 {/* New Session Mode */}
                 <p className="text-sm text-gray-400 mb-4">
-                  Kỹ thuật Pomodoro với chu kỳ làm việc/nghỉ giải lao cho deep
-                  work.
+                  {t("standardFocusDesc")}
                 </p>
 
                 {/* AI Estimate hint */}
@@ -304,12 +303,12 @@ export function FocusStartDialog({
                   >
                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      ✨ AI gợi ý{" "}
+                      {t("aiSuggests")}{" "}
                       <strong>
-                        Focus Chuẩn — {task.estimatedPomodoros} phiên
+                        {t("standardFocus")} — {task.estimatedPomodoros} {t("sessionsText")}
                       </strong>
                       {task.suggestedTotalMinutes
-                        ? ` (~${task.suggestedTotalMinutes} phút)`
+                        ? ` (~${task.suggestedTotalMinutes} ${t("minutesUnit")})`
                         : ""}
                     </span>
                   </motion.div>
@@ -321,8 +320,7 @@ export function FocusStartDialog({
                   >
                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      AI ước tính <strong>{task.estimatedPomodoros} 🍅</strong>{" "}
-                      cho task này
+                      {t("aiEstimate", { count: task.estimatedPomodoros })}
                     </span>
                   </motion.div>
                 ) : null}
@@ -330,7 +328,7 @@ export function FocusStartDialog({
                 <div className="bg-gray-800/50 rounded-xl p-6 mb-4 border border-gray-700">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-gray-300 font-medium">
-                      Số phiên làm việc
+                      {t("sessionCountLabel")}
                     </span>
                     <div className="flex items-center gap-3">
                       <button
@@ -362,14 +360,13 @@ export function FocusStartDialog({
 
                   {/* Preview */}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Tổng thời gian</span>
+                    <span className="text-gray-400">{t("totalTime")}</span>
                     <span className="text-white font-semibold">
-                      ~{totalMinutes} phút
+                      ~{totalMinutes} {t("minutesUnit")}
                     </span>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
-                    ({sessionCount} × 25 phút làm việc + {sessionCount - 1} × 5
-                    phút nghỉ)
+                    {t("timeBreakdown", { sessions: sessionCount, breaks: sessionCount - 1 })}
                   </div>
                 </div>
 
@@ -377,7 +374,7 @@ export function FocusStartDialog({
                   onClick={handleStandardFocus}
                   className="w-full h-12 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold shadow-lg"
                 >
-                  Bắt đầu {sessionCount} phiên
+                  {t("startSessions", { count: sessionCount })}
                 </Button>
               </>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useGuestStore } from "@/stores/useGuestStore";
 import { UserCircle } from "lucide-react";
 
@@ -8,6 +9,7 @@ const GUEST_EXPIRY_DAYS = 30;
 
 export function GuestBanner() {
   const createdAt = useGuestStore((s) => s.createdAt);
+  const t = useTranslations("guest");
 
   const daysLeft = createdAt
     ? Math.max(
@@ -21,13 +23,12 @@ export function GuestBanner() {
     <div className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-amber-500/90 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
       <UserCircle className="h-4 w-4 shrink-0" />
       <span>
-        Chế độ khách · Dữ liệu chỉ lưu trong trình duyệt này · Còn{" "}
-        {daysLeft} ngày ·{" "}
+        {t("bannerText", { days: daysLeft })}{" "}
         <Link
           href="/auth/signup"
           className="underline underline-offset-2 hover:text-white/90"
         >
-          Đăng ký để lưu vĩnh viễn →
+          {t("signUpPermanent")}
         </Link>
       </span>
     </div>

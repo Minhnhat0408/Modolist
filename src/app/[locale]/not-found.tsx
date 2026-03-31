@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +11,7 @@ import {
 import { FileQuestion, Home } from "lucide-react";
 
 export default function NotFound() {
+  const t = useTranslations("errors");
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -18,17 +20,17 @@ export default function NotFound() {
             <FileQuestion className="h-12 w-12 text-muted-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            404 - Không tìm thấy
+            {t("notFoundTitle")}
           </CardTitle>
           <CardDescription>
-            Trang bạn đang tìm kiếm không tồn tại hoặc đã bị di chuyển.
+            {t("notFoundDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
             <Link href="/dashboard">
               <Home className="mr-2 h-4 w-4" />
-              Quay về trang chủ
+              {t("goHome")}
             </Link>
           </Button>
         </CardContent>

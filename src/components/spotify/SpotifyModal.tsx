@@ -13,8 +13,10 @@ import { useFocusWorldStore } from "@/stores/useFocusWorldStore";
 import { SpotifyWidget } from "@/components/focus/SpotifyWidget";
 import { openPip, resizePIP, calcPIPHeight } from "@/hooks/usePictureInPicture";
 import { Minimize2, X, Music } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function SpotifyModal() {
+  const t = useTranslations("spotify");
   const { isWidgetOpen, isWidgetMinimized, minimizeWidget, closeWidget } =
     useSpotifyStore();
   const { activeTask } = useFocusStore();
@@ -77,7 +79,7 @@ export function SpotifyModal() {
                 <div>
                   <h2 className="text-lg font-bold text-white">Spotify</h2>
                   <p className="text-xs text-gray-400">
-                    Nghe nhạc khi làm việc
+                    {t("listenToMusic")}
                   </p>
                 </div>
               </div>
@@ -85,14 +87,14 @@ export function SpotifyModal() {
                 <button
                   onClick={handleMinimize}
                   className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
-                  title="Thu nhỏ"
+                  title={t("minimize")}
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={closeWidget}
                   className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
-                  title="Đóng"
+                  title={t("close")}
                 >
                   <X className="w-5 h-5" />
                 </button>

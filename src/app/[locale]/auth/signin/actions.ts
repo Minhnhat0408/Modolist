@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export async function authenticate(_currentState: unknown, formData: FormData) {
   const supabase = await createClient();
@@ -22,10 +23,15 @@ export async function authenticate(_currentState: unknown, formData: FormData) {
 
 export async function authenticateWithGoogle() {
   const supabase = await createClient();
+  const headersList = await headers();
+  const host = headersList.get("x-forwarded-host") ?? headersList.get("host") ?? "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") ?? "http";
+  const siteUrl = `${proto}://${host}`;
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   });
 

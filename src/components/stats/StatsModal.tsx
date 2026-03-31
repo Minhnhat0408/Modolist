@@ -18,6 +18,7 @@ import {
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import { useStatsSource } from "@/hooks/useStatsSource";
+import { useTranslations } from "next-intl";
 import {
   ResponsiveModal,
   ResponsiveModalContent,
@@ -200,6 +201,7 @@ function WeeklyBarChart({
   formatLabel: (v: number) => string;
   colorClass: string;
 }) {
+  const t = useTranslations("stats");
   const safeMax = maxVal || 1;
 
   return (
@@ -258,7 +260,7 @@ function WeeklyBarChart({
                 isToday ? "text-primary font-bold" : "text-muted-foreground"
               }`}
             >
-              {isToday ? "Nay" : d.label}
+              {isToday ? t("todayLabel") : d.label}
             </motion.span>
           </div>
         );
@@ -305,6 +307,7 @@ function StreakFlame({ streak }: { streak: number }) {
 
 // ─── Modal Content ────────────────────────────────────────────────
 function StatsContent({ stats }: { stats: DashboardStats }) {
+  const t = useTranslations("stats");
   const { resolvedTheme } = useTheme();
   const [heatmapPage, setHeatmapPage] = useState(0);
   const maxFocus = Math.max(...stats.week.data.map((d) => d.focusTime), 1);
@@ -321,30 +324,30 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           icon={Timer}
-          label="Hôm nay"
+          label={t("today")}
           value={formatTime(stats.today.focusTime)}
           color="bg-primary"
           delay={0}
         />
         <StatCard
           icon={Target}
-          label="Pomodoro hôm nay"
+          label={t("pomodoroToday")}
           value={stats.today.pomodoros}
           color="bg-chart-2"
           delay={0.08}
         />
         <StatCard
           icon={CheckCircle2}
-          label="Task hoàn thành"
+          label={t("taskCompleted")}
           value={stats.today.tasks}
           color="bg-chart-4"
           delay={0.16}
         />
         <StatCard
           icon={Flame}
-          label="Streak"
+          label={t("streak")}
           value={stats.user.currentStreak}
-          suffix="ngày"
+          suffix={t("days")}
           color="bg-chart-5"
           delay={0.24}
         />
@@ -363,11 +366,11 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
           <div className="text-center">
             <p className="text-xl font-bold">
               {stats.user.currentStreak > 0
-                ? `${stats.user.currentStreak} ngày liên tiếp!`
-                : "Bắt đầu streak!"}
+                ? t("consecutiveDays", { count: stats.user.currentStreak })
+                : t("startStreak")}
             </p>
             <p className="text-xs text-muted-foreground">
-              Kỷ lục: {stats.user.longestStreak} ngày
+              {t("record", { count: stats.user.longestStreak })}
             </p>
           </div>
           {stats.user.currentStreak > 0 && (
@@ -390,7 +393,7 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">Thời gian tập trung (tuần)</h3>
+              <h3 className="font-semibold">{t("weeklyFocusTime")}</h3>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -419,7 +422,7 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-chart-2" />
-            <h3 className="font-semibold">Pomodoro</h3>
+            <h3 className="font-semibold">{t("pomodoro")}</h3>
             <span className="text-xs text-muted-foreground">
               {heatmapLabel}
             </span>
@@ -427,13 +430,13 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Target className="h-3.5 w-3.5 text-chart-2" />
-              {stats.week.pomodoros} tuần này
+              {stats.week.pomodoros} {t("thisWeek")}
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setHeatmapPage((p) => p - 1)}
                 className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors"
-                title="Tuần trước"
+                title={t("previousPeriod")}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
@@ -441,7 +444,7 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
                 onClick={() => setHeatmapPage((p) => p + 1)}
                 disabled={heatmapPage >= 1}
                 className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-card hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Tuần sau"
+                title={t("nextPeriod")}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -496,30 +499,30 @@ function StatsContent({ stats }: { stats: DashboardStats }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           icon={Timer}
-          label="Tổng thời gian"
+          label={t("totalTime")}
           value={formatTime(stats.user.totalFocusTime)}
           color="bg-primary"
           delay={0.35}
         />
         <StatCard
           icon={Trophy}
-          label="Tổng sessions"
+          label={t("totalSessions")}
           value={stats.totals.sessions}
           color="bg-chart-3"
           delay={0.42}
         />
         <StatCard
           icon={CheckCircle2}
-          label="Tổng task xong"
+          label={t("totalTasksDone")}
           value={stats.totals.tasks}
           color="bg-chart-4"
           delay={0.49}
         />
         <StatCard
           icon={TrendingUp}
-          label="Kỷ lục streak"
+          label={t("longestStreak")}
           value={stats.user.longestStreak}
-          suffix="ngày"
+          suffix={t("days")}
           color="bg-chart-5"
           delay={0.56}
         />
@@ -539,6 +542,7 @@ export function StatsModal({
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(false);
   const { fetchStats: fetchStatsSource } = useStatsSource();
+  const t = useTranslations("stats");
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -570,7 +574,7 @@ export function StatsModal({
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <TrendingUp className="h-4 w-4" />
             </div>
-            Thống kê
+            {t("title")}
           </ResponsiveModalTitle>
           <motion.button
             whileHover={{ scale: 1.1 }}
