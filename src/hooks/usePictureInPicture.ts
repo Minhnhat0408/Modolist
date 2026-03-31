@@ -137,7 +137,8 @@ export async function openPip(height: number, width: number): Promise<boolean> {
     pipRoot.render(
       createElement(
         NextIntlClientProvider,
-        { locale: safeLocale, messages, children: createElement(PipContent, { onClose: closePip }) },
+        { locale: safeLocale, messages },
+        createElement(PipContent, { onClose: closePip }),
       ),
     );
 

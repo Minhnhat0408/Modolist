@@ -242,13 +242,13 @@ export default function SignUpPage() {
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
             {t("signUpAgreement")}{" "}
-            <a href="/terms" className="underline hover:text-foreground">
+            <Link href="/terms" className="underline hover:text-foreground">
               {t("termsOfService")}
-            </a>{" "}
+            </Link>{" "}
             {t("and")}{" "}
-            <a href="/privacy" className="underline hover:text-foreground">
+            <Link href="/privacy" className="underline hover:text-foreground">
               {t("privacyPolicy")}
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

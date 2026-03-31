@@ -238,13 +238,13 @@ export default function SignUpPage() {
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
             Bằng việc đăng ký, bạn đồng ý với{" "}
-            <a href="/terms" className="underline hover:text-foreground">
+            <Link href="/terms" className="underline hover:text-foreground">
               Điều khoản sử dụng
-            </a>{" "}
+            </Link>{" "}
             và{" "}
-            <a href="/privacy" className="underline hover:text-foreground">
+            <Link href="/privacy" className="underline hover:text-foreground">
               Chính sách bảo mật
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

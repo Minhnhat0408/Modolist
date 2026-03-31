@@ -297,6 +297,7 @@ export default function DashboardPage() {
                 </button>
               )}
               {spotifyErrorCode !== "user_not_found" && (
+                // eslint-disable-next-line @next/next/no-html-link-for-pages
                 <a
                   href="/api/spotify/connect"
                   target="_top"
