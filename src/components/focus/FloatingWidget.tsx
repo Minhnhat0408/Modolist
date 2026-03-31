@@ -525,14 +525,16 @@ export function FloatingWidget() {
                     <span className="text-sm text-gray-500 dark:text-gray-400 flex-1">
                       Kết nối Spotify để nghe nhạc
                     </span>
-                    <a
-                      href="/api/spotify/connect"
-                      target="_top"
-                      className="px-3 py-1.5 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white text-xs font-medium transition-colors flex items-center gap-1.5"
+                    <button
+                      onClick={() => {
+                        const target = (window.opener as Window | null) ?? window;
+                        target.location.href = "/api/spotify/connect";
+                      }}
+                      className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" />
                       Kết Nối
-                    </a>
+                    </button>
                     <button
                       onClick={spotifyCloseWidget}
                       className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors flex items-center justify-center text-red-500 dark:text-white shrink-0"

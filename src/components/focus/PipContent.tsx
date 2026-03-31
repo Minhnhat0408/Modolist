@@ -530,14 +530,16 @@ export function PipContent({ onClose }: PipContentProps) {
                 <span className="text-[13px] text-gray-500 dark:text-gray-400 flex-1">
                   Kết nối Spotify để nghe nhạc
                 </span>
-                <a
-                  href="/api/spotify/connect"
-                  target="_top"
-                  className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-[11px] font-medium transition-colors flex items-center gap-1.5"
+                <button
+                  onClick={() => {
+                    const target = (window.opener as Window | null) ?? window;
+                    target.location.href = "/api/spotify/connect";
+                  }}
+                  className="px-3 py-1.5 rounded-full border-0 bg-[#1DB954] hover:bg-[#1ed760] text-white text-[11px] font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink size={12} />
                   Kết Nối
-                </a>
+                </button>
                 <button
                   onClick={() => {
                     spotifyCloseWidget();
