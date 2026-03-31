@@ -104,6 +104,12 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const t = useTranslations("kanban");
 
+  const colTitles: Record<TaskStatus, string> = {
+    [TaskStatus.BACKLOG]: t("colBacklog"),
+    [TaskStatus.TODAY]: t("colToday"),
+    [TaskStatus.DONE]: t("colDone"),
+  };
+
   // ✅ State nội bộ để render UI mượt mà (Optimistic UI)
   // Chúng ta sync props vào state này
   const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);
@@ -438,7 +444,7 @@ export function KanbanBoard({
               >
                 <KanbanColumn
                   status={status}
-                  title={KANBAN_COLUMNS[status].title}
+                  title={colTitles[status]}
                   tasks={surfaceTasks}
                   allTasks={allColumnTasks}
                   totalCountOverride={
@@ -496,12 +502,12 @@ export function KanbanBoard({
                   }`}
                 >
                   <span className="text-base leading-none mb-0.5">
-                    {KANBAN_COLUMNS[status].title.split(" ")[0]}
+                    {colTitles[status].split(" ")[0]}
                   </span>
                   <span
                     className={`text-[10px] ${isActive ? "text-white/80" : "text-muted-foreground/60"}`}
                   >
-                    {KANBAN_COLUMNS[status].title.split(" ").slice(1).join(" ")}
+                    {colTitles[status].split(" ").slice(1).join(" ")}
                     {count > 0 && (
                       <span
                         className={`ml-1 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px] font-semibold ${
@@ -536,7 +542,7 @@ export function KanbanBoard({
                 >
                   <KanbanColumn
                     status={status}
-                    title={KANBAN_COLUMNS[status].title}
+                    title={colTitles[status]}
                     tasks={surfaceTasks}
                     allTasks={allColumnTasks}
                     totalCountOverride={

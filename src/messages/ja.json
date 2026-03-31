@@ -129,6 +129,9 @@
 
   "kanban": {
     "startFocusMode": "フォーカスモード開始",
+    "colBacklog": "📋 バックログ",
+    "colToday": "🎯 今日",
+    "colDone": "✅ 完了",
     "noTasks": "タスクがありません",
     "total": "合計",
     "viewMoreToday": "今日のタスクをさらに{count}件表示",

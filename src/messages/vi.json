@@ -129,6 +129,9 @@
 
   "kanban": {
     "startFocusMode": "Bắt đầu Focus Mode",
+    "colBacklog": "📋 Danh sách chờ",
+    "colToday": "🎯 Hôm nay",
+    "colDone": "✅ Hoàn thành",
     "noTasks": "Chưa có nhiệm vụ",
     "total": "tổng",
     "viewMoreToday": "Xem thêm {count} nhiệm vụ hôm nay",

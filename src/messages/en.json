@@ -129,6 +129,9 @@
 
   "kanban": {
     "startFocusMode": "Start Focus Mode",
+    "colBacklog": "📋 Backlog",
+    "colToday": "🎯 Today",
+    "colDone": "✅ Done",
     "noTasks": "No tasks yet",
     "total": "total",
     "viewMoreToday": "View {count} more tasks today",
