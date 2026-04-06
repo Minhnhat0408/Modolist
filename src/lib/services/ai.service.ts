@@ -211,7 +211,6 @@ async function getEmbedding(text: string): Promise<number[] | null> {
         }),
       },
     );
-
     if (!response.ok) return null;
     const data = await response.json();
     return data.embedding?.values ?? null;
@@ -456,6 +455,7 @@ export async function estimateTime(
   let llmPomodoros = 3;
   let llmReasoning = "Không thể ước lượng — sử dụng mặc định 3 pomodoros.";
   let llmPlan: Omit<FocusPlan, "label"> = { session_type: "STANDARD", sessions: 3, total_minutes: 75 };
+  let llmFailed = false;
 
   try {
     const descSection = taskDescription ? `Mô tả: ${taskDescription}` : "";
@@ -487,6 +487,7 @@ export async function estimateTime(
     llmPomodoros = sessionType === "STANDARD" ? sessions : 1;
     llmReasoning = `🤖 ${data.reasoning || "AI ước lượng dựa trên độ phức tạp."}`;
   } catch (err) {
+    llmFailed = true;
     console.warn(`⚠️  LLM estimation failed for "${taskTitle}": ${err instanceof Error ? err.message : String(err)}. Using default 3 pomodoros.`);
     // Use defaults
   }
@@ -495,11 +496,13 @@ export async function estimateTime(
     ragAvg, ragConfidence, llmPomodoros, llmPlan, ragReasoning, llmReasoning,
   );
 
+  const finalConfidence = llmFailed && ragAvg === null ? "low" : confidence;
+
   return {
     estimatedPomodoros: estimate,
     reasoning,
     similarTasks: similar.slice(0, 5),
-    confidence,
+    confidence: finalConfidence,
     focusPlan: plan,
   };
 }

@@ -11,6 +11,7 @@ import type {
   UpdateTaskInput,
   Task,
 } from "@/lib/supabase/types";
+import { storeEmbedding } from "@/lib/services/ai.service";
 
 // ── Recurrence Helpers ────────────────────────────────────────────────────────
 
@@ -101,6 +102,15 @@ const FOCUS_SESSION_SELECT = `
     id, duration, "endedAt", "plannedDuration", "startedAt", status
   )
 `;
+
+function enqueueEmbeddingStore(
+  supabase: SupabaseClient,
+  task: { id: string; userId: string; title: string; description: string | null },
+) {
+  storeEmbedding(supabase, task.id, task.userId, task.title, task.description || "").catch((err) => {
+    console.warn(`Failed to store embedding for task ${task.id}:`, err);
+  });
+}
 
 // ── CRUD Functions ────────────────────────────────────────────────────────────
 
@@ -266,6 +276,14 @@ export async function createTask(
     .single();
 
   if (error) throw error;
+
+  enqueueEmbeddingStore(supabase, {
+    id: data.id,
+    userId,
+    title: data.title,
+    description: data.description,
+  });
+
   return data;
 }
 
@@ -301,6 +319,16 @@ export async function createBatchTasks(
 
   const { data, error } = await supabase.from("tasks").insert(rows).select();
   if (error) throw error;
+
+  for (const created of data ?? []) {
+    enqueueEmbeddingStore(supabase, {
+      id: created.id,
+      userId,
+      title: created.title,
+      description: created.description,
+    });
+  }
+
   return { created: data?.length ?? 0 };
 }
 
@@ -363,6 +391,15 @@ export async function updateTask(
     );
   }
 
+  if (task && (typeof input.title !== "undefined" || typeof input.description !== "undefined")) {
+    enqueueEmbeddingStore(supabase, {
+      id: task.id,
+      userId,
+      title: task.title,
+      description: task.description,
+    });
+  }
+
   // Auto-spawn next recurring instance when marked DONE
   let spawnedTask = null;
   if (
@@ -400,6 +437,7 @@ async function spawnRecurring(
       suggestedSessionType: original.suggestedSessionType,
       suggestedSessions: original.suggestedSessions,
       suggestedTotalMinutes: original.suggestedTotalMinutes,
+      embedding: original.embedding ?? null,
       recurrence: original.recurrence,
       recurrenceDaysOfWeek: original.recurrenceDaysOfWeek,
       recurrenceDayOfMonth: original.recurrenceDayOfMonth,
@@ -411,6 +449,14 @@ async function spawnRecurring(
     .single();
 
   if (error) throw error;
+  if (!original.embedding) {
+    enqueueEmbeddingStore(supabase, {
+      id: data.id,
+      userId: original.userId,
+      title: data.title,
+      description: data.description,
+    });
+  }
   return data;
 }
 
@@ -436,6 +482,7 @@ export async function duplicateTask(supabase: SupabaseClient, id: string, userId
       suggestedSessionType: original.suggestedSessionType,
       suggestedSessions: original.suggestedSessions,
       suggestedTotalMinutes: original.suggestedTotalMinutes,
+      embedding: original.embedding ?? null,
       recurrence: original.recurrence,
       recurrenceDaysOfWeek: original.recurrenceDaysOfWeek,
       recurrenceDayOfMonth: original.recurrenceDayOfMonth,
@@ -447,6 +494,14 @@ export async function duplicateTask(supabase: SupabaseClient, id: string, userId
     .single();
 
   if (error) throw error;
+  if (!original.embedding) {
+    enqueueEmbeddingStore(supabase, {
+      id: data.id,
+      userId,
+      title: data.title,
+      description: data.description,
+    });
+  }
   return data;
 }
 

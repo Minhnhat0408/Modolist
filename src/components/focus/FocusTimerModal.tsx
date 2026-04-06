@@ -52,7 +52,6 @@ export function FocusTimerModal() {
   const t = useTranslations("focus");
 
   const handleMinimize = async () => {
-    console.log("reạsiopjeifoas");
     await openPip(140, 460);
     // Check which tabs are already in PiP before this action
     const worldInPip = worldOpen && worldMinimized;

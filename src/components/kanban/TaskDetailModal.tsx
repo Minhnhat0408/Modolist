@@ -59,6 +59,20 @@ type AISuggestion = {
   };
 };
 
+type RawAISuggestion = {
+  estimatedPomodoros?: number;
+  reasoning?: string;
+  confidence?: string;
+  focusPlan?: {
+    sessionType?: string;
+    session_type?: string;
+    sessions?: number;
+    totalMinutes?: number;
+    total_minutes?: number;
+    label?: string;
+  };
+};
+
 type SessionHistoryItem = {
   id: string;
   startedAt: string;
@@ -471,21 +485,37 @@ export function TaskDetailModal({
     setAiEstimating(true);
     setAiSuggestion(null);
     try {
-      const result = await api.post<AISuggestion>("/ai/estimate-time", {
+      const result = await api.post<RawAISuggestion>("/ai/estimate-time", {
         taskTitle: localTask.title,
         taskDescription: localTask.description || undefined,
       });
-      console.log(result);
-      setAiSuggestion(result);
-      if (result.estimatedPomodoros) {
-        await patchField("estimatedPomodoros", result.estimatedPomodoros);
+
+      const normalizedFocusPlan = result.focusPlan
+        ? {
+            sessionType: result.focusPlan.sessionType ?? result.focusPlan.session_type ?? "STANDARD",
+            sessions: result.focusPlan.sessions ?? 1,
+            totalMinutes: result.focusPlan.totalMinutes ?? result.focusPlan.total_minutes ?? 25,
+            label: result.focusPlan.label ?? "",
+          }
+        : undefined;
+
+      const normalizedResult: AISuggestion = {
+        estimatedPomodoros: result.estimatedPomodoros,
+        reasoning: result.reasoning,
+        confidence: result.confidence,
+        focusPlan: normalizedFocusPlan,
+      };
+
+      setAiSuggestion(normalizedResult);
+      if (normalizedResult.estimatedPomodoros) {
+        await patchField("estimatedPomodoros", normalizedResult.estimatedPomodoros);
       }
-      if (result.focusPlan) {
-        await patchField("suggestedSessionType", result.focusPlan.sessionType);
-        await patchField("suggestedSessions", result.focusPlan.sessions);
+      if (normalizedResult.focusPlan) {
+        await patchField("suggestedSessionType", normalizedResult.focusPlan.sessionType);
+        await patchField("suggestedSessions", normalizedResult.focusPlan.sessions);
         await patchField(
           "suggestedTotalMinutes",
-          result.focusPlan.totalMinutes,
+          normalizedResult.focusPlan.totalMinutes,
         );
       }
     } catch (e) {
