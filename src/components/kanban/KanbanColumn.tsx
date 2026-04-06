@@ -256,7 +256,7 @@ export function KanbanColumn({
             </motion.div>
           )}
 
-          {isDone && doneHasHistory && (
+          {isDone && doneHasHistory && !hasOverflow && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <button
                 onClick={handleDoneHistoryClick}
