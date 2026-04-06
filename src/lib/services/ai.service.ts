@@ -425,11 +425,12 @@ export async function confirmGeneratedTasks(
   const { data, error } = await supabase.from("tasks").insert(rows).select();
   if (error) throw error;
 
-  // Store embeddings in background (fire-and-forget)
+  // Store embeddings in background (with error logging)
   for (const created of data ?? []) {
-    storeEmbedding(supabase, created.id, userId, created.title, created.description || "").catch(
-      () => {}, // Non-blocking
-    );
+    storeEmbedding(supabase, created.id, userId, created.title, created.description || "")
+      .catch((err) => {
+        console.error(`⚠️  Failed to store embedding for task ${created.id}:`, err);
+      });
   }
 
   return data;
@@ -485,7 +486,8 @@ export async function estimateTime(
     llmPlan = { session_type: sessionType as "QUICK_5" | "QUICK_15" | "STANDARD", sessions, total_minutes: totalMinutes };
     llmPomodoros = sessionType === "STANDARD" ? sessions : 1;
     llmReasoning = `🤖 ${data.reasoning || "AI ước lượng dựa trên độ phức tạp."}`;
-  } catch {
+  } catch (err) {
+    console.warn(`⚠️  LLM estimation failed for "${taskTitle}": ${err instanceof Error ? err.message : String(err)}. Using default 3 pomodoros.`);
     // Use defaults
   }
 
@@ -508,17 +510,51 @@ export async function storeEmbedding(
   userId: string,
   title: string,
   description: string,
+  maxRetries = 3,
 ): Promise<{ success: boolean }> {
-  const embedding = await getEmbedding(`${title} ${description}`);
-  if (!embedding) return { success: false };
+  let lastError: unknown;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const embedding = await getEmbedding(`${title} ${description}`);
+      if (!embedding) {
+        console.warn(`⚠️  Failed to get embedding for task ${taskId} (attempt ${attempt}/${maxRetries})`);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        return { success: false };
+      }
 
-  const vectorStr = `[${embedding.join(",")}]`;
+      const vectorStr = `[${embedding.join(",")}]`;
 
-  const { error } = await supabase
-    .from("tasks")
-    .update({ embedding: vectorStr })
-    .eq("id", taskId)
-    .eq("userId", userId);
+      const { error } = await supabase
+        .from("tasks")
+        .update({ embedding: vectorStr })
+        .eq("id", taskId)
+        .eq("userId", userId);
 
-  return { success: !error };
+      if (error) {
+        lastError = error;
+        if (attempt < maxRetries) {
+          console.warn(`⚠️  Failed to store embedding for task ${taskId} (attempt ${attempt}/${maxRetries}): ${error.message}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        return { success: false };
+      }
+      
+      return { success: true };
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        console.warn(`⚠️  Exception storing embedding for task ${taskId} (attempt ${attempt}/${maxRetries}):`, err);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
+    }
+  }
+  
+  console.error(`❌ Failed to store embedding for task ${taskId} after ${maxRetries} retries:`, lastError);
+  return { success: false };
 }
