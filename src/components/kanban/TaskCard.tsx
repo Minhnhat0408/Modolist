@@ -497,7 +497,7 @@ export function TaskCard({
                   title="AI gợi ý: Quick 5 phút"
                 >
                   <Zap className="h-3 w-3" />
-                  <span>⚡ Quick 5p</span>
+                  <span>{task.estimatedPomodoros && task.estimatedPomodoros > 1 ? `~${task.estimatedPomodoros}` : "" } Quick 5</span>
                 </div>
               )}
               {task.suggestedSessionType === "QUICK_15" && (
@@ -506,7 +506,7 @@ export function TaskCard({
                   title="AI gợi ý: Quick 15 phút"
                 >
                   <Zap className="h-3 w-3" />
-                  <span>⚡ Quick 15p</span>
+                  <span>{task.estimatedPomodoros && task.estimatedPomodoros > 1 ? `~${task.estimatedPomodoros}` : "" } Quick 15</span>
                 </div>
               )}
               {task.suggestedSessionType === "STANDARD" &&

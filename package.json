@@ -11,7 +11,8 @@
     "check-types": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "backfill:embeddings:system": "node --env-file=.env.local scripts/backfill-system-embeddings.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
