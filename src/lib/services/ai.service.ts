@@ -40,6 +40,16 @@ interface SimilarTask {
   actualPomodoros: number;
   similarity: number;
   isOwn: boolean;
+  suggestedSessionType?: "QUICK_5" | "QUICK_15" | "STANDARD" | null;
+  suggestedTotalMinutes?: number | null;
+  avgPlannedDuration?: number | null;
+}
+
+interface SimilarEstimateResult {
+  estimate: number | null;
+  reasoning: string | null;
+  confidence: string;
+  historicalPlan: Omit<FocusPlan, "label"> | null;
 }
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
@@ -124,9 +134,13 @@ function buildFocusPlan(estimatedPomodoros: number): Omit<FocusPlan, "label"> {
 function makeFocusPlanLabel(plan: Omit<FocusPlan, "label">): FocusPlan {
   let label: string;
   if (plan.session_type === "QUICK_5") {
-    label = "⚡ Quick 5 phút";
+    label = plan.sessions > 1
+      ? `⚡ Quick 5 × ${plan.sessions} (~${plan.total_minutes} phút)`
+      : "⚡ Quick 5 phút";
   } else if (plan.session_type === "QUICK_15") {
-    label = "⚡ Quick 15 phút";
+    label = plan.sessions > 1
+      ? `⚡ Quick 15 × ${plan.sessions} (~${plan.total_minutes} phút)`
+      : "⚡ Quick 15 phút";
   } else {
     const hours = Math.floor(plan.total_minutes / 60);
     const mins = plan.total_minutes % 60;
@@ -151,6 +165,7 @@ function blendEstimates(
   llmPomodoros: number,
   llmPlan: Omit<FocusPlan, "label">,
   ragReasoning: string | null,
+  ragPlan: Omit<FocusPlan, "label"> | null,
   llmReasoning: string,
 ): { estimate: number; reasoning: string; plan: FocusPlan; confidence: string } {
   const ragConfNum = CONFIDENCE_NUM[ragConfidence] ?? 0;
@@ -166,7 +181,7 @@ function blendEstimates(
 
   if (ragConfNum >= 0.5) {
     const finalEstimate = Math.max(1, ragAvg);
-    const finalPlan = makeFocusPlanLabel(buildFocusPlan(finalEstimate));
+    const finalPlan = makeFocusPlanLabel(ragPlan ?? buildFocusPlan(finalEstimate));
     const confidenceLabel = ragConfNum >= 0.75 ? "high" : "medium";
     const parts: string[] = [];
     if (ragReasoning) parts.push(`📊 RAG (${Math.round(ragConfNum * 100)}%): ${ragReasoning}`);
@@ -237,7 +252,16 @@ async function findSimilarTasks(
 
   if (error || !data) return [];
 
-  return data.map((row: { id: string; title: string; completedPomodoros: number; userId: string; similarity: number }) => {
+  return data.map((row: {
+    id: string;
+    title: string;
+    completedPomodoros: number;
+    userId: string;
+    similarity: number;
+    suggestedSessionType?: string | null;
+    suggestedTotalMinutes?: number | null;
+    avgPlannedDuration?: number | null;
+  }) => {
     const isOwn = row.userId === userId;
     return {
       id: row.id,
@@ -245,17 +269,29 @@ async function findSimilarTasks(
       actualPomodoros: row.completedPomodoros,
       similarity: row.similarity * (isOwn ? 1.0 : 0.7),
       isOwn,
+      suggestedSessionType:
+        row.suggestedSessionType === "QUICK_5" ||
+        row.suggestedSessionType === "QUICK_15" ||
+        row.suggestedSessionType === "STANDARD"
+          ? row.suggestedSessionType
+          : null,
+      suggestedTotalMinutes: row.suggestedTotalMinutes ?? null,
+      avgPlannedDuration: row.avgPlannedDuration ?? null,
     };
   }).sort((a: SimilarTask, b: SimilarTask) => b.similarity - a.similarity);
 }
 
 function estimateFromSimilar(
   similarTasks: SimilarTask[],
-): { estimate: number | null; reasoning: string | null; confidence: string } {
-  if (!similarTasks.length) return { estimate: null, reasoning: null, confidence: "none" };
+): SimilarEstimateResult {
+  if (!similarTasks.length) {
+    return { estimate: null, reasoning: null, confidence: "none", historicalPlan: null };
+  }
 
   const relevant = similarTasks.filter((t) => t.similarity >= 0.7);
-  if (!relevant.length) return { estimate: null, reasoning: null, confidence: "none" };
+  if (!relevant.length) {
+    return { estimate: null, reasoning: null, confidence: "none", historicalPlan: null };
+  }
 
   const totalWeight = relevant.reduce((acc, t) => acc + t.similarity, 0);
   const weightedAvg = relevant.reduce((acc, t) => acc + t.actualPomodoros * t.similarity, 0) / totalWeight;
@@ -263,6 +299,84 @@ function estimateFromSimilar(
 
   const ownTasks = relevant.filter((t) => t.isOwn);
   const otherCount = relevant.length - ownTasks.length;
+
+  const totalMinutesWeighted = relevant.reduce((acc, t) => {
+    const minutesFromHistory =
+      t.avgPlannedDuration != null
+        ? Math.max(1, Math.round((t.avgPlannedDuration / 60) * t.actualPomodoros))
+        : t.suggestedTotalMinutes ?? null;
+
+    if (minutesFromHistory == null) return acc;
+    return acc + minutesFromHistory * t.similarity;
+  }, 0);
+
+  const totalMinutesWeight = relevant.reduce((acc, t) => {
+    const hasMinutes = t.avgPlannedDuration != null || t.suggestedTotalMinutes != null;
+    return hasMinutes ? acc + t.similarity : acc;
+  }, 0);
+
+  const weightedTotalMinutes =
+    totalMinutesWeight > 0
+      ? Math.max(1, Math.round(totalMinutesWeighted / totalMinutesWeight))
+      : null;
+
+  const weightedPlannedSecondsRaw = relevant.reduce((acc, t) => {
+    if (t.avgPlannedDuration == null) return acc;
+    return acc + t.avgPlannedDuration * t.similarity;
+  }, 0);
+
+  const weightedPlannedSecondsWeight = relevant.reduce((acc, t) => {
+    return t.avgPlannedDuration == null ? acc : acc + t.similarity;
+  }, 0);
+
+  const weightedPlannedSeconds =
+    weightedPlannedSecondsWeight > 0
+      ? Math.round(weightedPlannedSecondsRaw / weightedPlannedSecondsWeight)
+      : null;
+
+  const standardVotes = relevant.filter((t) => t.suggestedSessionType === "STANDARD").length;
+  const quick5Votes = relevant.filter((t) => t.suggestedSessionType === "QUICK_5").length;
+  const quick15Votes = relevant.filter((t) => t.suggestedSessionType === "QUICK_15").length;
+
+  let historicalPlan: Omit<FocusPlan, "label"> | null = null;
+
+  if (weightedPlannedSeconds != null && weightedPlannedSeconds <= 300) {
+    const sessions = Math.max(1, estimate);
+    historicalPlan = {
+      session_type: "QUICK_5",
+      sessions,
+      total_minutes: Math.max(5, sessions * 5),
+    };
+  } else if (weightedPlannedSeconds != null && weightedPlannedSeconds <= 900) {
+    const sessions = Math.max(1, estimate);
+    historicalPlan = {
+      session_type: "QUICK_15",
+      sessions,
+      total_minutes: Math.max(15, sessions * 15),
+    };
+  } else if (weightedTotalMinutes != null && weightedTotalMinutes <= 15) {
+    historicalPlan = {
+      session_type: weightedTotalMinutes <= 5 ? "QUICK_5" : "QUICK_15",
+      sessions: 1,
+      total_minutes: weightedTotalMinutes <= 5 ? 5 : 15,
+    };
+  } else if (quick5Votes > standardVotes && quick5Votes >= quick15Votes) {
+    const sessions = Math.max(1, estimate);
+    historicalPlan = {
+      session_type: "QUICK_5",
+      sessions,
+      total_minutes: Math.max(5, sessions * 5),
+    };
+  } else if (quick15Votes > standardVotes) {
+    const sessions = Math.max(1, estimate);
+    historicalPlan = {
+      session_type: "QUICK_15",
+      sessions,
+      total_minutes: Math.max(15, sessions * 15),
+    };
+  } else {
+    historicalPlan = buildFocusPlan(estimate);
+  }
 
   let reasoning: string;
   if (ownTasks.length) {
@@ -290,7 +404,7 @@ function estimateFromSimilar(
   const confidence =
     confidenceScore >= 0.6 ? "high" : confidenceScore >= 0.3 ? "medium" : "low";
 
-  return { estimate, reasoning, confidence };
+  return { estimate, reasoning, confidence, historicalPlan };
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -356,13 +470,18 @@ export async function generateTasks(
 
     // RAG refine
     const similar = await findSimilarTasks(supabase, userId, `${title} ${description}`);
-    const { estimate: ragAvg, reasoning: ragReasoning, confidence: ragConfidence } = estimateFromSimilar(similar);
+    const {
+      estimate: ragAvg,
+      reasoning: ragReasoning,
+      confidence: ragConfidence,
+      historicalPlan: ragPlan,
+    } = estimateFromSimilar(similar);
 
     const llmPomo = llmSessionType.startsWith("QUICK") ? 1 : Math.min(10, llmSessions);
     const llmR = `🤖 AI ước lượng: ${llmSessionType} × ${llmSessions} (~${llmTotalMinutes} phút).`;
 
     const { estimate, reasoning, plan } = blendEstimates(
-      ragAvg, ragConfidence, llmPomo, llmPlan, ragReasoning, llmR,
+      ragAvg, ragConfidence, llmPomo, llmPlan, ragReasoning, ragPlan, llmR,
     );
 
     generatedTasks.push({
@@ -449,7 +568,12 @@ export async function estimateTime(
 }> {
   // RAG search
   const similar = await findSimilarTasks(supabase, userId, `${taskTitle} ${taskDescription || ""}`);
-  const { estimate: ragAvg, reasoning: ragReasoning, confidence: ragConfidence } = estimateFromSimilar(similar);
+  const {
+    estimate: ragAvg,
+    reasoning: ragReasoning,
+    confidence: ragConfidence,
+    historicalPlan: ragPlan,
+  } = estimateFromSimilar(similar);
 
   // LLM estimation
   let llmPomodoros = 3;
@@ -493,7 +617,7 @@ export async function estimateTime(
   }
 
   const { estimate, reasoning, plan, confidence } = blendEstimates(
-    ragAvg, ragConfidence, llmPomodoros, llmPlan, ragReasoning, llmReasoning,
+    ragAvg, ragConfidence, llmPomodoros, llmPlan, ragReasoning, ragPlan, llmReasoning,
   );
 
   const finalConfidence = llmFailed && ragAvg === null ? "low" : confidence;
