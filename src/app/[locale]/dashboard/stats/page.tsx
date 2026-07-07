@@ -328,9 +328,9 @@ export default function StatsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Image
-        src="/background.webp"
+        src="/background-dark-blurred.avif"
         alt="Background"
-        className="fixed blur-sm w-full h-full object-cover opacity-0 dark:opacity-20 pointer-events-none"
+        className="fixed w-full h-full object-cover opacity-0 dark:opacity-20 pointer-events-none"
         width={1920}
         height={1080}
       />

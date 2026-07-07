@@ -302,7 +302,7 @@ export function TaskCard({
       <div
         className={`
           rounded-xl p-4
-          bg-white/5 backdrop-blur-sm
+          bg-white/5
           ${
             isFocusing
               ? "border-2 border-primary ring-2 ring-primary/50 bg-primary/10"
