@@ -140,8 +140,6 @@ export function KanbanColumn({
         className={clsx(
           `
           h-full rounded-2xl
-          backdrop-blur-xl
-
           shadow-xl
         `,
           color,
@@ -225,7 +223,6 @@ export function KanbanColumn({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ delay: index * 0.05 }}
-              layout
             >
               <TaskCard
                 task={task}
