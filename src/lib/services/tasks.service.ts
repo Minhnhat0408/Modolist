@@ -349,6 +349,11 @@ export async function updateTask(
     updateData.dueDate = new Date(input.dueDate).toISOString();
   }
 
+  // Moving a task with an existing due date into TODAY re-syncs that due date to today
+  if (input.status === "TODAY" && existing.status !== "TODAY" && existing.dueDate) {
+    updateData.dueDate = new Date().toISOString();
+  }
+
   const effectiveDueDate = updateData.dueDate
     ? new Date(updateData.dueDate)
     : existing.dueDate
