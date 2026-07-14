@@ -90,7 +90,12 @@ export const useGuestStore = create<GuestStore>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
-            updated = { ...t, ...data, updatedAt: new Date() } as KanbanTask;
+            // Moving a task with an existing due date into TODAY re-syncs that due date to today
+            const dueDate =
+              data.status === TaskStatus.TODAY && t.status !== TaskStatus.TODAY && t.dueDate
+                ? new Date()
+                : (data.dueDate ?? t.dueDate);
+            updated = { ...t, ...data, dueDate, updatedAt: new Date() } as KanbanTask;
             return updated;
           }),
         }));
